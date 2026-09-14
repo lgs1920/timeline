@@ -70,6 +70,8 @@ timeline.timeline = {
     editable: true,
     showBuildingOverlay: true,
     showClipMenu: true,
+    showTimeSlider: true,
+    showZoomSlider: true,
     collisionPolicy: 'prevent',
     resizeCollisionPolicy: 'prevent',
     resizeExtendsDuration: true,
@@ -130,6 +132,8 @@ clock integration.
 | `editable` | `boolean` | Enables all timeline editing actions: track dragging, title editing, clip insertion and movement, and track removal. When `false`, those actions are unavailable. Defaults to `true`. |
 | `interactive` | `boolean` | Enables playback, scrubbing, editing, menus, and emitted interaction events. Defaults to `true`. |
 | `showBuildingOverlay` | `boolean` | Shows the construction overlay during the initial mount. Defaults to `true`. |
+| `showTimeSlider` | `boolean` | Displays the branded time slider above the ruler. Defaults to `false`. |
+| `showZoomSlider` | `boolean` | Displays the branded horizontal zoom slider in the surface controls. Defaults to `false`. |
 | `collisionPolicy` | `'allow' \| 'prevent' \| 'ripple'` | Default clip collision policy for tracks. Defaults to `prevent`. |
 | `resizeCollisionPolicy` | `'allow' \| 'prevent' \| 'ripple'` | Default collision policy for clip resizes. Defaults to `prevent`. |
 | `snapThresholdPixels` | `number` | Distance from a ruler or clip edge at which snapping starts. Defaults to `8`. |
@@ -199,6 +203,10 @@ The controlled playhead position in milliseconds.
 
 The controlled playback state. The component emits `play` and `pause`; the
 host updates this property after applying the requested state.
+
+When enabled, the built-in time slider emits the normal `seek` lifecycle with
+`source: 'timeline-slider'`. The built-in zoom slider emits the `zoom-change`
+lifecycle with `source: 'timeline-zoom-slider'` and a `zoomPercent` value.
 
 The icon transport controls are, in order, go to start, previous frame,
 play/pause, stop, next frame, and go to end. The component emits the transport
@@ -321,11 +329,18 @@ targeted slot takes the form `{slot}-{id}` and overrides the global slot.
 </lgs1920-timeline>
 ```
 
-An application can replace the built-in clip menu with a draggable control in
-`timeline-toolbar`. The drag payload must use the exported
+An application can replace the built-in clip menu with a draggable control.
+The source can live outside the timeline, for example in a palette or toolbar
+above it. If it belongs inside the component header, place it in the
+`timeline-toolbar` slot. In both cases, the drag payload must use the exported
 `CLIP_OPTION_DRAG_MIME` constant and contain a JSON clip option. The component
 places the generated clip at the drop position and accepts the option on every
 compatible editable track:
+
+```html
+<wa-button id="clip-source" draggable="true">Add a clip by dragging it</wa-button>
+<lgs1920-timeline id="timeline"></lgs1920-timeline>
+```
 
 ```js
 import {CLIP_OPTION_DRAG_MIME} from '@lgs1920/timeline'
@@ -345,6 +360,10 @@ source.addEventListener('dragstart', event => {
     event.dataTransfer.setData(CLIP_OPTION_DRAG_MIME, JSON.stringify(option))
 })
 ```
+
+If no compatible track accepts the option, the `add-clip` event contains
+`detail.clip === null`. The host can append a new empty track to its controlled
+`tracks` model and let the user drop the source again.
 
 The additional-content drawer has no built-in close button. Add an application
 owned control to `custom-menu` with the `data-additional-content-toggle`
@@ -483,6 +502,48 @@ Ruler labels use `SS.XX` below one minute, `MmSS` from one minute through 59
 minutes, and `HhMM` from one hour onward. When the major interval is below one
 minute, hour labels include seconds as `HhMM:SS` so adjacent labels remain
 distinct.
+
+## Keyboard shortcuts
+
+Keyboard handling is scoped to the focused timeline part. The component ignores
+these shortcuts while an input, textarea, select, or editable content control
+has focus.
+
+| Focus or context | Shortcut | Action |
+| --- | --- | --- |
+| Timeline surface | `Space` | Toggle local playback. |
+| Timeline surface | `Home` / `End` | Move the playhead to the selected range start or end. |
+| Timeline surface | `Shift+ArrowLeft` / `Shift+ArrowRight` | Move the playhead to the selected range boundary. |
+| Timeline surface | `Shift+ArrowUp` / `Shift+ArrowDown` | Scroll tracks to the top or bottom. |
+| Timeline surface | `ArrowUp` / `ArrowDown` | Increase or decrease row height. |
+| Timeline surface | `ArrowLeft` / `ArrowRight` | Zoom the ruler horizontally when no clip is selected. |
+| Scrollbar rail | `PageUp` / `PageDown` and arrows | Scroll one viewport in the focused direction. |
+| Playhead grip | `ArrowLeft` / `ArrowRight` | Move by `keyboardStepSeconds`. |
+| Playhead grip | `Shift+ArrowLeft` / `Shift+ArrowRight` | Move by ten keyboard steps. |
+| Playhead grip | `Alt+ArrowRight` / `Alt+ArrowLeft` | Move to the range minimum or maximum. |
+| Range handle | `ArrowLeft` / `ArrowRight` | Move the focused boundary by one keyboard step. |
+| Range handle | `Shift+ArrowLeft` / `Shift+ArrowRight` | Move the focused boundary by ten keyboard steps. |
+| Editable clip | `ArrowLeft` / `ArrowRight` | Move the clip by one rendered pixel. |
+| Editable clip | `Alt+ArrowLeft` / `Alt+ArrowRight` | Move the clip by ten rendered pixels. |
+| Editable clip | `Delete` / `Backspace` | Delete the focused clip. |
+| Editable clip | `Mod+C` | Start a copy placement ghost; click to place it. |
+| Editable clip | `Mod+D` | Duplicate the clip immediately after itself. |
+| Editable clip | `M` | Mask or reveal the clip. |
+| Editable clip | `V` | Enable or disable the clip. |
+| Non-movable clip | `Enter` / `Space` | Select the clip. |
+| Clip resize handle | `ArrowLeft` / `ArrowRight` | Resize the focused edge by one keyboard step. |
+| Clip resize handle | `Shift+ArrowLeft` / `Shift+ArrowRight` | Resize the focused edge by ten keyboard steps. |
+| Any active edit | `Escape` | Cancel a copy, drag, resize, or context menu; clear clip selection. |
+| Legend divider | Horizontal arrows | Resize the track legend. |
+| Legend divider | `Shift` + arrows, `Home`, `End`, `Enter` | Change the resize step, select the minimum or maximum, or collapse and restore the legend. |
+| Track label editor | `Enter` / `Escape` | Commit or cancel the label edit. |
+
+`Mod` means `Ctrl` on Windows and Linux, and `Command` on macOS. On the time
+surface, `Shift` or `Alt` plus the wheel changes row height by 4 pixels,
+`Meta` plus the wheel changes horizontal ruler zoom by 20 percent, and
+`Ctrl` plus the wheel remains available to the browser. Set
+`keyboardZoomActive` to `true` when the host should accept the surface arrow
+shortcuts while the custom element itself is selected.
 
 ## Track names and controlled editing
 
@@ -716,6 +777,9 @@ React wrapper maps every suffix to the corresponding `on...` callback.
 | `before-seek` | `lgs1920-timeline-before-seek` | `onBeforeSeek` | Cancelable `{timeMillis, progress, settled, source, event, ...}` |
 | `seek` | `lgs1920-timeline-seek` | `onSeek` | `{timeMillis, progress, settled, source, event, ...}` |
 | `after-seek` | `lgs1920-timeline-after-seek` | `onAfterSeek` | `{timeMillis, progress, settled, source, event, ...}` |
+| `before-zoom-change` | `lgs1920-timeline-before-zoom-change` | `onBeforeZoomChange` | Cancelable `{zoomPercent, settled, source, event}` |
+| `zoom-change` | `lgs1920-timeline-zoom-change` | `onZoomChange` | `{zoomPercent, settled, source, event}` |
+| `after-zoom-change` | `lgs1920-timeline-after-zoom-change` | `onAfterZoomChange` | `{zoomPercent, settled, source, event}` |
 | `before-track-visibility-change` | `lgs1920-timeline-before-track-visibility-change` | `onBeforeTrackVisibilityChange` | Cancelable `{trackId, visible, track, tracks, previousTracks, event, data}` |
 | `track-visibility-change` | `lgs1920-timeline-track-visibility-change` | `onTrackVisibilityChange` | `{trackId, visible, track, event, data}` |
 | `after-track-visibility-change` | `lgs1920-timeline-after-track-visibility-change` | `onAfterTrackVisibilityChange` | `{trackId, visible, track, tracks, previousTracks, event, data}` |
@@ -868,6 +932,7 @@ Useful CSS parts include `timeline`, `additional-content`,
 `legend-row`, `legend-content`, `track-actions`, `split-panel`,
 `surface`, `canvas`, `ruler`, `tick`, `minor-tick`, `tracks`, `track`, `clip`,
 `tracks-viewport`,
+`timeline-scrubber`, `time-slider`, `zoom-control`, `zoom-slider`,
 `clip-preview`, `clip-start-handle`, `clip-end-handle`, `timeline-start-handle`,
 `timeline-end-handle`, `playhead`, `end-marker`,
 `scroll-shell`, `scrollbar-track`, `scrollbar-thumb`,
@@ -887,7 +952,7 @@ also provides these small imperative helpers:
 | --- | --- |
 | `applyControlledState(state)` | Apply timeline, tracks, clip options, playback, and playhead values in one controlled synchronization. |
 | `setTime(timeMillis)` | Move the playhead without emitting `seek`. |
-| `setPlayheadTimeMillis(timeMillis)` | Update only the playhead position without refreshing the current-time label or transport controls. |
+| `setPlayheadTimeMillis(timeMillis)` | Update the playhead and optional time slider without refreshing the current-time label or transport controls. |
 | `isCurrentTimeNearViewportEdge(padding)` | Check whether the playhead is close enough to a viewport edge to require following. |
 | `ensureCurrentTimeVisible(padding)` | Scroll the horizontal surface just enough to keep the playhead visible. |
 | `setZoom(zoomPercent)` | Set the ruler zoom up to `500`; the minimum is calculated from the available surface width, full timeline duration, and right safety margin. |
