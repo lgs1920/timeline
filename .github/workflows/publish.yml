@@ -29,6 +29,15 @@ jobs:
           package_version=$(bun -e "console.log((await Bun.file('package.json').json()).version)")
           tag_version="${RELEASE_TAG#v}"
           test "$package_version" = "$tag_version"
+      - name: Set up npm registry authentication
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org/
+      - name: Verify npm identity
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm whoami --registry=https://registry.npmjs.org/
       - name: Check whether the package version is already published
         id: npm-version
         env:
@@ -45,10 +54,8 @@ jobs:
       - name: Publish package to npm
         if: steps.npm-version.outputs.published != 'true'
         env:
-          TIMELINE_BUN_PUBLISH_LIFECYCLE: '1'
-          NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
-          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: bun publish
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}

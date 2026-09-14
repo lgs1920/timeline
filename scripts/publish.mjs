@@ -36,7 +36,7 @@ if (output('git', ['status', '--porcelain'])) {
 }
 
 const latestTag = output('git', ['tag', '--list', 'v*', '--sort=-version:refname']).split('\n')[0]
-const releasePaths = ['src', 'entries', 'demo', 'scripts', 'test', 'README.md']
+const releasePaths = ['.github', 'src', 'entries', 'demo', 'scripts', 'test', 'README.md']
 if (latestTag && !output('git', ['diff', '--name-only', `${latestTag}..HEAD`, '--', ...releasePaths])) {
     console.error(`Publication arrêtée : aucun changement dans ${releasePaths.join(', ')} depuis ${latestTag}.`)
     process.exit(1)
@@ -65,10 +65,11 @@ const nextVersion = `${major}.${minor}.${patch}`
 const readme = await Bun.file('./README.md').text()
 const releaseLine = /^The current release is `[^`]+`/m
 const changeRange = latestTag ? `${latestTag}..HEAD` : 'HEAD'
-const changedFiles = output('git', ['diff', '--name-only', changeRange, '--', 'src', 'entries', 'demo', 'scripts', 'test'])
+const changedFiles = output('git', ['diff', '--name-only', changeRange, '--', '.github', 'src', 'entries', 'demo', 'scripts', 'test'])
     .split('\n')
     .filter(Boolean)
 const releaseChangeMessages = [
+    ['.github', 'Updated CI and release automation.'],
     ['src', 'Updated timeline behavior, rendering, and editing.'],
     ['entries', 'Updated the public package entry points.'],
     ['demo', 'Updated the interactive demonstration.'],
