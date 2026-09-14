@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+*.tgz
+.idea/
+*.iml
+/.lgs1920-timeline-import-*/
+demo/src/assets/app.bundle.js

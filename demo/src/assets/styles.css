@@ -1,0 +1,282 @@
+/*******************************************************************************
+ *
+ * This file is part of the LGS1920/timeline project.
+ *
+ * File: styles.css
+ *
+ * Author : LGS1920 Team
+ * email: studio@lgs1920.fr
+ *
+ * Created on: 2026-09-14
+ * Last modified: 2026-09-14
+ *
+ *
+ * Copyright © 2026 LGS1920
+ ******************************************************************************/
+
+:root {
+    --demo-background: var(--wa-color-surface-default);
+    --demo-panel: var(--wa-color-surface-raised);
+    --demo-panel-border: var(--wa-color-surface-border);
+    --demo-text: var(--wa-color-text-normal);
+    --demo-muted: var(--wa-color-text-quiet);
+    --demo-accent: var(--wa-color-brand);
+    background: var(--demo-background);
+    color: var(--demo-text);
+    font-family: var(--wa-font-family-body, system-ui, sans-serif);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    min-block-size: 100vh;
+    margin: 0;
+    background: radial-gradient(circle at 15% 0%, color-mix(in srgb, var(--wa-color-brand-fill-quiet) 40%, transparent) 0, transparent 35rem), var(--demo-background);
+}
+
+.site-banner {
+    position: fixed;
+    inset-block-start: 0;
+    inset-inline: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--wa-space-l);
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--demo-panel-border);
+    background: color-mix(in srgb, var(--demo-panel) 92%, transparent);
+    box-shadow: 0 0.75rem 2rem rgb(0 0 0 / 12%);
+    backdrop-filter: blur(1rem);
+}
+
+.site-banner-left,
+.site-banner-pages,
+.site-banner-controls,
+.site-banner-external {
+    display: flex;
+    align-items: center;
+    gap: var(--wa-space-m);
+}
+
+.site-banner-left {
+    gap: var(--wa-space-xl);
+}
+
+.site-banner-controls {
+    flex: 1 1 auto;
+    justify-content: center;
+    gap: var(--wa-space-xs);
+}
+
+.site-banner-controls wa-select {
+    inline-size: clamp(5rem, 9vw, 7rem);
+    min-inline-size: 0;
+}
+
+.site-banner-logo {
+    display: inline-flex;
+    inline-size: clamp(7rem, 14vw, 10rem);
+}
+
+.site-banner-logo img {
+    display: block;
+    inline-size: 100%;
+    block-size: auto;
+}
+
+.site-banner-pages a,
+.site-banner-external a {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--wa-space-2xs);
+    color: var(--demo-muted);
+    font-size: 0.8rem;
+    font-weight: 750;
+    letter-spacing: 0.08em;
+    text-decoration: none;
+    text-transform: uppercase;
+}
+
+.site-banner-pages a:hover,
+.site-banner-pages a[aria-current='page'],
+.site-banner-external a:hover {
+    color: var(--demo-accent);
+}
+
+.site-banner-external a {
+    color: var(--demo-accent);
+}
+
+.site-banner-external wa-icon {
+    font-size: 1.5rem;
+}
+
+.demo-shell {
+    inline-size: min(100% - 2rem, 92rem);
+    margin: 0 auto;
+    padding: 6.5rem 0 3rem;
+}
+
+.demo-breadcrumb {
+    margin-block-end: 2.5rem;
+}
+
+.demo-header {
+    max-inline-size: 58rem;
+    margin-block-end: 3rem;
+}
+
+.eyebrow {
+    margin: 0 0 0.75rem;
+    color: var(--demo-accent);
+    font-size: 0.75rem;
+    font-weight: 750;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+h1,
+h2,
+p {
+    margin-block-start: 0;
+}
+
+h1 {
+    max-inline-size: 12ch;
+    margin-block-end: 1rem;
+    font-size: clamp(2.8rem, 8vw, 6rem);
+    line-height: 0.95;
+    letter-spacing: -0.06em;
+}
+
+h2 {
+    margin-block-end: 0;
+    font-size: clamp(1.35rem, 3vw, 2rem);
+    letter-spacing: -0.04em;
+}
+
+.intro,
+.example-card p:not(.eyebrow) {
+    color: var(--demo-muted);
+    line-height: 1.6;
+}
+
+.intro {
+    max-inline-size: 48rem;
+    margin-block-end: 0;
+    font-size: 1.15rem;
+}
+
+.demo-panel {
+    border: 1px solid var(--demo-panel-border);
+    background: color-mix(in srgb, var(--demo-panel) 92%, transparent);
+    box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 18%);
+}
+
+.playground {
+    container-type: inline-size;
+    margin-block-end: 1rem;
+    padding: clamp(1rem, 3vw, 2rem);
+    border-radius: var(--wa-panel-border-radius);
+}
+
+.section-heading {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-block-end: 1.5rem;
+}
+
+.event-status {
+    color: var(--demo-muted);
+    font-size: 0.8rem;
+}
+
+lgs1920-timeline {
+    display: block;
+    min-block-size: 20rem;
+    --lgs-timeline-radius: var(--wa-border-radius-m);
+    --lgs-timeline-shadow: var(--wa-shadow-l);
+}
+
+#readonly-timeline {
+    min-block-size: 12rem;
+    margin-block-start: 1.5rem;
+}
+
+.timeline-output {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--wa-space-s);
+    margin-block-start: 1rem;
+    color: var(--demo-muted);
+    font-size: 0.8rem;
+}
+
+.timeline-output code {
+    overflow: auto;
+    color: var(--demo-text);
+    white-space: pre-wrap;
+}
+
+.example-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.example-card {
+    min-inline-size: 0;
+    padding: clamp(1rem, 3vw, 1.5rem);
+    border-radius: var(--wa-panel-border-radius);
+}
+
+.example-card pre {
+    overflow: auto;
+    margin-block: 1.5rem 0;
+    padding: 1rem;
+    border: 1px solid var(--demo-panel-border);
+    border-radius: var(--wa-border-radius-s);
+    color: var(--demo-muted);
+    font-size: 0.8rem;
+    line-height: 1.6;
+}
+
+@media (max-width: 60rem) {
+    .site-banner {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .site-banner-controls {
+        order: 3;
+        flex-basis: 100%;
+    }
+}
+
+@media (max-width: 42rem) {
+    .site-banner-left {
+        gap: var(--wa-space-s);
+    }
+
+    .site-banner-pages {
+        gap: var(--wa-space-s);
+    }
+
+    .site-banner-external {
+        gap: var(--wa-space-s);
+    }
+
+    .demo-shell {
+        inline-size: min(100% - 1rem, 92rem);
+        padding-block-start: 9rem;
+    }
+
+    .example-grid {
+        grid-template-columns: 1fr;
+    }
+}

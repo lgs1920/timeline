@@ -1,0 +1,83 @@
+{
+  "name": "@lgs1920/timeline",
+  "version": "0.1.0",
+  "description": "A controlled timeline Web Component with an optional React adapter.",
+  "license": "AGPL-3.0-or-later",
+  "author": "LGS1920 Team <studio@lgs1920.fr>",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./react": {
+      "import": "./dist/react.js",
+      "default": "./dist/react.js"
+    },
+    "./styles.css": "./dist/styles.css"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE.md"
+  ],
+  "sideEffects": true,
+  "scripts": {
+    "build": "bun scripts/build.mjs",
+    "demo:assets": "bun scripts/build-demo.mjs",
+    "demo:build": "bun run build && bun run demo:assets && bunx --bun @11ty/eleventy",
+    "demo:serve": "bun run demo:build && bunx --bun @11ty/eleventy --serve",
+    "lint": "bunx --bun oxlint entries src demo scripts tests vitest.config.cjs --deny-warnings",
+    "pack:check": "bun pm pack --dry-run",
+    "prepack": "bun run verify",
+    "publish:check": "bun pm pack --dry-run",
+    "publish:npm": "bun publish --access public",
+    "test": "bunx --bun vitest run",
+    "test:package": "bun scripts/check-package.mjs",
+    "test:watch": "bunx --bun vitest",
+    "verify": "bun run test && bun run lint && bun run build && bun run test:package && bun run demo:build"
+  },
+  "dependencies": {
+    "@awesome.me/webawesome": "3.12.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@11ty/eleventy": "^3.1.6",
+    "@testing-library/react": "^16.3.3",
+    "@vitejs/plugin-react": "^6.1.1",
+    "jsdom": "^30.0.1",
+    "oxlint": "1.80.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "vitest": "^4.1.11"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lgs1920/timeline.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lgs1920/timeline/issues"
+  },
+  "homepage": "https://github.com/lgs1920/timeline#readme",
+  "keywords": [
+    "timeline",
+    "video",
+    "web-component",
+    "webawesome",
+    "react"
+  ],
+  "packageManager": "bun@1.4.0"
+}

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en" class="wa-theme-default wa-palette-default wa-brand-blue wa-dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Interactive examples for the @lgs1920/timeline package.">
+    <title>@lgs1920/timeline · Component demo</title>
+    <link rel="stylesheet" href="./assets/webawesome.css">
+    <link rel="stylesheet" href="./assets/styles.css">
+</head>
+<body>
+<nav class="site-banner" aria-label="Site navigation">
+    <div class="site-banner-left">
+        <a class="site-banner-logo" href="https://lgs1920.fr/" target="_blank" rel="noopener noreferrer" aria-label="LGS1920 website">
+            <img src="./assets/logo/logo-horizontal.png" alt="LGS1920">
+        </a>
+        <div class="site-banner-pages">
+            <a href="./" aria-current="page">Demo</a>
+            <a href="https://github.com/lgs1920/timeline" target="_blank" rel="noopener noreferrer">GitHub</a>
+            <a href="https://www.npmjs.com/package/@lgs1920/timeline" target="_blank" rel="noopener noreferrer">NPM</a>
+        </div>
+    </div>
+    <div class="site-banner-controls" aria-label="Demo settings">
+        <wa-select id="theme-control" label="Theme" size="small" value="default">
+            <wa-option value="default">Default</wa-option>
+            <wa-option value="awesome">Awesome</wa-option>
+            <wa-option value="shoelace">Shoelace</wa-option>
+        </wa-select>
+        <wa-select id="mode-control" label="Color mode" size="small" value="dark">
+            <wa-option value="light"><wa-icon slot="start" name="sun"></wa-icon>Light</wa-option>
+            <wa-option value="dark"><wa-icon slot="start" name="moon"></wa-icon>Dark</wa-option>
+        </wa-select>
+        <wa-select id="color-control" label="Brand color" size="small" value="blue">
+            <wa-option value="blue">Blue</wa-option>
+            <wa-option value="red">Red</wa-option>
+            <wa-option value="orange">Orange</wa-option>
+            <wa-option value="green">Green</wa-option>
+            <wa-option value="cyan">Cyan</wa-option>
+            <wa-option value="purple">Purple</wa-option>
+            <wa-option value="pink">Pink</wa-option>
+        </wa-select>
+    </div>
+    <div class="site-banner-external">
+        <a href="https://github.com/lgs1920/timeline" target="_blank" rel="noopener noreferrer" aria-label="GitHub repository">
+            <wa-icon name="github" family="brands"></wa-icon>
+        </a>
+        <a href="https://www.npmjs.com/package/@lgs1920/timeline" target="_blank" rel="noopener noreferrer" aria-label="npm package">
+            <wa-icon name="npm" family="brands"></wa-icon>
+        </a>
+    </div>
+</nav>
+
+<main class="demo-shell">
+    <nav class="demo-breadcrumb" aria-label="Breadcrumb">
+        <wa-breadcrumb label="Page navigation">
+            <wa-breadcrumb-item href="./">Home</wa-breadcrumb-item>
+            <wa-breadcrumb-item aria-current="page">Timeline demo</wa-breadcrumb-item>
+        </wa-breadcrumb>
+    </nav>
+
+    <header class="demo-header">
+        <p class="eyebrow">@lgs1920/timeline</p>
+        <h1>A timeline you can shape.</h1>
+        <p class="intro">A controlled Web Component for tracks, clips, playback controls, keyboard editing, and drag and drop. Move the clips below between tracks to see the public event contract in action.</p>
+    </header>
+
+    <section class="demo-panel playground" aria-labelledby="interactive-title">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow">Interactive example</p>
+                <h2 id="interactive-title">Three clips, two tracks</h2>
+            </div>
+            <span id="event-status" class="event-status" role="status" aria-live="polite">Ready</span>
+        </div>
+        <lgs1920-timeline id="interactive-timeline" aria-label="Interactive timeline"></lgs1920-timeline>
+        <div class="timeline-output">
+            <span>Last event</span>
+            <code id="event-output">None</code>
+        </div>
+    </section>
+
+    <section class="example-grid" aria-label="Timeline examples">
+        <article class="demo-panel example-card">
+            <p class="eyebrow">Read only</p>
+            <h2>Display a prepared sequence</h2>
+            <p>Disable interaction to use the same component as a compact visual summary.</p>
+            <lgs1920-timeline id="readonly-timeline" aria-label="Read only timeline"></lgs1920-timeline>
+        </article>
+        <article class="demo-panel example-card">
+            <p class="eyebrow">Controlled API</p>
+            <h2>Host owns the clock</h2>
+            <p>The element emits intent. Your application decides how current time and playing state change.</p>
+            <pre><code>&lt;lgs1920-timeline&gt;&lt;/lgs1920-timeline&gt;
+
+timeline.timeline = { durationMillis: 60_000 }
+timeline.tracks = tracks
+timeline.addEventListener('lgs1920-timeline-seek', event =&gt; {
+    currentTimeMillis = event.detail.timeMillis
+})</code></pre>
+        </article>
+    </section>
+</main>
+<script type="module" src="./assets/app.bundle.js"></script>
+</body>
+</html>
