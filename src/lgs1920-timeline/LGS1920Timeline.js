@@ -22,6 +22,7 @@ import '@awesome.me/webawesome/dist/components/icon/icon.js'
 import '@awesome.me/webawesome/dist/components/input/input.js'
 import '@awesome.me/webawesome/dist/components/popup/popup.js'
 import '@awesome.me/webawesome/dist/components/split-panel/split-panel.js'
+import '@awesome.me/webawesome/dist/components/slider/slider.js'
 import '@awesome.me/webawesome/dist/components/tooltip/tooltip.js'
 import styles from './lgs1920-timeline.css?inline'
 import {createTimelineClipScroll} from './LGS1920TimelineClipScroll.js'
@@ -93,6 +94,8 @@ const STRUCTURAL_CONFIG_KEYS = Object.freeze([
     'interactive',
     'editable',
     'showClipMenu',
+    'showTimeSlider',
+    'showZoomSlider',
     'legendMinWidth',
     'legendMaxWidth',
     'legendWidth',
@@ -374,6 +377,8 @@ export class LGS1920Timeline extends HTMLElement {
             getContentWidth: () => this.#contentWidth,
             getZoom: () => this.#zoom,
             timelineTools: () => this.#timelineTools(),
+            timelineScrubber: () => this.#timelineScrubber(),
+            timelineZoomControl: () => this.#timelineZoomControl(),
             isClipSelected: clip => this.#isClipSelected(clip),
             contextualSlot: (prefix, identifier, globalName, fallback) => this.#contextualSlot(prefix, identifier, globalName, fallback),
             hasContextualSlot: (prefix, identifier) => this.#hasContextualSlot(prefix, identifier),
@@ -2577,6 +2582,157 @@ export class LGS1920Timeline extends HTMLElement {
     }
 
     /**
+     * Create the optional time scrubber displayed above the timeline ruler.
+     *
+     * @returns {HTMLElement|null} Time scrubber, or null when disabled.
+     */
+    #timelineScrubber = () => {
+        if (this.#timelineConfig.interactive === false || this.#timelineConfig.showTimeSlider !== true) return null
+        const scrubber = createElement('div', `lgs1920-wa-timeline__timeline-scrubber${this.#hostNoDragClasses()}`, {
+            part: 'timeline-scrubber',
+            'data-timeline-ruler-fixed': '',
+        })
+        const slider = createElement('wa-slider', 'lgs1920-wa-timeline__time-slider', {
+            part: 'time-slider',
+            'data-testid': 'lgs1920-wa-timeline-time-slider',
+            'data-timeline-time-slider': '',
+            'aria-label': 'Timeline time',
+            size: 's',
+            variant: 'brand',
+            'with-tooltip': true,
+            'label-at-start': true,
+            'width-auto': true,
+            min: this.#rangeStartMillis,
+            max: this.#rangeEndMillis,
+            step: this.#frameIntervalMillis(),
+            value: this.#currentTimeMillis,
+        })
+        slider.valueFormatter = value => `${formatRulerTime(Number(value) / 1000)} / ${formatRulerTime(this.#durationSeconds())}`
+        const icon = createIcon('clock', 'regular')
+        icon.setAttribute('slot', 'label')
+        slider.append(icon)
+        slider.addEventListener('input', event => this.#seekFromSlider(event, false))
+        slider.addEventListener('change', event => this.#seekFromSlider(event, true))
+        scrubber.append(slider)
+        this.#stopTimelineControlPropagation(scrubber)
+        return scrubber
+    }
+
+    /**
+     * Create the optional horizontal zoom slider displayed in the control band.
+     *
+     * @returns {HTMLElement|null} Zoom control, or null when disabled.
+     */
+    #timelineZoomControl = () => {
+        if (this.#timelineConfig.interactive === false || this.#timelineConfig.showZoomSlider !== true) return null
+        const control = createElement('span', `lgs1920-wa-timeline__zoom-control${this.#hostNoDragClasses()}`, {
+            part: 'zoom-control',
+            'data-testid': 'lgs1920-wa-timeline-zoom-control',
+        })
+        const icon = createIcon('arrows-left-right', 'regular')
+        icon.classList.add('lgs1920-wa-timeline__zoom-icon')
+        icon.setAttribute('size', 's')
+        icon.setAttribute('aria-hidden', 'true')
+        const slider = createElement('wa-slider', 'lgs1920-wa-timeline__zoom-slider', {
+            part: 'zoom-slider',
+            'data-testid': 'lgs1920-wa-timeline-zoom-slider',
+            'data-timeline-zoom-slider': '',
+            'aria-label': 'Horizontal timeline zoom',
+            size: 's',
+            variant: 'brand',
+            'with-tooltip': true,
+            min: this.#minimumHorizontalZoom(),
+            max: MAX_ZOOM,
+            step: 1,
+            value: this.#zoom,
+        })
+        slider.valueFormatter = value => `${Math.round(Number(value))}%`
+        slider.addEventListener('input', event => this.#zoomFromSlider(event, false))
+        slider.addEventListener('change', event => this.#zoomFromSlider(event, true))
+        control.append(icon, slider)
+        this.#stopTimelineControlPropagation(control)
+        return control
+    }
+
+    /**
+     * Prevent built-in slider gestures from being interpreted as surface input.
+     *
+     * @param {HTMLElement} element - Slider wrapper to isolate.
+     */
+    #stopTimelineControlPropagation = element => {
+        ['click', 'dblclick', 'mousedown', 'pointerdown', 'touchstart', 'wheel'].forEach(type => {
+            element.addEventListener(type, event => event.stopPropagation())
+        })
+    }
+
+    /**
+     * Apply one value emitted by the built-in time slider.
+     *
+     * @param {Event} event - Slider event.
+     * @param {boolean} settled - Whether the slider interaction is committed.
+     */
+    #seekFromSlider = (event, settled) => {
+        if (this.#timelineConfig.interactive === false) return
+        const value = event.currentTarget?.value ?? event.target?.value
+        const duration = this.#durationMillis()
+        const timeMillis = this.#normalizeTime(value)
+        const detail = {
+            timeMillis,
+            progress: duration > 0 ? timeMillis / duration : 0,
+            settled,
+            source: 'timeline-slider',
+            event,
+        }
+        if (this.#emitBefore('seek', detail).defaultPrevented) {
+            this.#updateDynamicState()
+            return
+        }
+        this.#currentTimeMillis = timeMillis
+        this.#emit('seek', detail)
+        this.#updateDynamicState()
+        if (settled) this.#emitAfter('seek', detail)
+    }
+
+    /**
+     * Apply one value emitted by the built-in zoom slider.
+     *
+     * @param {Event} event - Slider event.
+     * @param {boolean} settled - Whether the slider interaction is committed.
+     */
+    #zoomFromSlider = (event, settled) => {
+        if (this.#timelineConfig.interactive === false) return
+        const value = event.currentTarget?.value ?? event.target?.value
+        const zoomPercent = this.#clampHorizontalZoom(value)
+        const detail = {
+            zoomPercent,
+            settled,
+            source: 'timeline-zoom-slider',
+            event,
+        }
+        if (this.#emitBefore('zoom-change', detail).defaultPrevented) {
+            this.#updateDynamicState()
+            return
+        }
+        this.#horizontalFitActive = false
+        this.#zoom = zoomPercent
+        this.#emit('zoom-change', detail)
+        this.#render()
+        if (settled) this.#emitAfter('zoom-change', detail)
+    }
+
+    /**
+     * Resolve the frame interval used by the timeline time slider.
+     *
+     * @returns {number} Positive frame interval in milliseconds.
+     */
+    #frameIntervalMillis = () => {
+        const configuredInterval = Number(this.#timelineConfig.frameIntervalMillis)
+        return Number.isFinite(configuredInterval) && configuredInterval > 0
+            ? configuredInterval
+            : 1000 / this.#resolveFps()
+    }
+
+    /**
      * Resolve the frame rate configured by the application.
      *
      * @returns {number} Positive frame rate.
@@ -4167,7 +4323,11 @@ export class LGS1920Timeline extends HTMLElement {
     #updateFixedRulerContent = view => {
         if (!view || view.getAttribute('data-scroll-view') !== 'surface') return
         const offset = `${Number(view.scrollLeft) || 0}px`
-        this.querySelectorAll('[slot="timeline-ruler"][data-timeline-ruler-fixed]').forEach(element => {
+        const elements = [
+            ...this.querySelectorAll('[slot="timeline-ruler"][data-timeline-ruler-fixed]'),
+            this.#root.querySelector('[data-timeline-ruler-fixed]'),
+        ].filter(Boolean)
+        elements.forEach(element => {
             element.style.setProperty('--lgs-timeline-ruler-scroll-offset', offset)
         })
     }
@@ -5939,6 +6099,8 @@ export class LGS1920Timeline extends HTMLElement {
         this.#dynamicElements = {
             current: this.#root.querySelector('[data-current-time]'),
             total: this.#root.querySelector('[data-total-time]'),
+            timeSlider: this.#root.querySelector('[data-timeline-time-slider]'),
+            zoomSlider: this.#root.querySelector('[data-timeline-zoom-slider]'),
             playhead: this.#root.querySelector('[data-playhead]'),
             end: this.#root.querySelector('[data-end-marker]'),
             rangeStart: this.#root.querySelector('[data-range-handle="start"]'),
@@ -5996,6 +6158,7 @@ export class LGS1920Timeline extends HTMLElement {
     #updateDynamicState = () => {
         const elements = this.#dynamicElements ?? this.#cacheDynamicElements()
         this.#updatePlayheadPresentation(elements)
+        this.#updateZoomSlider(elements)
         this.#updateTransportButtons(elements)
         const {total, end, rangeStart, rangeEnd} = elements
         if (total) total.textContent = formatTime(this.#durationSeconds())
@@ -6018,6 +6181,32 @@ export class LGS1920Timeline extends HTMLElement {
         const {current, playhead} = elements
         if (current) current.textContent = formatTime(this.#currentTimeMillis / 1000)
         this.#updatePlayheadPosition({playhead})
+        this.#updateTimeSlider(elements)
+    }
+
+    /**
+     * Synchronize the optional time slider with the current timeline range.
+     *
+     * @param {{timeSlider: HTMLElement|null}} elements - Cached dynamic elements.
+     */
+    #updateTimeSlider = ({timeSlider}) => {
+        if (!timeSlider) return
+        timeSlider.min = this.#rangeStartMillis
+        timeSlider.max = this.#rangeEndMillis
+        timeSlider.step = this.#frameIntervalMillis()
+        if (Number(timeSlider.value) !== this.#currentTimeMillis) timeSlider.value = this.#currentTimeMillis
+    }
+
+    /**
+     * Synchronize the optional zoom slider with the current horizontal zoom.
+     *
+     * @param {{zoomSlider: HTMLElement|null}} elements - Cached dynamic elements.
+     */
+    #updateZoomSlider = ({zoomSlider}) => {
+        if (!zoomSlider) return
+        zoomSlider.min = this.#minimumHorizontalZoom()
+        zoomSlider.max = MAX_ZOOM
+        if (Number(zoomSlider.value) !== this.#zoom) zoomSlider.value = this.#zoom
     }
 
     /**

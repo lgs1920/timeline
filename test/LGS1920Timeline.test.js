@@ -28,6 +28,7 @@ vi.mock('@awesome.me/webawesome/dist/components/icon/icon.js', () => ({}))
 vi.mock('@awesome.me/webawesome/dist/components/input/input.js', () => ({}))
 vi.mock('@awesome.me/webawesome/dist/components/popup/popup.js', () => ({}))
 vi.mock('@awesome.me/webawesome/dist/components/split-panel/split-panel.js', () => ({}))
+vi.mock('@awesome.me/webawesome/dist/components/slider/slider.js', () => ({}))
 vi.mock('@awesome.me/webawesome/dist/components/tooltip/tooltip.js', () => ({}))
 
 const timelineState = {
@@ -544,6 +545,68 @@ describe('lgs1920-timeline Web Component', () => {
         timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-tools-vertical-zoom"]').click()
         expect(timeline.shadowRoot.querySelector('[data-layout]').style.getPropertyValue('--lgs-timeline-row-height'))
             .toBe('24px')
+    })
+
+    it('renders optional built-in time and zoom sliders and emits their changes', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline, {
+            timeline: {
+                showTimeSlider: true,
+                showZoomSlider: true,
+                frameIntervalMillis: 40,
+            },
+            currentTimeMillis: 1_000,
+        })
+        document.body.append(timeline)
+
+        const timeSlider = timeline.shadowRoot.querySelector('[data-timeline-time-slider]')
+        const zoomSlider = timeline.shadowRoot.querySelector('[data-timeline-zoom-slider]')
+        const seek = vi.fn()
+        const zoomChange = vi.fn()
+        timeline.addEventListener('lgs1920-timeline-seek', seek)
+        timeline.addEventListener('lgs1920-timeline-zoom-change', zoomChange)
+
+        expect(timeSlider).not.toBeNull()
+        expect(timeSlider.closest('[part="timeline-scrubber"]')).not.toBeNull()
+        expect(timeSlider.closest('slot')).toBeNull()
+        expect(timeSlider.getAttribute('min')).toBe('0')
+        expect(timeSlider.getAttribute('max')).toBe('10000')
+        expect(timeSlider.getAttribute('step')).toBe('40')
+        expect(timeSlider.value).toBe(1_000)
+        expect(typeof timeSlider.valueFormatter).toBe('function')
+        expect(zoomSlider).not.toBeNull()
+        expect(zoomSlider.closest('[part="surface-controls"]')).not.toBeNull()
+        expect(zoomSlider.getAttribute('max')).toBe('500')
+        expect(zoomSlider.getAttribute('step')).toBe('1')
+        expect(zoomSlider.value).toBe(0)
+        expect(typeof zoomSlider.valueFormatter).toBe('function')
+
+        timeSlider.value = 5_000
+        timeSlider.dispatchEvent(new Event('input', {bubbles: true}))
+        expect(timeline.currentTimeMillis).toBe(5_000)
+        expect(seek.mock.calls[0][0].detail).toMatchObject({
+            settled: false,
+            source: 'timeline-slider',
+            timeMillis: 5_000,
+        })
+
+        zoomSlider.value = 100
+        zoomSlider.dispatchEvent(new Event('change', {bubbles: true}))
+        expect(zoomChange.mock.calls[0][0].detail).toMatchObject({
+            settled: true,
+            source: 'timeline-zoom-slider',
+            zoomPercent: 100,
+        })
+        expect(timeline.shadowRoot.querySelector('[data-timeline-zoom-slider]').value).toBe(100)
+    })
+
+    it('does not render built-in sliders when their display options are disabled', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline)
+        document.body.append(timeline)
+
+        expect(timeline.shadowRoot.querySelector('[data-timeline-time-slider]')).toBeNull()
+        expect(timeline.shadowRoot.querySelector('[data-timeline-zoom-slider]')).toBeNull()
     })
 
     it('observes the timeline host instead of the split-panel surface', () => {

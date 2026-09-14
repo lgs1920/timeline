@@ -9,7 +9,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-13
- * Last modified: 2026-09-13
+ * Last modified: 2026-09-14
  *
  *
  * Copyright © 2026 LGS1920
@@ -26,6 +26,7 @@ vi.mock('@awesome.me/webawesome/dist/components/icon/icon.js', () => ({}))
 vi.mock('@awesome.me/webawesome/dist/components/input/input.js', () => ({}))
 vi.mock('@awesome.me/webawesome/dist/components/popup/popup.js', () => ({}))
 vi.mock('@awesome.me/webawesome/dist/components/split-panel/split-panel.js', () => ({}))
+vi.mock('@awesome.me/webawesome/dist/components/slider/slider.js', () => ({}))
 vi.mock('@awesome.me/webawesome/dist/components/tooltip/tooltip.js', () => ({}))
 
 import {LGS1920TimelineReact} from '../src/lgs1920-timeline/LGS1920TimelineReact'

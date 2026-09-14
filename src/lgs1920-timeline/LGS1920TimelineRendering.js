@@ -44,6 +44,8 @@ export const createTimelineRenderer = ({
     getContentWidth,
     getZoom,
     timelineTools,
+    timelineScrubber,
+    timelineZoomControl,
     isClipSelected,
     contextualSlot,
     hasContextualSlot,
@@ -571,7 +573,11 @@ export const createTimelineRenderer = ({
         })
         const tools = timelineTools?.()
         if (tools) controls.append(tools)
+        const zoomControl = timelineZoomControl?.()
+        if (zoomControl) controls.append(zoomControl)
         controls.append(createElement('slot', '', {name: 'timeline-controls'}))
+        const scrubber = timelineScrubber?.()
+        if (scrubber) surface.append(scrubber)
         surface.append(createElement('slot', '', {name: 'timeline-ruler'}), canvas)
         if (interactive) {
             ruler.addEventListener('pointerdown', event => handleRulerPointerDown(event))

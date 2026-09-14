@@ -888,6 +888,32 @@
         flex: 0 0 auto;
     }
 
+    & .lgs1920-wa-timeline__surface-controls > .lgs1920-wa-timeline__zoom-control {
+        display: flex;
+        flex: 1 1 auto;
+        align-items: center;
+        box-sizing: border-box;
+        min-width: 0;
+        gap: var(--lgs-timeline-gap);
+    }
+
+    & .lgs1920-wa-timeline__zoom-icon {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+    }
+
+    & .lgs1920-wa-timeline__zoom-slider {
+        display: block;
+        flex: 1 1 auto;
+        width: auto;
+        min-width: 0;
+        /* Compact the zoom slider track inside the control band. */
+        --track-size: 0.25rem;
+    }
+
     & .lgs1920-wa-timeline__surface-controls > slot[name='timeline-controls'] {
         display: flex;
         flex: 1 1 auto;
@@ -929,6 +955,52 @@
         background: var(--lgs-timeline-surface-color);
         border-bottom: 1px solid var(--lgs-timeline-quiet-border-color);
         box-shadow: var(--wa-shadow-m);
+    }
+
+    & .lgs1920-wa-timeline__timeline-scrubber {
+        position: absolute;
+        z-index: 8;
+        inset-block-start: 0;
+        inset-inline-start: 0;
+        display: block;
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        height: var(--lgs-timeline-header-height);
+        min-height: 0;
+        padding: 0;
+        pointer-events: none;
+        background: transparent;
+        transform: translateX(var(--lgs-timeline-ruler-scroll-offset, 0px));
+
+        &::after {
+            position: absolute;
+            inset-block-end: 0;
+            inset-inline: var(--lgs-timeline-gap);
+            height: 1px;
+            content: '';
+            background: var(--lgs-timeline-quiet-border-color);
+        }
+    }
+
+    & .lgs1920-wa-timeline__time-slider {
+        display: block;
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        padding-block: var(--lgs-gutter-xxs, 0.25rem) 6px;
+        padding-inline: var(--lgs-gutter-s, 0.75rem);
+        pointer-events: auto;
+        /* Compact the time slider track inside the ruler header. */
+        --track-size: 0.25rem;
+    }
+
+    & .lgs1920-wa-timeline__time-slider::part(slider) {
+        margin-block-start: 0;
+    }
+
+    & .lgs1920-wa-timeline__time-slider[label-at-start][width-auto] {
+        grid-template-columns: auto minmax(0, 1fr);
     }
 
     & [data-timeline-ruler-insertion-point] {
