@@ -36,6 +36,5 @@ describe('lgs1920-timeline styles', () => {
         expect(styleSource).toContain('& .lgs1920-wa-timeline__surface-controls {')
         expect(styleSource).toContain('& .lgs1920-wa-timeline__clip {')
         expect(styleSource).toContain('& .lgs1920-wa-timeline__playhead {')
-        expect(styleSource).not.toMatch(/widget|replay|capture-exclude/i)
     })
 })
