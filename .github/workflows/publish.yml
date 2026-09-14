@@ -55,7 +55,7 @@ jobs:
         if: steps.npm-version.outputs.published != 'true'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --access public
+        run: npm publish --access public --ignore-scripts
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
