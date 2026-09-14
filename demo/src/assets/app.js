@@ -48,6 +48,7 @@ const studioZoomSlider = document.querySelector('#studio-zoom-slider')
 const studioStatus = document.querySelector('#studio-status')
 const studioOutput = document.querySelector('#studio-output')
 const randomClipSource = document.querySelector('#random-clip-source')
+const createEmptyTrackButton = document.querySelector('#create-empty-track')
 const clipDragStatus = document.querySelector('#clip-drag-status')
 const interactiveTimeline = document.querySelector('#interactive-timeline')
 const readonlyTimeline = document.querySelector('#readonly-timeline')
@@ -55,6 +56,7 @@ const rangeTimeline = document.querySelector('#range-timeline')
 const eventOutput = document.querySelector('#event-output')
 const eventStatus = document.querySelector('#event-status')
 const rangeStatus = document.querySelector('#range-status')
+const keyboardStatus = document.querySelector('#keyboard-status')
 
 const DEMO_DURATION_MILLIS = 60_000
 const formatMillis = value => formatRulerTime(Number(value) / 1000)
@@ -62,6 +64,8 @@ const randomClipNames = ['Sunrise', 'City pulse', 'Interview', 'Map reveal', 'So
 const randomClipKinds = ['video', 'audio', 'graphic', 'marker']
 const randomClipIcons = ['film', 'camera', 'microphone', 'music', 'map', 'wand-magic-sparkles', 'bookmark']
 const randomClipColors = ['blue', 'cyan', 'green', 'orange', 'pink', 'purple', 'red', 'yellow']
+let generatedClipIndex = 0
+let generatedTrackIndex = 0
 
 const randomItem = values => values[Math.floor(Math.random() * values.length)]
 
@@ -92,6 +96,57 @@ const createRandomClipOption = () => {
             timelineColor: color,
         },
     }
+}
+
+const demoTrackAcceptsClip = (track, kind) => track.editable !== false
+    && track.droppable !== false
+    && track.acceptsClips !== false
+    && (!Array.isArray(track.accepts) || track.accepts.length === 0 || track.accepts.includes(kind))
+
+const demoClipOverlaps = (track, start, end) => (track.clips ?? []).some(clip => {
+    const clipStart = Number(clip.start) || 0
+    const clipEnd = Number(clip.end) || clipStart
+    return clipStart < end && start < clipEnd
+})
+
+const createEmptyDemoTrack = () => {
+    generatedTrackIndex += 1
+    return {
+        id: `generated-${generatedTrackIndex}`,
+        label: `Generated clips ${generatedTrackIndex}`,
+        icon: 'wand-magic-sparkles',
+        colorClasses: ['wa-neutral', 'wa-neutral-purple'],
+        canHide: true,
+        clips: [],
+    }
+}
+
+const addRandomClipAtPlayhead = () => {
+    const option = createRandomClipOption()
+    const start = Math.max(0, Number(studioTimeline.currentTimeMillis) / 1000 || 0)
+    const duration = Number(option.duration) || 1
+    const end = start + duration
+    const nextTracks = studioTimeline.tracks.map(track => ({
+        ...track,
+        clips: [...(track.clips ?? [])],
+    }))
+    let target = nextTracks.find(track => demoTrackAcceptsClip(track, option.kind)
+        && !demoClipOverlaps(track, start, end))
+    let createdTrack = false
+    if (!target) {
+        target = createEmptyDemoTrack()
+        nextTracks.push(target)
+        createdTrack = true
+    }
+    generatedClipIndex += 1
+    target.clips.push({
+        ...option.clip,
+        id: `generated-clip-${generatedClipIndex}`,
+        start,
+        end,
+    })
+    studioTimeline.tracks = nextTracks
+    clipDragStatus.textContent = `${createdTrack ? 'Created an empty track and added' : 'Added'} ${option.label} · ${duration.toFixed(1)}s · ${option.kind}`
 }
 
 const tracks = [
@@ -287,14 +342,20 @@ randomClipSource.addEventListener('dragstart', event => {
     event.dataTransfer.setData(CLIP_OPTION_DRAG_MIME, JSON.stringify(option))
     clipDragStatus.textContent = `Dragging ${option.label} · ${option.duration}s · ${option.kind} · ${option.clip.timelineColor}`
 })
+randomClipSource.addEventListener('click', () => addRandomClipAtPlayhead())
 randomClipSource.addEventListener('dragend', () => {
-    clipDragStatus.textContent = 'Drag the button into a track to create a random clip.'
+    clipDragStatus.textContent = 'Click to add at the playhead, or drag into a compatible track.'
+})
+createEmptyTrackButton.addEventListener('click', () => {
+    const track = createEmptyDemoTrack()
+    studioTimeline.tracks = [...studioTimeline.tracks, track]
+    clipDragStatus.textContent = `Created ${track.label}. Drag or click a random clip to use it.`
 })
 studioTimeline.addEventListener('lgs1920-timeline-add-clip', event => {
     const detail = event.detail ?? {}
     const clip = detail.clip
     if (!clip) {
-        clipDragStatus.textContent = 'This track does not accept the generated clip.'
+        clipDragStatus.textContent = 'No compatible track accepted this clip. Create an empty track above, then try again.'
         return
     }
     studioTimeline.tracks = detail.tracks
@@ -305,6 +366,22 @@ rangeTimeline.addEventListener('lgs1920-timeline-range-change', event => {
     const {rangeStartMillis, rangeEndMillis} = event.detail
     rangeStatus.textContent = `Range: ${formatMillis(rangeStartMillis)} – ${formatMillis(rangeEndMillis)}`
 })
+
+const formatKeyboardKey = event => {
+    const key = {' ': 'Space', Spacebar: 'Space', Escape: 'Esc'}[event.key] ?? event.key
+    const modifiers = [
+        event.ctrlKey ? 'Ctrl' : '',
+        event.metaKey ? '⌘' : '',
+        event.altKey ? 'Alt' : '',
+        event.shiftKey ? 'Shift' : '',
+    ].filter(Boolean)
+    return [...modifiers, key].join(' + ')
+}
+
+document.addEventListener('keydown', event => {
+    if (!event.composedPath?.().includes(studioTimeline)) return
+    keyboardStatus.textContent = `Last key · ${formatKeyboardKey(event)}`
+}, true)
 
 const eventNames = [
     'play', 'pause', 'restart', 'stop', 'seek', 'clip-change', 'clip-select',

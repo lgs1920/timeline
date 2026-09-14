@@ -76,6 +76,23 @@
             <span id="studio-status" class="event-status" role="status" aria-live="polite">Ready</span>
         </div>
         <p class="section-intro">The timeline stays controlled by its host. The time slider drives <code>currentTimeMillis</code>; the second slider calls <code>setZoom()</code>. Both controls are supplied through component slots, like in Studio.</p>
+        <div class="clip-source-panel" aria-label="External random clip source">
+            <div class="clip-source-copy">
+                <p class="eyebrow">External clip source</p>
+                <strong>Click or drag a generated clip</strong>
+                <span>Click adds it at the playhead. Drag it into any compatible track to choose the position, or create an empty track first.</span>
+            </div>
+            <div class="clip-source-actions">
+                <wa-button id="random-clip-source" class="demo-add-clip" variant="brand" size="s" draggable="true">
+                    <wa-icon name="wand-magic-sparkles" variant="regular" label="" aria-hidden="true"></wa-icon>
+                    Click or drag a random clip
+                </wa-button>
+                <wa-button id="create-empty-track" class="demo-add-track" appearance="outlined" size="s">
+                    <wa-icon name="plus" variant="regular" label="" aria-hidden="true"></wa-icon>
+                    Create an empty track
+                </wa-button>
+            </div>
+        </div>
         <lgs1920-timeline id="studio-timeline" class="demo-studio-timeline" aria-label="Studio style interactive timeline">
             <span slot="timeline-ruler" class="demo-scrubber" data-timeline-ruler-fixed="">
                 <span class="demo-scrubber-control">
@@ -86,10 +103,6 @@
                 <wa-icon name="arrows-left-right" variant="regular" label="" aria-hidden="true"></wa-icon>
                 <wa-slider id="studio-zoom-slider" label="Horizontal zoom" size="s" variant="brand" with-tooltip min="-50" max="500" step="1" value="0"></wa-slider>
             </span>
-            <wa-button slot="timeline-toolbar" id="random-clip-source" class="demo-add-clip" variant="brand" size="s" draggable="true">
-                <wa-icon name="wand-magic-sparkles" variant="regular" label="" aria-hidden="true"></wa-icon>
-                Add a clip by dragging it
-            </wa-button>
             <span slot="custom-menu" class="demo-slot-chip">Custom menu slot</span>
             <span slot="overlay-text">Preparing timeline...</span>
         </lgs1920-timeline>
@@ -100,7 +113,7 @@
         <div class="demo-explanation">
             <article>
                 <p class="eyebrow">What to observe</p>
-                <p>The host receives seek intent, updates the component, and keeps the external slider synchronized. The zoom slider changes only the visual ruler scale. Drag the button from the legend into any compatible track: every drag creates a new clip with a random name, duration, color, kind, and icon.</p>
+                <p>The host receives seek intent, updates the component, and keeps the external slider synchronized. The zoom slider changes only the visual ruler scale. The clip source is outside the custom element, so it can live in a toolbar, palette, or application menu. Click to add at the playhead, or drag it over a compatible track to choose the position. If no track accepts the clip, create an empty track and try again.</p>
             </article>
             <pre><code data-language="mixed">&lt;lgs1920-timeline&gt;
     &lt;wa-slider slot="timeline-ruler"
@@ -111,10 +124,11 @@
                id="zoom"
                min="-50"
                max="500"&gt;&lt;/wa-slider&gt;
-    &lt;wa-button slot="timeline-toolbar" draggable="true"&gt;
-        Add a clip by dragging it
-    &lt;/wa-button&gt;
 &lt;/lgs1920-timeline&gt;
+
+&lt;wa-button id="clip-source" draggable="true"&gt;
+    Click or drag a random clip
+&lt;/wa-button&gt;
 
 time.addEventListener('input', event =&gt; {
     timeline.currentTimeMillis = event.target.value
@@ -122,12 +136,24 @@ time.addEventListener('input', event =&gt; {
 zoom.addEventListener('input', event =&gt; {
     timeline.setZoom(event.target.value)
 })</code></pre>
-            <pre class="demo-code"><code data-language="javascript">source.addEventListener('dragstart', event =&gt; {
+            <pre class="demo-code"><code data-language="javascript">import {CLIP_OPTION_DRAG_MIME} from '@lgs1920/timeline'
+
+const source = document.querySelector('#clip-source')
+source.addEventListener('click', () =&gt; addRandomClipAtPlayhead())
+source.addEventListener('dragstart', event =&gt; {
     const option = createRandomClipOption()
     event.dataTransfer.setData(
-        'application/x-lgs1920-timeline-clip',
+        CLIP_OPTION_DRAG_MIME,
         JSON.stringify(option),
     )
+})
+
+document.querySelector('#create-empty-track').addEventListener('click', () =&gt; {
+    timeline.tracks = [...timeline.tracks, {
+        id: `generated-${Date.now()}`,
+        label: 'Generated clips',
+        clips: [],
+    }]
 })
 
 const option = {
@@ -140,7 +166,7 @@ const option = {
     },
 }</code></pre>
         </div>
-        <p id="clip-drag-status" class="demo-note" role="status" aria-live="polite">Drag the button into a track to create a random clip.</p>
+        <p id="clip-drag-status" class="demo-note" role="status" aria-live="polite">Click to add at the playhead, or drag into a compatible track.</p>
     </section>
 
     <section class="demo-panel playground" aria-labelledby="interactive-title">
@@ -210,6 +236,65 @@ timeline.addEventListener('lgs1920-timeline-range-change', event =&gt; {
     &lt;span slot="timeline-controls"&gt;...zoom slider...&lt;/span&gt;
     &lt;wa-button slot="custom-menu"&gt;Settings&lt;/wa-button&gt;
 &lt;/lgs1920-timeline&gt;</code></pre>
+    </section>
+
+    <section class="demo-panel api-demo keyboard-reference" aria-labelledby="keyboard-title">
+        <p class="eyebrow">Demo 06 · Keyboard shortcuts</p>
+        <h2 id="keyboard-title">Keep editing within reach of the keyboard</h2>
+        <p class="section-intro">Focus the timeline surface, a range handle, a clip, a clip resize handle, or the legend divider, then use the matching shortcuts below. The live status line records the last key pressed inside the Studio-style timeline.</p>
+        <p id="keyboard-status" class="keyboard-status" role="status" aria-live="polite">Click the Studio timeline, then press a shortcut.</p>
+        <div class="keyboard-table-wrap">
+            <table class="keyboard-table">
+                <caption>Timeline keyboard shortcuts</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Focus or context</th>
+                        <th scope="col">Keys</th>
+                        <th scope="col">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><th scope="row">Timeline surface</th><td><kbd>Space</kbd></td><td>Toggle local playback.</td></tr>
+                    <tr><th scope="row">Timeline surface</th><td><kbd>Home</kbd> · <kbd>End</kbd></td><td>Move the playhead to the selected range start or end.</td></tr>
+                    <tr><th scope="row">Timeline surface</th><td><kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd></td><td>Move the playhead to the selected range boundary.</td></tr>
+                    <tr><th scope="row">Timeline surface</th><td><kbd>Shift</kbd> + <kbd>↑</kbd> / <kbd>↓</kbd></td><td>Scroll tracks to the top or bottom.</td></tr>
+                    <tr><th scope="row">Timeline surface</th><td><kbd>↑</kbd> / <kbd>↓</kbd></td><td>Increase or decrease row height.</td></tr>
+                    <tr><th scope="row">Timeline surface</th><td><kbd>←</kbd> / <kbd>→</kbd></td><td>Zoom the ruler horizontally when no clip is selected.</td></tr>
+                    <tr><th scope="row">Scrollbar rail</th><td><kbd>PageUp</kbd> · <kbd>PageDown</kbd> · arrows</td><td>Scroll one viewport in the focused direction.</td></tr>
+                    <tr><th scope="row">Playhead grip</th><td><kbd>←</kbd> / <kbd>→</kbd></td><td>Move by <code>keyboardStepSeconds</code>.</td></tr>
+                    <tr><th scope="row">Playhead grip</th><td><kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd></td><td>Move by ten keyboard steps.</td></tr>
+                    <tr><th scope="row">Playhead grip</th><td><kbd>Alt</kbd> + <kbd>→</kbd> / <kbd>←</kbd></td><td>Jump to the range minimum or maximum.</td></tr>
+                    <tr><th scope="row">Range handle</th><td><kbd>←</kbd> / <kbd>→</kbd></td><td>Move the focused boundary by one keyboard step.</td></tr>
+                    <tr><th scope="row">Range handle</th><td><kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd></td><td>Move the focused boundary by ten keyboard steps.</td></tr>
+                    <tr><th scope="row">Clip</th><td><kbd>←</kbd> / <kbd>→</kbd></td><td>Move the selected clip by one rendered pixel.</td></tr>
+                    <tr><th scope="row">Clip</th><td><kbd>Alt</kbd> + <kbd>←</kbd> / <kbd>→</kbd></td><td>Move the selected clip by ten rendered pixels.</td></tr>
+                    <tr><th scope="row">Clip</th><td><kbd>Delete</kbd> · <kbd>Backspace</kbd></td><td>Delete the focused editable clip.</td></tr>
+                    <tr><th scope="row">Clip</th><td><kbd>Mod</kbd> + <kbd>C</kbd></td><td>Start a copy placement ghost; click to place it.</td></tr>
+                    <tr><th scope="row">Clip</th><td><kbd>Mod</kbd> + <kbd>D</kbd></td><td>Duplicate the clip immediately after itself.</td></tr>
+                    <tr><th scope="row">Clip</th><td><kbd>M</kbd></td><td>Mask or reveal the clip.</td></tr>
+                    <tr><th scope="row">Clip</th><td><kbd>V</kbd></td><td>Enable or disable the clip.</td></tr>
+                    <tr><th scope="row">Non-movable clip</th><td><kbd>Enter</kbd> · <kbd>Space</kbd></td><td>Select the clip.</td></tr>
+                    <tr><th scope="row">Clip resize handle</th><td><kbd>←</kbd> / <kbd>→</kbd></td><td>Resize the focused edge by one keyboard step.</td></tr>
+                    <tr><th scope="row">Clip resize handle</th><td><kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd></td><td>Resize the focused edge by ten keyboard steps.</td></tr>
+                    <tr><th scope="row">Any active edit</th><td><kbd>Escape</kbd></td><td>Cancel a copy, drag, resize, or context menu; clear clip selection.</td></tr>
+                    <tr><th scope="row">Legend divider</th><td><kbd>←</kbd> / <kbd>→</kbd></td><td>Resize the track legend.</td></tr>
+                    <tr><th scope="row">Legend divider</th><td><kbd>Shift</kbd> + arrows · <kbd>Home</kbd> · <kbd>End</kbd> · <kbd>Enter</kbd></td><td>Change the resize step, select the minimum or maximum, or collapse and restore the legend.</td></tr>
+                    <tr><th scope="row">Track label editor</th><td><kbd>Enter</kbd> · <kbd>Escape</kbd></td><td>Commit or cancel the label edit.</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="keyboard-note"><strong>Mod</strong> means <kbd>Ctrl</kbd> on Windows and Linux, and <kbd>⌘</kbd> on macOS. Wheel gestures are also available on the timeline surface: <kbd>Shift</kbd> or <kbd>Alt</kbd> + wheel changes row height, while <kbd>Meta</kbd> + wheel changes horizontal ruler zoom. <kbd>Ctrl</kbd> + wheel remains available to the browser.</p>
+        <pre class="demo-code"><code data-language="javascript">timeline.timeline = {
+    keyboardZoomActive: true,
+    keyboardStepSeconds: 0.1,
+}
+
+timeline.addEventListener('lgs1920-timeline-seek', event =&gt; {
+    timeline.currentTimeMillis = event.detail.timeMillis
+})
+
+// The component handles the shortcuts according to the focused part.
+// The host only needs to keep controlled state synchronized.</code></pre>
     </section>
 </main>
 <script type="module" src="./assets/app.bundle.js"></script>

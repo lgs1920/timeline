@@ -90,6 +90,7 @@ const docsNavigation = `<p class="docs-navigation-title">Reference</p>
 <a href="#public-properties">Public properties</a>
 <a href="#react-adapter">React adapter</a>
 <a href="#slots">Slots</a>
+<a href="#keyboard-shortcuts">Keyboard shortcuts</a>
 <a href="#events">Events</a>
 <a href="#css-customization">CSS customization</a>
 <a href="#methods">Methods</a>

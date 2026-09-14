@@ -1,21 +1,30 @@
-# `@lgs1920/timeline`
+# 🎬 `@lgs1920/timeline`
 
-`@lgs1920/timeline` is a controlled timeline Web Component for Web Awesome 3. It renders tracks, clips, a time ruler, a playhead, playback controls, and editable interactions. An optional React adapter exposes the same controlled model.
+<p align="center">
+  <strong>A vivid, controlled timeline for Web Awesome applications.</strong><br>
+  Build editing surfaces with tracks, clips, playback, zoom, range selection, and drag-and-drop sources.
+</p>
+
+<p align="center">
+  <a href="https://lgs1920.github.io/timeline/"><img src="https://img.shields.io/badge/demo-live-7c3aed?style=for-the-badge" alt="Live demo"></a>
+  <a href="https://www.npmjs.com/package/@lgs1920/timeline"><img src="https://img.shields.io/npm/v/@lgs1920/timeline?style=for-the-badge&color=06b6d4" alt="npm version"></a>
+  <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge" alt="MIT license"></a>
+</p>
+
+> **Designed for controlled state.** Your application owns the clock, persistence, and business rules. The component renders the timeline, emits `lgs1920-timeline-*` events, and accepts the state you write back.
+
+[**Open the live demo →**](https://lgs1920.github.io/timeline/) · [**Read the full documentation →**](https://lgs1920.github.io/timeline/docs/) · [npm](https://www.npmjs.com/package/@lgs1920/timeline) · [Repository](https://github.com/lgs1920/timeline)
 
 The current release is `0.1.0`.
 
-[Open the live demo](https://lgs1920.github.io/timeline/) · [Read the full component reference in the demo](https://lgs1920.github.io/timeline/docs/) · [View the npm package](https://www.npmjs.com/package/@lgs1920/timeline) · [View the repository](https://github.com/lgs1920/timeline)
+## ✨ What you get
 
-The component stays domain-neutral and controlled by its host application. It never owns the application clock or persistence. The host provides the timeline and track models, receives `lgs1920-timeline-*` events, and writes accepted changes back to the element.
-
-It supports:
-
-- multiple tracks with video, audio, marker, or application-defined clip kinds;
-- playhead scrubbing, frame stepping, range handles, zoom, and track resizing;
-- clip movement, resizing, collision policies, snapping, drag and drop, and context actions;
-- editable track labels, visibility, ordering, addition, and removal;
-- display-only projections through `interactive: false`;
-- Web Component slots and a React adapter with matching callbacks.
+| 🎞️ Editing surface | 🎛️ Application control |
+| --- | --- |
+| Multiple tracks with video, audio, marker, or custom clip kinds | Controlled timeline, tracks, playhead, and playback state |
+| Move, resize, snap, reorder, extend, mask, and duplicate clips | Namespaced events with cancelable before/after lifecycles |
+| Range handles, frame stepping, keyboard shortcuts, and zoom | Web Component slots, external controls, and a React adapter |
+| Read-only projections for compact sequence summaries | Collision policies and application-defined clip actions |
 
 ## Install
 
@@ -63,6 +72,40 @@ timeline.addEventListener('lgs1920-timeline-seek', event => {
 ```
 
 The public timeline and range values use milliseconds. Clip `start` and `end` values use seconds. The element emits intent and interaction results; the host decides whether to persist them or connect them to playback.
+
+## 🪄 Add clips from an external source
+
+Clip sources can live above the timeline in a palette, toolbar, or application menu. They do not need to be placed in a timeline slot. Make the source draggable, serialize a clip option with the exported MIME constant, and drop it on an editable track:
+
+```html
+<wa-button id="clip-source" draggable="true">
+  Add a clip by dragging it
+</wa-button>
+
+<lgs1920-timeline id="timeline"></lgs1920-timeline>
+```
+
+```js
+import {CLIP_OPTION_DRAG_MIME} from '@lgs1920/timeline'
+
+document.querySelector('#clip-source').addEventListener('dragstart', event => {
+    const option = {
+        key: 'random-clip',
+        label: 'Random clip',
+        kind: 'video',
+        duration: 7.4,
+        clip: {
+            icon: 'camera',
+            colorClasses: ['wa-neutral', 'wa-neutral-purple'],
+        },
+    }
+
+    event.dataTransfer.effectAllowed = 'copy'
+    event.dataTransfer.setData(CLIP_OPTION_DRAG_MIME, JSON.stringify(option))
+})
+```
+
+The timeline creates the clip at the drop position and chooses a compatible editable track. If `add-clip` reports `detail.clip === null`, append an empty track to the controlled `tracks` model and let the user drop again. The demo uses this same pattern with a fresh random name, duration, kind, color, and icon on every drag. The complete slot and event reference remains in the [documentation](https://lgs1920.github.io/timeline/docs/).
 
 ## React adapter
 
