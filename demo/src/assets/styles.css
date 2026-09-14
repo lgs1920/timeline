@@ -15,11 +15,17 @@
  ******************************************************************************/
 
 :root {
+    /* Theme-aware page background token. */
     --demo-background: var(--wa-color-surface-default);
+    /* Theme-aware panel surface token. */
     --demo-panel: var(--wa-color-surface-raised);
+    /* Theme-aware border token for panels and controls. */
     --demo-panel-border: var(--wa-color-surface-border);
+    /* Theme-aware body text token. */
     --demo-text: var(--wa-color-text-normal);
+    /* Theme-aware secondary text token. */
     --demo-muted: var(--wa-color-text-quiet);
+    /* Theme-aware accent token. */
     --demo-accent: var(--wa-color-brand);
     background: var(--demo-background);
     color: var(--demo-text);
@@ -199,7 +205,9 @@ h2 {
 lgs1920-timeline {
     display: block;
     min-block-size: 20rem;
+    /* Demo override for the timeline corner radius. */
     --lgs-timeline-radius: var(--wa-border-radius-m);
+    /* Demo override for the timeline shadow. */
     --lgs-timeline-shadow: var(--wa-shadow-l);
 }
 
