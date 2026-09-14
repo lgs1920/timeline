@@ -15,7 +15,7 @@
  ******************************************************************************/
 
 import {afterEach, describe, expect, it, vi} from 'vitest'
-import {createTimelineClipScroll, resolveEdgeVelocity} from './LGS1920TimelineClipScroll'
+import {createTimelineClipScroll, resolveEdgeVelocity} from '../src/lgs1920-timeline/LGS1920TimelineClipScroll'
 
 afterEach(() => vi.unstubAllGlobals())
 

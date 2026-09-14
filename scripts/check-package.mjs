@@ -19,11 +19,17 @@ import {fileURLToPath} from 'node:url'
 
 const projectRoot = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const result = await Bun.build({
-    entrypoints: [resolve(projectRoot, 'tests/fixtures/package-consumer.jsx')],
+    entrypoints: [resolve(projectRoot, 'test/fixtures/package-consumer.jsx')],
     target: 'browser',
     format: 'esm',
     minify: false,
     write: false,
+    // Bun does not self-resolve the package name from its own source tree.
+    // Point the consumer fixture at the bundles that would be published.
+    alias: {
+        '@lgs1920/timeline': resolve(projectRoot, 'dist/index.js'),
+        '@lgs1920/timeline/react': resolve(projectRoot, 'dist/react.js'),
+    },
     define: {
         'process.env.NODE_ENV': '"production"',
     },

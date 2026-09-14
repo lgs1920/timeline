@@ -21,5 +21,5 @@ import '@awesome.me/webawesome/dist/components/input/input.js'
 import '@awesome.me/webawesome/dist/components/popup/popup.js'
 import '@awesome.me/webawesome/dist/components/split-panel/split-panel.js'
 
-export {LGS1920Timeline} from '../src/lgs1920-timeline/LGS1920Timeline.js'
+export {CLIP_OPTION_DRAG_MIME, LGS1920Timeline} from '../src/lgs1920-timeline/LGS1920Timeline.js'
 export {formatRulerTime} from '../src/lgs1920-timeline/LGS1920TimelineUtils.js'

@@ -6,3 +6,7 @@ coverage/
 *.iml
 /.lgs1920-timeline-import-*/
 demo/src/assets/app.bundle.js
+demo/src/assets/readme.bundle.js
+demo/src/assets/docs.bundle.js
+demo/src/assets/webawesome.css
+demo/dist/

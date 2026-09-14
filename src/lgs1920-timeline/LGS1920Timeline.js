@@ -87,7 +87,7 @@ import {
 const ROW_DRAG_THRESHOLD = 4
 const CLIP_DRAG_THRESHOLD = 4
 const TOUCH_CLIP_DRAG_THRESHOLD = 8
-const CLIP_OPTION_DRAG_MIME = 'application/x-lgs1920-timeline-clip'
+export const CLIP_OPTION_DRAG_MIME = 'application/x-lgs1920-timeline-clip'
 let timelineAdditionalContentInstance = 0
 const STRUCTURAL_CONFIG_KEYS = Object.freeze([
     'interactive',

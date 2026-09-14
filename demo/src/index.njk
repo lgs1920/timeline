@@ -16,6 +16,9 @@
         </a>
         <div class="site-banner-pages">
             <a href="./" aria-current="page">Demo</a>
+            <a href="./docs/">Documentation</a>
+            <a href="./readme.html">README</a>
+            <a href="./changelog.html">Changelog</a>
             <a href="https://github.com/lgs1920/timeline" target="_blank" rel="noopener noreferrer">GitHub</a>
             <a href="https://www.npmjs.com/package/@lgs1920/timeline" target="_blank" rel="noopener noreferrer">NPM</a>
         </div>
@@ -59,45 +62,154 @@
     </nav>
 
     <header class="demo-header">
-        <p class="eyebrow">@lgs1920/timeline</p>
+        <p class="eyebrow">@lgs1920/timeline vx.y.z</p>
         <h1>A timeline you can shape.</h1>
-        <p class="intro">A controlled Web Component for tracks, clips, playback controls, keyboard editing, and drag and drop. Move the clips below between tracks to see the public event contract in action.</p>
+        <p class="intro">Explore the component through focused examples: a Studio-style controlled timeline, external time and zoom sliders, read-only rendering, range editing, slots, and event-driven updates.</p>
     </header>
+
+    <section class="demo-panel playground studio-demo" aria-labelledby="studio-title">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow">Demo 01 · Studio integration</p>
+                <h2 id="studio-title">Control the timeline from the host</h2>
+            </div>
+            <span id="studio-status" class="event-status" role="status" aria-live="polite">Ready</span>
+        </div>
+        <p class="section-intro">The timeline stays controlled by its host. The time slider drives <code>currentTimeMillis</code>; the second slider calls <code>setZoom()</code>. Both controls are supplied through component slots, like in Studio.</p>
+        <lgs1920-timeline id="studio-timeline" class="demo-studio-timeline" aria-label="Studio style interactive timeline">
+            <span slot="timeline-ruler" class="demo-scrubber" data-timeline-ruler-fixed="">
+                <span class="demo-scrubber-control">
+                    <wa-slider id="studio-time-slider" label="Current time" size="s" variant="brand" with-tooltip min="0" max="60000" step="33.333" value="0"></wa-slider>
+                </span>
+            </span>
+            <span slot="timeline-controls" class="demo-zoom-control">
+                <wa-icon name="arrows-left-right" variant="regular" label="" aria-hidden="true"></wa-icon>
+                <wa-slider id="studio-zoom-slider" label="Horizontal zoom" size="s" variant="brand" with-tooltip min="-50" max="500" step="1" value="0"></wa-slider>
+            </span>
+            <wa-button slot="timeline-toolbar" id="random-clip-source" class="demo-add-clip" variant="brand" size="s" draggable="true">
+                <wa-icon name="wand-magic-sparkles" variant="regular" label="" aria-hidden="true"></wa-icon>
+                Add a clip by dragging it
+            </wa-button>
+            <span slot="custom-menu" class="demo-slot-chip">Custom menu slot</span>
+            <span slot="overlay-text">Preparing timeline...</span>
+        </lgs1920-timeline>
+        <div class="timeline-output">
+            <span>Last event</span>
+            <code id="studio-output">None</code>
+        </div>
+        <div class="demo-explanation">
+            <article>
+                <p class="eyebrow">What to observe</p>
+                <p>The host receives seek intent, updates the component, and keeps the external slider synchronized. The zoom slider changes only the visual ruler scale. Drag the button from the legend into any compatible track: every drag creates a new clip with a random name, duration, color, kind, and icon.</p>
+            </article>
+            <pre><code data-language="mixed">&lt;lgs1920-timeline&gt;
+    &lt;wa-slider slot="timeline-ruler"
+               id="time"
+               min="0"
+               max="60000"&gt;&lt;/wa-slider&gt;
+    &lt;wa-slider slot="timeline-controls"
+               id="zoom"
+               min="-50"
+               max="500"&gt;&lt;/wa-slider&gt;
+    &lt;wa-button slot="timeline-toolbar" draggable="true"&gt;
+        Add a clip by dragging it
+    &lt;/wa-button&gt;
+&lt;/lgs1920-timeline&gt;
+
+time.addEventListener('input', event =&gt; {
+    timeline.currentTimeMillis = event.target.value
+})
+zoom.addEventListener('input', event =&gt; {
+    timeline.setZoom(event.target.value)
+})</code></pre>
+            <pre class="demo-code"><code data-language="javascript">source.addEventListener('dragstart', event =&gt; {
+    const option = createRandomClipOption()
+    event.dataTransfer.setData(
+        'application/x-lgs1920-timeline-clip',
+        JSON.stringify(option),
+    )
+})
+
+const option = {
+    label: 'Random clip',
+    kind: 'video',
+    duration: 7.4,
+    clip: {
+        icon: 'camera',
+        colorClasses: ['wa-neutral', 'wa-neutral-purple'],
+    },
+}</code></pre>
+        </div>
+        <p id="clip-drag-status" class="demo-note" role="status" aria-live="polite">Drag the button into a track to create a random clip.</p>
+    </section>
 
     <section class="demo-panel playground" aria-labelledby="interactive-title">
         <div class="section-heading">
             <div>
-                <p class="eyebrow">Interactive example</p>
-                <h2 id="interactive-title">Three clips, two tracks</h2>
+                <p class="eyebrow">Demo 02 · Editing and events</p>
+                <h2 id="interactive-title">Move clips and inspect the contract</h2>
             </div>
             <span id="event-status" class="event-status" role="status" aria-live="polite">Ready</span>
         </div>
-        <lgs1920-timeline id="interactive-timeline" aria-label="Interactive timeline"></lgs1920-timeline>
+        <p class="section-intro">Drag a clip, resize it, change a track label, or use the playback toolbar. Every interaction emits a namespaced event; this demo writes accepted track changes back to the element.</p>
+        <lgs1920-timeline id="interactive-timeline" aria-label="Interactive editing timeline"></lgs1920-timeline>
         <div class="timeline-output">
             <span>Last event</span>
             <code id="event-output">None</code>
         </div>
+        <pre class="demo-code"><code data-language="javascript">timeline.addEventListener('lgs1920-timeline-clip-change', event =&gt; {
+    timeline.tracks = event.detail.tracks
+})
+
+timeline.addEventListener('lgs1920-timeline-seek', event =&gt; {
+    timeline.currentTimeMillis = event.detail.timeMillis
+})</code></pre>
     </section>
 
     <section class="example-grid" aria-label="Timeline examples">
         <article class="demo-panel example-card">
-            <p class="eyebrow">Read only</p>
+            <p class="eyebrow">Demo 03 · Read only</p>
             <h2>Display a prepared sequence</h2>
             <p>Disable interaction to use the same component as a compact visual summary.</p>
             <lgs1920-timeline id="readonly-timeline" aria-label="Read only timeline"></lgs1920-timeline>
+            <pre class="demo-code"><code data-language="javascript">timeline.timeline = {
+    interactive: false,
+    editable: false,
+}
+</code></pre>
         </article>
         <article class="demo-panel example-card">
-            <p class="eyebrow">Controlled API</p>
-            <h2>Host owns the clock</h2>
-            <p>The element emits intent. Your application decides how current time and playing state change.</p>
-            <pre><code>&lt;lgs1920-timeline&gt;&lt;/lgs1920-timeline&gt;
+            <p class="eyebrow">Demo 04 · Video range</p>
+            <h2>Limit playback to a selected range</h2>
+            <p>Drag the colored start and end handles on the ruler. Keyboard users can focus the handles and move them with the arrow keys.</p>
+            <lgs1920-timeline id="range-timeline" aria-label="Timeline with editable video range"></lgs1920-timeline>
+            <p id="range-status" class="demo-note" role="status" aria-live="polite">Range: 00:00 – 01:00</p>
+            <pre class="demo-code"><code data-language="javascript">timeline.timeline = {
+    rangeStartMillis: 12_000,
+    rangeEndMillis: 48_000,
+}
 
-timeline.timeline = { durationMillis: 60_000 }
-timeline.tracks = tracks
-timeline.addEventListener('lgs1920-timeline-seek', event =&gt; {
-    currentTimeMillis = event.detail.timeMillis
+timeline.addEventListener('lgs1920-timeline-range-change', event =&gt; {
+    console.log(event.detail.startMillis, event.detail.endMillis)
 })</code></pre>
         </article>
+    </section>
+
+    <section class="demo-panel api-demo" aria-labelledby="slots-title">
+        <p class="eyebrow">Demo 05 · Slots and controlled state</p>
+        <h2 id="slots-title">Compose the surrounding UI</h2>
+        <p class="section-intro">The component owns the timeline surface while the application owns its context: a time slider in <code>timeline-ruler</code>, a zoom control in <code>timeline-controls</code>, and application actions in <code>custom-menu</code>. The full slot reference is available in the documentation.</p>
+        <div class="slot-list" aria-label="Slots used in the demos">
+            <span class="demo-slot-chip">timeline-ruler · external scrubber</span>
+            <span class="demo-slot-chip">timeline-controls · horizontal zoom</span>
+            <span class="demo-slot-chip">custom-menu · host actions</span>
+            <span class="demo-slot-chip">overlay-text · initial loading label</span>
+        </div>
+        <pre class="demo-code"><code data-language="html">&lt;lgs1920-timeline&gt;
+    &lt;span slot="timeline-ruler"&gt;...time slider...&lt;/span&gt;
+    &lt;span slot="timeline-controls"&gt;...zoom slider...&lt;/span&gt;
+    &lt;wa-button slot="custom-menu"&gt;Settings&lt;/wa-button&gt;
+&lt;/lgs1920-timeline&gt;</code></pre>
     </section>
 </main>
 <script type="module" src="./assets/app.bundle.js"></script>

@@ -28,8 +28,7 @@ const createConfig = async () => {
         test: {
             environment: 'jsdom',
             include: [
-                'src/**/*.test.{js,jsx}',
-                'tests/**/*.test.js',
+                'test/**/*.test.{js,jsx}',
             ],
             exclude: ['node_modules', 'dist', '.git'],
         },

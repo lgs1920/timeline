@@ -28,7 +28,7 @@ vi.mock('@awesome.me/webawesome/dist/components/popup/popup.js', () => ({}))
 vi.mock('@awesome.me/webawesome/dist/components/split-panel/split-panel.js', () => ({}))
 vi.mock('@awesome.me/webawesome/dist/components/tooltip/tooltip.js', () => ({}))
 
-import {LGS1920TimelineReact} from './LGS1920TimelineReact'
+import {LGS1920TimelineReact} from '../src/lgs1920-timeline/LGS1920TimelineReact'
 
 const timelineConfig = {
     durationMillis: 5_000,

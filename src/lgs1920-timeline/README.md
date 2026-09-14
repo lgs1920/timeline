@@ -321,6 +321,31 @@ targeted slot takes the form `{slot}-{id}` and overrides the global slot.
 </lgs1920-timeline>
 ```
 
+An application can replace the built-in clip menu with a draggable control in
+`timeline-toolbar`. The drag payload must use the exported
+`CLIP_OPTION_DRAG_MIME` constant and contain a JSON clip option. The component
+places the generated clip at the drop position and accepts the option on every
+compatible editable track:
+
+```js
+import {CLIP_OPTION_DRAG_MIME} from '@lgs1920/timeline'
+
+const source = document.querySelector('#clip-source')
+source.addEventListener('dragstart', event => {
+    const option = {
+        key: 'random-clip',
+        label: 'Random clip',
+        kind: 'video',
+        duration: 7.4,
+        clip: {
+            icon: 'camera',
+            colorClasses: ['wa-neutral', 'wa-neutral-purple'],
+        },
+    }
+    event.dataTransfer.setData(CLIP_OPTION_DRAG_MIME, JSON.stringify(option))
+})
+```
+
 The additional-content drawer has no built-in close button. Add an application
 owned control to `custom-menu` with the `data-additional-content-toggle`
 attribute to open and close it from the timeline header. The timeline keeps
@@ -877,3 +902,7 @@ the time surface is keyboard focusable, the Web Awesome split-panel exposes an
 accessible divider, and generated tracks and clips expose accessible labels. Decorative
 slotted icons should use `label=""` and receive visible or semantic text from
 their matching label slot.
+
+## License
+
+MIT. See [`LICENSE.md`](../../LICENSE.md).

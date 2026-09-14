@@ -82,6 +82,157 @@ body {
     min-inline-size: 0;
 }
 
+.site-banner-controls label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--wa-space-2xs);
+    color: var(--demo-muted);
+    font-size: 0.75rem;
+}
+
+.site-banner-controls select {
+    min-inline-size: 5rem;
+    padding: 0.25rem;
+    border: 1px solid var(--demo-panel-border);
+    border-radius: var(--wa-border-radius-s);
+    background: var(--demo-panel);
+    color: var(--demo-text);
+}
+
+.readme-content {
+    max-inline-size: 70rem;
+    padding: clamp(1rem, 3vw, 3rem);
+    border: 1px solid var(--demo-panel-border);
+    border-radius: var(--wa-panel-border-radius);
+    background: var(--demo-panel);
+}
+
+.readme-content pre {
+    overflow: auto;
+}
+
+.changelog-list {
+    display: grid;
+    gap: var(--wa-space-l);
+}
+
+.changelog-entry {
+    padding: clamp(1rem, 3vw, 2rem);
+    border: 1px solid var(--demo-panel-border);
+    border-radius: var(--wa-panel-border-radius);
+    background: var(--demo-panel);
+}
+
+.changelog-entry-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--wa-space-l);
+}
+
+.docs-page {
+    --menu-width: 17rem;
+    --main-width: minmax(0, 1fr);
+    min-block-size: 100vh;
+    background: var(--demo-background);
+    color: var(--demo-text);
+}
+
+.docs-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--wa-space-l);
+    padding: var(--wa-space-m) var(--wa-space-xl);
+    border-block-end: 1px solid var(--demo-panel-border);
+    background: var(--demo-panel);
+}
+
+.docs-header-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--wa-space-m);
+    color: var(--demo-text);
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.docs-header-brand img {
+    inline-size: clamp(7rem, 14vw, 10rem);
+    block-size: auto;
+}
+
+.docs-header-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--wa-space-m);
+}
+
+.docs-header-links a,
+.docs-navigation a {
+    color: var(--demo-muted);
+    font-size: 0.85rem;
+    text-decoration: none;
+}
+
+.docs-header-links a:hover,
+.docs-navigation a:hover,
+.docs-navigation a[aria-current='page'] {
+    color: var(--demo-accent);
+}
+
+.docs-navigation {
+    display: grid;
+    align-content: start;
+    gap: var(--wa-space-xs);
+    padding: var(--wa-space-l);
+}
+
+.docs-navigation-title {
+    margin-block: 0 var(--wa-space-s);
+    color: var(--demo-text);
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.docs-navigation a {
+    padding: var(--wa-space-2xs) var(--wa-space-xs);
+    border-radius: var(--wa-border-radius-s);
+}
+
+.docs-navigation a:hover,
+.docs-navigation a[aria-current='page'] {
+    background: var(--wa-color-brand-fill-quiet);
+}
+
+.docs-main {
+    min-inline-size: 0;
+    padding: clamp(1rem, 4vw, 4rem);
+}
+
+.docs-content {
+    inline-size: min(100%, 64rem);
+    margin-inline: auto;
+}
+
+.docs-content wa-markdown {
+    display: block;
+    padding: clamp(1rem, 4vw, 3rem);
+    border: 1px solid var(--demo-panel-border);
+    border-radius: var(--wa-panel-border-radius);
+    background: var(--demo-panel);
+    box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 18%);
+}
+
+.docs-footer {
+    padding: var(--wa-space-l) var(--wa-space-xl);
+    border-block-start: 1px solid var(--demo-panel-border);
+    color: var(--demo-muted);
+    font-size: 0.85rem;
+}
+
 .site-banner-logo {
     display: inline-flex;
     inline-size: clamp(7rem, 14vw, 10rem);
@@ -184,7 +335,157 @@ h2 {
 
 .playground {
     container-type: inline-size;
+    min-inline-size: 0;
     margin-block-end: 1rem;
+    padding: clamp(1rem, 3vw, 2rem);
+    border-radius: var(--wa-panel-border-radius);
+}
+
+.studio-demo lgs1920-timeline {
+    min-block-size: 34rem;
+    /* Reserve a visible ruler band for the external time slider. */
+    --lgs-timeline-header-height: 56px;
+}
+
+.demo-scrubber {
+    position: absolute;
+    z-index: 8;
+    inset-block-start: 0;
+    inset-inline-start: 0;
+    display: block;
+    inline-size: 100%;
+    block-size: var(--lgs-timeline-header-height, 56px);
+    min-inline-size: 0;
+    pointer-events: none;
+    background: transparent;
+    transform: translateX(var(--lgs-timeline-ruler-scroll-offset, 0px));
+}
+
+.demo-scrubber-control {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--wa-space-xs);
+    inline-size: 100%;
+    padding: var(--wa-space-2xs) var(--wa-space-s) 0;
+    pointer-events: auto;
+}
+
+.demo-scrubber wa-slider,
+.demo-zoom-control wa-slider {
+    display: block;
+    flex: 1 1 auto;
+    inline-size: 100%;
+    min-inline-size: 0;
+    --track-size: 0.25rem;
+}
+
+.demo-zoom-control {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: var(--wa-space-xs);
+    inline-size: 100%;
+    min-inline-size: 0;
+}
+
+.demo-zoom-control wa-icon {
+    flex: 0 0 auto;
+}
+
+.demo-add-clip {
+    max-inline-size: 100%;
+    white-space: nowrap;
+}
+
+.demo-add-clip::part(label) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.section-intro {
+    max-inline-size: 68rem;
+    margin-block: 0 1.5rem;
+    color: var(--demo-muted);
+    line-height: 1.6;
+}
+
+.demo-explanation {
+    display: grid;
+    grid-template-columns: minmax(12rem, 0.8fr) minmax(0, 1.2fr);
+    gap: var(--wa-space-l);
+    margin-block-start: 1.5rem;
+    padding-block-start: 1.5rem;
+    border-block-start: 1px solid var(--demo-panel-border);
+}
+
+.demo-explanation p:last-child {
+    margin-block-end: 0;
+    color: var(--demo-muted);
+    line-height: 1.6;
+}
+
+.demo-code {
+    overflow: auto;
+    margin-block: 1.5rem 0;
+    padding: 1rem;
+    border: 1px solid var(--demo-panel-border);
+    border-radius: var(--wa-border-radius-s);
+    color: var(--demo-muted);
+    font-size: 0.8rem;
+    line-height: 1.6;
+}
+
+.demo-code .code-token-comment {
+    color: var(--wa-color-text-quiet, var(--demo-muted));
+    font-style: italic;
+}
+
+.demo-code .code-token-string {
+    color: var(--wa-color-green-60, #16a34a);
+}
+
+.demo-code .code-token-tag {
+    color: var(--wa-color-cyan-60, #0891b2);
+}
+
+.demo-code .code-token-number {
+    color: var(--wa-color-orange-60, #ea580c);
+}
+
+.demo-code .code-token-keyword {
+    color: var(--wa-color-purple-60, #9333ea);
+    font-weight: 700;
+}
+
+.demo-note {
+    margin-block: 1rem 0;
+    color: var(--demo-muted);
+    font-size: 0.85rem;
+}
+
+.demo-slot-chip {
+    display: inline-flex;
+    align-items: center;
+    min-inline-size: 0;
+    padding: var(--wa-space-2xs) var(--wa-space-xs);
+    border: 1px solid var(--demo-panel-border);
+    border-radius: var(--wa-border-radius-s);
+    color: var(--demo-muted);
+    font-size: 0.8rem;
+}
+
+.slot-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--wa-space-s);
+    margin-block-start: 1.5rem;
+}
+
+.api-demo {
+    margin-block-start: 1rem;
     padding: clamp(1rem, 3vw, 2rem);
     border-radius: var(--wa-panel-border-radius);
 }
@@ -204,7 +505,11 @@ h2 {
 
 lgs1920-timeline {
     display: block;
+    inline-size: 100%;
+    max-inline-size: 100%;
+    min-inline-size: 0;
     min-block-size: 20rem;
+    overflow: hidden;
     /* Demo override for the timeline corner radius. */
     --lgs-timeline-radius: var(--wa-border-radius-m);
     /* Demo override for the timeline shadow. */
@@ -254,6 +559,10 @@ lgs1920-timeline {
     line-height: 1.6;
 }
 
+.example-card lgs1920-timeline {
+    min-block-size: 16rem;
+}
+
 @media (max-width: 60rem) {
     .site-banner {
         align-items: flex-start;
@@ -286,5 +595,23 @@ lgs1920-timeline {
 
     .example-grid {
         grid-template-columns: 1fr;
+    }
+
+    .demo-explanation {
+        grid-template-columns: 1fr;
+    }
+
+    .docs-header {
+        align-items: flex-start;
+        flex-direction: column;
+        padding-inline: var(--wa-space-m);
+    }
+
+    .docs-header-links {
+        gap: var(--wa-space-s);
+    }
+
+    .docs-main {
+        padding: var(--wa-space-s);
     }
 }

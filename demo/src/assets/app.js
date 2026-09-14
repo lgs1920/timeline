@@ -16,19 +16,83 @@
 
 import '@awesome.me/webawesome/dist/components/breadcrumb/breadcrumb.js'
 import '@awesome.me/webawesome/dist/components/breadcrumb-item/breadcrumb-item.js'
+import '@awesome.me/webawesome/dist/components/button/button.js'
 import '@awesome.me/webawesome/dist/components/icon/icon.js'
 import '@awesome.me/webawesome/dist/components/option/option.js'
 import '@awesome.me/webawesome/dist/components/select/select.js'
+import '@awesome.me/webawesome/dist/components/slider/slider.js'
 import '@lgs1920/timeline'
+import {CLIP_OPTION_DRAG_MIME, formatRulerTime} from '@lgs1920/timeline'
 
-const themeClasses = ['wa-theme-default', 'wa-theme-awesome', 'wa-theme-shoelace']
+const THEME_CONFIG = {
+    default: {
+        theme: 'wa-theme-default',
+        palette: 'wa-palette-default',
+    },
+    awesome: {
+        theme: 'wa-theme-awesome',
+        palette: 'wa-palette-bright',
+    },
+    shoelace: {
+        theme: 'wa-theme-shoelace',
+        palette: 'wa-palette-shoelace',
+    },
+}
+const themeClasses = Object.values(THEME_CONFIG).flatMap(({theme, palette}) => [theme, palette])
 const modeClasses = ['wa-light', 'wa-dark']
 const brandClasses = ['wa-brand-blue', 'wa-brand-red', 'wa-brand-orange', 'wa-brand-green', 'wa-brand-cyan', 'wa-brand-purple', 'wa-brand-pink']
 
+const studioTimeline = document.querySelector('#studio-timeline')
+const studioTimeSlider = document.querySelector('#studio-time-slider')
+const studioZoomSlider = document.querySelector('#studio-zoom-slider')
+const studioStatus = document.querySelector('#studio-status')
+const studioOutput = document.querySelector('#studio-output')
+const randomClipSource = document.querySelector('#random-clip-source')
+const clipDragStatus = document.querySelector('#clip-drag-status')
 const interactiveTimeline = document.querySelector('#interactive-timeline')
 const readonlyTimeline = document.querySelector('#readonly-timeline')
+const rangeTimeline = document.querySelector('#range-timeline')
 const eventOutput = document.querySelector('#event-output')
 const eventStatus = document.querySelector('#event-status')
+const rangeStatus = document.querySelector('#range-status')
+
+const DEMO_DURATION_MILLIS = 60_000
+const formatMillis = value => formatRulerTime(Number(value) / 1000)
+const randomClipNames = ['Sunrise', 'City pulse', 'Interview', 'Map reveal', 'Sound bed', 'Title card', 'Wide shot']
+const randomClipKinds = ['video', 'audio', 'graphic', 'marker']
+const randomClipIcons = ['film', 'camera', 'microphone', 'music', 'map', 'wand-magic-sparkles', 'bookmark']
+const randomClipColors = ['blue', 'cyan', 'green', 'orange', 'pink', 'purple', 'red', 'yellow']
+
+const randomItem = values => values[Math.floor(Math.random() * values.length)]
+
+/**
+ * Create the option payload accepted by the timeline's native clip drop zone.
+ *
+ * @returns {Object} Randomized clip insertion option.
+ */
+const createRandomClipOption = () => {
+    const color = randomItem(randomClipColors)
+    const label = randomItem(randomClipNames)
+    const kind = randomItem(randomClipKinds)
+    const icon = randomItem(randomClipIcons)
+    const duration = Number((2 + (Math.random() * 10)).toFixed(1))
+
+    return {
+        group: 'demo-random',
+        key: `${kind}-${Date.now()}`,
+        label,
+        kind,
+        icon,
+        duration,
+        clip: {
+            label,
+            kind,
+            icon,
+            colorClasses: ['wa-neutral', `wa-neutral-${color}`],
+            timelineColor: color,
+        },
+    }
+}
 
 const tracks = [
     {
@@ -38,8 +102,21 @@ const tracks = [
         colorClasses: ['wa-neutral', 'wa-neutral-blue'],
         canHide: true,
         clips: [
-            {id: 'opening', label: 'Opening', kind: 'video', start: 0, end: 9, colorClasses: ['wa-blue']},
-            {id: 'middle', label: 'Middle scene', kind: 'video', start: 18, end: 33, colorClasses: ['wa-purple']},
+            {id: 'opening', label: 'Opening', kind: 'video', start: 0, end: 9, colorClasses: ['wa-neutral-blue']},
+            {id: 'middle', label: 'Middle scene', kind: 'video', start: 18, end: 33, colorClasses: ['wa-neutral-purple']},
+            {id: 'ending', label: 'Finale', kind: 'video', start: 43, end: 56, colorClasses: ['wa-neutral-pink']},
+        ],
+    },
+    {
+        id: 'b-roll',
+        label: 'B-roll',
+        icon: 'camera',
+        colorClasses: ['wa-neutral', 'wa-neutral-orange'],
+        canHide: true,
+        clips: [
+            {id: 'city', label: 'City details', kind: 'video', start: 4, end: 12, colorClasses: ['wa-neutral-orange']},
+            {id: 'portrait', label: 'Portrait cutaway', kind: 'video', start: 25, end: 34, colorClasses: ['wa-neutral-yellow']},
+            {id: 'landscape', label: 'Landscape', kind: 'video', start: 45, end: 59, colorClasses: ['wa-neutral-cyan']},
         ],
     },
     {
@@ -49,7 +126,31 @@ const tracks = [
         colorClasses: ['wa-neutral', 'wa-neutral-green'],
         canHide: true,
         clips: [
-            {id: 'music', label: 'Music bed', kind: 'audio', start: 5, end: 43, colorClasses: ['wa-green']},
+            {id: 'music', label: 'Music bed', kind: 'audio', start: 0, end: 18, colorClasses: ['wa-neutral-green']},
+            {id: 'ambience', label: 'Room ambience', kind: 'audio', start: 18, end: 40, colorClasses: ['wa-neutral-cyan']},
+            {id: 'outro', label: 'Outro music', kind: 'audio', start: 40, end: 60, colorClasses: ['wa-neutral-indigo']},
+        ],
+    },
+    {
+        id: 'voice',
+        label: 'Voice over',
+        icon: 'microphone',
+        colorClasses: ['wa-neutral', 'wa-neutral-red'],
+        canHide: true,
+        clips: [
+            {id: 'voice-opening', label: 'Opening narration', kind: 'audio', start: 9, end: 17, colorClasses: ['wa-neutral-red']},
+            {id: 'voice-scene', label: 'Scene narration', kind: 'audio', start: 31, end: 41, colorClasses: ['wa-neutral-pink']},
+        ],
+    },
+    {
+        id: 'graphics',
+        label: 'Graphics',
+        icon: 'wand-magic-sparkles',
+        colorClasses: ['wa-neutral', 'wa-neutral-purple'],
+        canHide: true,
+        clips: [
+            {id: 'title-card', label: 'Title card', kind: 'graphic', start: 14, end: 20, colorClasses: ['wa-neutral-purple']},
+            {id: 'end-card', label: 'End card', kind: 'graphic', start: 48, end: 55, colorClasses: ['wa-neutral-gray']},
         ],
     },
 ]
@@ -89,6 +190,27 @@ const configureTimeline = (element, options = {}) => {
     element.playing = false
 }
 
+const studioTimelineOptions = {
+    interactive: true,
+    editable: true,
+    horizontalFit: true,
+    fps: 30,
+    frameCount: 1_801,
+    frameIntervalMillis: 1000 / 30,
+    rangeStartMillis: 0,
+    rangeEndMillis: DEMO_DURATION_MILLIS,
+    collisionPolicy: 'prevent',
+    resizeCollisionPolicy: 'ripple',
+    resizeExtendsDuration: true,
+    durationPolicy: 'extend',
+    keyboardZoomActive: true,
+    showBuildingOverlay: false,
+    showClipMenu: false,
+    legendMinWidth: 190,
+    legendWidth: 240,
+    legendMaxWidth: 320,
+}
+
 const emitStatus = event => {
     const detail = event.detail ?? {}
     const label = `${event.type.replace('lgs1920-timeline-', '')} · ${detail.clip?.label ?? detail.trackId ?? ''}`.trim()
@@ -97,8 +219,10 @@ const emitStatus = event => {
 }
 
 const applyTheme = value => {
+    const selectedTheme = THEME_CONFIG[value] ?? THEME_CONFIG.default
+
     document.documentElement.classList.remove(...themeClasses)
-    document.documentElement.classList.add(`wa-theme-${value}`)
+    document.documentElement.classList.add(selectedTheme.theme, selectedTheme.palette)
 }
 
 const applyMode = value => {
@@ -111,8 +235,76 @@ const applyBrand = value => {
     document.documentElement.classList.add(`wa-brand-${value}`)
 }
 
-configureTimeline(interactiveTimeline, {interactive: true})
+configureTimeline(studioTimeline, studioTimelineOptions)
+configureTimeline(interactiveTimeline, {interactive: true, showClipMenu: false})
 configureTimeline(readonlyTimeline, {interactive: false, editable: false})
+configureTimeline(rangeTimeline, {
+    interactive: true,
+    editable: true,
+    rangeStartMillis: 12_000,
+    rangeEndMillis: 48_000,
+    showClipMenu: false,
+})
+
+studioTimeSlider.valueFormatter = value => `${formatMillis(value)} / ${formatMillis(DEMO_DURATION_MILLIS)}`
+studioZoomSlider.valueFormatter = value => `${Math.round(Number(value))}%`
+
+const updateStudioTime = value => {
+    const timeMillis = Math.max(0, Math.min(DEMO_DURATION_MILLIS, Number(value) || 0))
+    studioTimeline.currentTimeMillis = timeMillis
+    studioTimeSlider.value = timeMillis
+    studioStatus.textContent = `Current time · ${formatMillis(timeMillis)}`
+    studioOutput.textContent = `currentTimeMillis = ${timeMillis}`
+}
+
+studioTimeSlider.addEventListener('input', event => updateStudioTime(event.currentTarget.value))
+studioTimeSlider.addEventListener('change', event => updateStudioTime(event.currentTarget.value))
+studioTimeline.addEventListener('lgs1920-timeline-seek', event => updateStudioTime(event.detail.timeMillis))
+studioTimeline.addEventListener('lgs1920-timeline-play', () => {
+    studioTimeline.playing = true
+    studioStatus.textContent = 'Playback intent · play'
+})
+studioTimeline.addEventListener('lgs1920-timeline-pause', () => {
+    studioTimeline.playing = false
+    studioStatus.textContent = 'Playback intent · pause'
+})
+studioTimeline.addEventListener('lgs1920-timeline-stop', () => {
+    studioTimeline.playing = false
+    updateStudioTime(0)
+})
+studioTimeline.addEventListener('lgs1920-timeline-restart', () => updateStudioTime(0))
+studioZoomSlider.addEventListener('input', event => {
+    const zoomPercent = Number(event.currentTarget.value)
+    studioTimeline.setZoom(zoomPercent)
+    studioStatus.textContent = `Horizontal zoom · ${Math.round(zoomPercent)}%`
+    studioOutput.textContent = `timeline.setZoom(${Math.round(zoomPercent)})`
+})
+studioZoomSlider.addEventListener('change', event => studioTimeline.setZoom(Number(event.currentTarget.value)))
+
+randomClipSource.addEventListener('dragstart', event => {
+    const option = createRandomClipOption()
+    event.dataTransfer.effectAllowed = 'copy'
+    event.dataTransfer.setData(CLIP_OPTION_DRAG_MIME, JSON.stringify(option))
+    clipDragStatus.textContent = `Dragging ${option.label} · ${option.duration}s · ${option.kind} · ${option.clip.timelineColor}`
+})
+randomClipSource.addEventListener('dragend', () => {
+    clipDragStatus.textContent = 'Drag the button into a track to create a random clip.'
+})
+studioTimeline.addEventListener('lgs1920-timeline-add-clip', event => {
+    const detail = event.detail ?? {}
+    const clip = detail.clip
+    if (!clip) {
+        clipDragStatus.textContent = 'This track does not accept the generated clip.'
+        return
+    }
+    studioTimeline.tracks = detail.tracks
+    clipDragStatus.textContent = `Added ${clip.label} · ${Number(clip.end - clip.start).toFixed(1)}s · ${clip.kind}`
+})
+
+rangeTimeline.addEventListener('lgs1920-timeline-range-change', event => {
+    const {rangeStartMillis, rangeEndMillis} = event.detail
+    rangeStatus.textContent = `Range: ${formatMillis(rangeStartMillis)} – ${formatMillis(rangeEndMillis)}`
+})
 
 const eventNames = [
     'play', 'pause', 'restart', 'stop', 'seek', 'clip-change', 'clip-select',
@@ -152,6 +344,43 @@ interactiveTimeline.addEventListener('lgs1920-timeline-add-clip', event => {
     interactiveTimeline.tracks = event.detail.tracks
 })
 
-document.querySelector('#theme-control').addEventListener('change', event => applyTheme(event.target.value))
-document.querySelector('#mode-control').addEventListener('change', event => applyMode(event.target.value))
-document.querySelector('#color-control').addEventListener('change', event => applyBrand(event.target.value))
+document.querySelector('#theme-control').addEventListener('change', event => applyTheme(event.currentTarget.value))
+document.querySelector('#mode-control').addEventListener('change', event => applyMode(event.currentTarget.value))
+document.querySelector('#color-control').addEventListener('change', event => applyBrand(event.currentTarget.value))
+
+const escapeHtml = value => String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+
+const codeTokenPattern = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/|`(?:\\.|[^`\\])*`|'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|<\/?[a-z][^>]*>|\b\d+(?:\.\d+)?\b|\b(?:const|let|var|function|return|if|else|for|of|new|true|false|null|undefined|async|await|import|from)\b)/gi
+
+const codeTokenClass = token => {
+    if (token.startsWith('//') || token.startsWith('/*')) return 'comment'
+    if (/^[`'"]/.test(token)) return 'string'
+    if (token.startsWith('<')) return 'tag'
+    if (/^\d/.test(token)) return 'number'
+    return 'keyword'
+}
+
+const highlightCode = source => {
+    const output = []
+    let cursor = 0
+
+    for (const match of source.matchAll(codeTokenPattern)) {
+        const token = match[0]
+        const index = match.index ?? cursor
+        output.push(escapeHtml(source.slice(cursor, index)))
+        output.push(`<span class="code-token-${codeTokenClass(token)}">${escapeHtml(token)}</span>`)
+        cursor = index + token.length
+    }
+
+    output.push(escapeHtml(source.slice(cursor)))
+    return output.join('')
+}
+
+document.querySelectorAll('pre code[data-language]').forEach(code => {
+    code.innerHTML = highlightCode(code.textContent)
+})

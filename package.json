@@ -2,7 +2,7 @@
   "name": "@lgs1920/timeline",
   "version": "0.1.0",
   "description": "A controlled timeline Web Component with an optional React adapter.",
-  "license": "AGPL-3.0-or-later",
+  "license": "MIT",
   "author": "LGS1920 Team <studio@lgs1920.fr>",
   "type": "module",
   "main": "./dist/index.js",
@@ -27,13 +27,14 @@
   "scripts": {
     "build": "bun scripts/build.mjs",
     "demo:assets": "bun scripts/build-demo.mjs",
-    "demo:build": "bun run build && bun run demo:assets && bunx --bun @11ty/eleventy",
+    "demo:build": "bun run build && bun run demo:assets && bunx --bun @11ty/eleventy && bun scripts/build-demo-pages.mjs",
     "demo:serve": "bun run demo:build && bunx --bun @11ty/eleventy --serve",
-    "lint": "bunx --bun oxlint entries src demo scripts tests vitest.config.cjs --deny-warnings",
+    "lint": "bunx --bun oxlint entries src demo scripts test vitest.config.cjs --deny-warnings",
     "pack:check": "bun pm pack --dry-run",
     "prepack": "bun run verify",
     "publish:check": "bun pm pack --dry-run",
     "publish:npm": "bun publish --access public",
+    "publish": "bun scripts/publish.mjs",
     "test": "bunx --bun vitest run",
     "test:package": "bun scripts/check-package.mjs",
     "test:watch": "bunx --bun vitest",
@@ -71,7 +72,7 @@
   "bugs": {
     "url": "https://github.com/lgs1920/timeline/issues"
   },
-  "homepage": "https://github.com/lgs1920/timeline#readme",
+  "homepage": "https://lgs1920.github.io/timeline/",
   "keywords": [
     "timeline",
     "video",

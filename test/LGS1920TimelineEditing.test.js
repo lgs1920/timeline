@@ -15,7 +15,7 @@
  ******************************************************************************/
 
 import {describe, expect, it, vi} from 'vitest'
-import {createTimelineClipEditor, resolveClipExtension, rippleResizedClips, snapClipToTargets} from './LGS1920TimelineEditing'
+import {createTimelineClipEditor, resolveClipExtension, rippleResizedClips, snapClipToTargets} from '../src/lgs1920-timeline/LGS1920TimelineEditing'
 
 /**
  * Create a deterministic controller fixture with mutable presentation state.

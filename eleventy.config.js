@@ -23,8 +23,10 @@
 export default eleventyConfig => {
     eleventyConfig.addPassthroughCopy({'demo/src/assets/styles.css': 'assets/styles.css'})
     eleventyConfig.addPassthroughCopy({'demo/src/assets/app.bundle.js': 'assets/app.bundle.js'})
+    eleventyConfig.addPassthroughCopy({'demo/src/assets/readme.bundle.js': 'assets/readme.bundle.js'})
+    eleventyConfig.addPassthroughCopy({'demo/src/assets/docs.bundle.js': 'assets/docs.bundle.js'})
     eleventyConfig.addPassthroughCopy({'demo/assets': 'assets'})
-    eleventyConfig.addPassthroughCopy({'node_modules/@awesome.me/webawesome/dist/styles/webawesome.css': 'assets/webawesome.css'})
+    eleventyConfig.addPassthroughCopy({'demo/src/assets/webawesome.css': 'assets/webawesome.css'})
 
     return {
         dir: {

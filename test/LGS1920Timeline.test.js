@@ -16,9 +16,9 @@
 
 // @vitest-environment jsdom
 import {afterEach, describe, expect, it, vi} from 'vitest'
-import {LGS1920Timeline} from './LGS1920Timeline'
-import {rippleResizedClips} from './LGS1920TimelineEditing'
-import {formatRulerTime, resolveScale} from './LGS1920TimelineUtils.js'
+import {LGS1920Timeline} from '../src/lgs1920-timeline/LGS1920Timeline'
+import {rippleResizedClips} from '../src/lgs1920-timeline/LGS1920TimelineEditing'
+import {formatRulerTime, resolveScale} from '../src/lgs1920-timeline/LGS1920TimelineUtils.js'
 
 vi.mock('@awesome.me/webawesome/dist/components/button/button.js', () => ({}))
 vi.mock('@awesome.me/webawesome/dist/components/card/card.js', () => ({}))
