@@ -15,7 +15,7 @@
 
 [**Open the live demo →**](https://lgs1920.github.io/timeline/) · [**Read the full documentation →**](https://lgs1920.github.io/timeline/docs/) · [npm](https://www.npmjs.com/package/@lgs1920/timeline) · [Repository](https://github.com/lgs1920/timeline)
 
-The current release is `0.1.0`.
+The current release is `0.1.1`.
 
 ## ✨ What you get
 
