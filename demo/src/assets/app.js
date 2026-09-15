@@ -17,13 +17,19 @@
 import '@awesome.me/webawesome/dist/components/breadcrumb/breadcrumb.js'
 import '@awesome.me/webawesome/dist/components/breadcrumb-item/breadcrumb-item.js'
 import '@awesome.me/webawesome/dist/components/button/button.js'
+import '@awesome.me/webawesome/dist/components/button-group/button-group.js'
+import '@awesome.me/webawesome/dist/components/details/details.js'
 import '@awesome.me/webawesome/dist/components/icon/icon.js'
 import '@awesome.me/webawesome/dist/components/option/option.js'
 import '@awesome.me/webawesome/dist/components/select/select.js'
 import '@awesome.me/webawesome/dist/components/slider/slider.js'
+import '@awesome.me/webawesome/dist/components/tooltip/tooltip.js'
 import '@lgs1920/timeline'
 import '@awesome.me/webawesome/dist/components/toast/toast.js'
 import {CLIP_OPTION_DRAG_MIME, formatRulerTime} from '@lgs1920/timeline'
+import Prism from 'prismjs'
+import 'prismjs/components/prism-markup.js'
+import 'prismjs/components/prism-javascript.js'
 
 const THEME_CONFIG = {
     default: {
@@ -44,6 +50,8 @@ const modeClasses = ['wa-light', 'wa-dark']
 const brandClasses = ['wa-brand-blue', 'wa-brand-red', 'wa-brand-orange', 'wa-brand-green', 'wa-brand-cyan', 'wa-brand-purple', 'wa-brand-pink']
 
 const studioTimeline = document.querySelector('#studio-timeline')
+const studioPlaybackRateGroup = document.querySelector('#studio-playback-rate')
+const studioPlaybackRateButtons = [...studioPlaybackRateGroup.querySelectorAll('[data-playback-rate]')]
 const studioSeekBackwardButton = document.querySelector('#studio-seek-backward')
 const studioSeekForwardButton = document.querySelector('#studio-seek-forward')
 const studioStatus = document.querySelector('#studio-status')
@@ -63,9 +71,11 @@ const interactiveTimeline = document.querySelector('#interactive-timeline')
 const readonlyTimeline = document.querySelector('#readonly-timeline')
 const readonlyPlayButton = document.querySelector('#readonly-play')
 const readonlyTimeSlider = document.querySelector('#readonly-time-slider')
+const readonlyTimeTooltip = document.querySelector('#readonly-time-tooltip')
 const readonlyStatus = document.querySelector('#readonly-status')
 const rangeTimeline = document.querySelector('#range-timeline')
 const rangeTimeSlider = document.querySelector('#range-time-slider')
+const rangeTimeTooltip = document.querySelector('#range-time-tooltip')
 const eventOutput = document.querySelector('#event-output')
 const eventStatus = document.querySelector('#event-status')
 const rangeStatus = document.querySelector('#range-status')
@@ -74,10 +84,13 @@ const keyboardStatus = document.querySelector('#keyboard-status')
 const DEMO_DURATION_MILLIS = 60_000
 const SHORT_DEMO_DURATION_MILLIS = 30_000
 const formatMillis = value => formatRulerTime(Number(value) / 1000)
-const MAX_PENDING_CLIPS = 2
-const randomClipKinds = ['video', 'audio', 'graphic', 'marker']
-const randomClipIcons = ['film', 'camera', 'microphone', 'music', 'map', 'wand-magic-sparkles', 'bookmark']
-const randomClipColors = ['blue', 'cyan', 'green', 'orange', 'pink', 'purple', 'red', 'yellow']
+const randomClipTypes = [
+    {kind: 'video', label: 'Video', icon: 'film', color: 'blue'},
+    {kind: 'audio', label: 'Audio', icon: 'music', color: 'green'},
+    {kind: 'text', label: 'Text', icon: 'font', color: 'purple'},
+    {kind: 'other', label: 'Other', icon: 'puzzle-piece', color: 'orange'},
+]
+const MAX_PENDING_CLIPS = randomClipTypes.length
 
 const randomItem = values => values[Math.floor(Math.random() * values.length)]
 let generatedClipIndex = 0
@@ -87,27 +100,25 @@ let generatedClipIndex = 0
  *
  * @returns {Object} Randomized clip insertion option.
  */
-const createRandomClipOption = () => {
-    const color = randomItem(randomClipColors)
+const createRandomClipOption = (preferredType = null) => {
     generatedClipIndex += 1
-    const label = `Clip #${String(generatedClipIndex).padStart(3, '0')}`
-    const kind = randomItem(randomClipKinds)
-    const icon = randomItem(randomClipIcons)
+    const type = preferredType ?? randomItem(randomClipTypes)
+    const label = `${type.label} clip #${String(generatedClipIndex).padStart(3, '0')}`
     const duration = Number((2 + (Math.random() * 10)).toFixed(1))
 
     return {
         group: 'demo-random',
         key: `generated-clip-${generatedClipIndex}`,
         label,
-        kind,
-        icon,
+        kind: type.kind,
+        icon: type.icon,
         duration,
         clip: {
             label,
-            kind,
-            icon,
-            colorClasses: ['wa-neutral', `wa-neutral-${color}`],
-            timelineColor: color,
+            kind: type.kind,
+            icon: type.icon,
+            colorClasses: ['wa-neutral', `wa-neutral-${type.color}`],
+            timelineColor: type.color,
         },
     }
 }
@@ -178,6 +189,29 @@ const tracks = [
         clips: [
             {id: 'title-card', label: 'Title card', kind: 'graphic', start: 14, end: 20, colorClasses: ['wa-neutral-purple']},
             {id: 'end-card', label: 'End card', kind: 'graphic', start: 48, end: 55, colorClasses: ['wa-neutral-gray']},
+        ],
+    },
+    {
+        id: 'captions',
+        label: 'Captions',
+        icon: 'font',
+        colorClasses: ['wa-neutral', 'wa-neutral-cyan'],
+        canHide: true,
+        clips: [
+            {id: 'caption-opening', label: 'Opening caption', kind: 'text', start: 2, end: 8, colorClasses: ['wa-neutral-cyan']},
+            {id: 'caption-scene', label: 'Scene caption', kind: 'text', start: 22, end: 30, colorClasses: ['wa-neutral-blue']},
+            {id: 'caption-ending', label: 'Closing caption', kind: 'text', start: 47, end: 58, colorClasses: ['wa-neutral-purple']},
+        ],
+    },
+    {
+        id: 'other',
+        label: 'Other',
+        icon: 'puzzle-piece',
+        colorClasses: ['wa-neutral', 'wa-neutral-yellow'],
+        canHide: true,
+        clips: [
+            {id: 'map-overlay', label: 'Map overlay', kind: 'other', start: 10, end: 16, colorClasses: ['wa-neutral-yellow']},
+            {id: 'logo-overlay', label: 'Logo overlay', kind: 'other', start: 36, end: 44, colorClasses: ['wa-neutral-orange']},
         ],
     },
 ]
@@ -299,10 +333,11 @@ configureTimeline(rangeTimeline, {
  * @param {Object} options Clock configuration.
  * @returns {Object} Host playback clock controls.
  */
-const createPlaybackClock = ({timeline, startMillis = 0, endMillis = DEMO_DURATION_MILLIS, onTime = () => {}}) => {
+const createPlaybackClock = ({timeline, startMillis = 0, endMillis = DEMO_DURATION_MILLIS, playbackRate = 1, onTime = () => {}}) => {
     const getStartMillis = typeof startMillis === 'function' ? startMillis : () => startMillis
     const getEndMillis = typeof endMillis === 'function' ? endMillis : () => endMillis
     let intervalId = null
+    let rate = Number(playbackRate) > 0 ? Number(playbackRate) : 1
     let clockStartMillis = 0
     let clockStartedAt = 0
 
@@ -326,7 +361,7 @@ const createPlaybackClock = ({timeline, startMillis = 0, endMillis = DEMO_DURATI
             stopClock()
             return
         }
-        const nextTime = sync(clockStartMillis + (performance.now() - clockStartedAt))
+        const nextTime = sync(clockStartMillis + ((performance.now() - clockStartedAt) * rate))
         const end = Number(getEndMillis()) || DEMO_DURATION_MILLIS
         if (nextTime >= end) {
             timeline.playing = false
@@ -369,10 +404,19 @@ const createPlaybackClock = ({timeline, startMillis = 0, endMillis = DEMO_DURATI
         return timeMillis
     }
 
-    return {start, pause, stop, restart, seek, sync}
+    const setRate = value => {
+        const nextRate = Number(value)
+        if (!Number.isFinite(nextRate) || nextRate <= 0) return rate
+        if (nextRate === rate) return rate
+        rate = nextRate
+        if (timeline.playing) start()
+        else sync(timeline.currentTimeMillis)
+        return rate
+    }
+
+    return {start, pause, stop, restart, seek, getRate: () => rate, setRate, sync}
 }
 
-interactiveTimeSlider.valueFormatter = value => `${formatMillis(value)} / ${formatMillis(SHORT_DEMO_DURATION_MILLIS)}`
 readonlyTimeSlider.valueFormatter = value => `${formatMillis(value)} / ${formatMillis(SHORT_DEMO_DURATION_MILLIS)}`
 rangeTimeSlider.valueFormatter = value => `${formatMillis(value)} / ${formatMillis(SHORT_DEMO_DURATION_MILLIS)}`
 
@@ -382,11 +426,31 @@ const studioClock = createPlaybackClock({
         studioSeekBackwardButton.disabled = timeMillis <= 0
         studioSeekForwardButton.disabled = timeMillis >= DEMO_DURATION_MILLIS
         studioStatus.textContent = studioTimeline.playing
-            ? `Playing · ${formatMillis(timeMillis)}`
+            ? `Playing · ${studioClock.getRate()}× · ${formatMillis(timeMillis)}`
             : `Current time · ${formatMillis(timeMillis)}`
         studioOutput.textContent = `currentTimeMillis = ${timeMillis}`
     },
 })
+
+const updateStudioPlaybackRateButtons = rate => {
+    studioPlaybackRateButtons.forEach(button => {
+        const selected = button.dataset.playbackRate === String(rate)
+        button.setAttribute('aria-pressed', String(selected))
+        button.setAttribute('variant', selected ? 'brand' : 'neutral')
+    })
+}
+
+studioPlaybackRateButtons.forEach(button => {
+    button.addEventListener('pointerdown', event => event.stopPropagation())
+    button.addEventListener('click', event => {
+        event.stopPropagation()
+        const rate = button.dataset.playbackRate
+        studioClock.setRate(rate)
+        updateStudioPlaybackRateButtons(rate)
+    })
+})
+
+updateStudioPlaybackRateButtons('1')
 
 const seekStudioBy = (button, method, durationMillis) => {
     button.addEventListener('pointerdown', event => event.stopPropagation())
@@ -437,6 +501,8 @@ const setClipDragData = (event, option) => {
 
 const createGeneratedClipSource = option => {
     const source = document.createElement('div')
+    let dragPreview = null
+    let lastPointer = null
 
     const isTrackElement = target => target?.getAttribute?.('part') === 'track'
     const isOverTimelineTrack = event => {
@@ -454,11 +520,33 @@ const createGeneratedClipSource = option => {
     }
 
     const updateSourceVisibility = event => {
-        source.classList.toggle('demo-generated-clip--dragging', isOverTimelineTrack(event))
+        const overTrack = isOverTimelineTrack(event)
+        source.classList.toggle('demo-generated-clip--dragging', true)
+        dragPreview.hidden = overTrack
+
+        const clientX = Number(event.clientX)
+        const clientY = Number(event.clientY)
+        if (Number.isFinite(clientX) && Number.isFinite(clientY)
+            && (event.type !== 'dragstart' || clientX !== 0 || clientY !== 0)) {
+            lastPointer = {clientX, clientY}
+        }
+        if (overTrack) return
+
+        if (lastPointer) {
+            dragPreview.style.left = `${lastPointer.clientX + 14}px`
+            dragPreview.style.top = `${lastPointer.clientY + 14}px`
+            return
+        }
+        const sourceRect = source.getBoundingClientRect()
+        dragPreview.style.left = `${sourceRect.left}px`
+        dragPreview.style.top = `${sourceRect.top}px`
     }
 
     const clearDragState = () => {
         source.classList.remove('demo-generated-clip--dragging')
+        dragPreview.hidden = true
+        dragPreview.remove()
+        lastPointer = null
         window.removeEventListener('drag', updateSourceVisibility, true)
         window.removeEventListener('dragenter', updateSourceVisibility, true)
         window.removeEventListener('dragover', updateSourceVisibility, true)
@@ -467,6 +555,7 @@ const createGeneratedClipSource = option => {
     }
 
     const startDragState = event => {
+        document.body.append(dragPreview)
         updateSourceVisibility(event)
         window.addEventListener('drag', updateSourceVisibility, true)
         window.addEventListener('dragenter', updateSourceVisibility, true)
@@ -483,7 +572,7 @@ const createGeneratedClipSource = option => {
     const handleDragEnd = () => {
         clearDragState()
         if (!source.isConnected) return
-        clipDragStatus.textContent = `Created ${option.label}. Drag it onto a compatible track.`
+        clipDragStatus.textContent = `${option.label} is still available. Drop it onto a compatible track to insert it.`
     }
 
     const appendDragListeners = () => {
@@ -495,6 +584,7 @@ const createGeneratedClipSource = option => {
         source.className = 'demo-generated-clip'
         source.setAttribute('data-generated-clip', '')
         source.setAttribute('data-clip-option-key', option.key)
+        source.setAttribute('data-clip-kind', option.kind)
         source.setAttribute('draggable', 'true')
         source.draggable = true
         source.setAttribute('role', 'button')
@@ -521,13 +611,22 @@ const createGeneratedClipSource = option => {
         label,
         duration,
     )
+    dragPreview = source.cloneNode(true)
+    dragPreview.removeAttribute('draggable')
+    dragPreview.removeAttribute('tabindex')
+    dragPreview.setAttribute('aria-hidden', 'true')
+    dragPreview.classList.add('demo-generated-clip--drag-preview')
+    dragPreview.hidden = true
     appendDragListeners()
     return source
 }
 
 const replenishGeneratedClipSources = () => {
     while (generatedClipSources.children.length < MAX_PENDING_CLIPS) {
-        generatedClipSources.append(createGeneratedClipSource(createRandomClipOption()))
+        const displayedKinds = new Set([...generatedClipSources.querySelectorAll('[data-generated-clip]')]
+            .map(source => source.getAttribute('data-clip-kind')))
+        const missingType = randomClipTypes.find(type => !displayedKinds.has(type.kind))
+        generatedClipSources.append(createGeneratedClipSource(createRandomClipOption(missingType)))
     }
 }
 
@@ -550,6 +649,7 @@ let currentRangeEndMillis = 24_000
 
 const updateRangeStatus = timeMillis => {
     rangeTimeSlider.value = timeMillis
+    rangeTimeTooltip.textContent = rangeTimeSlider.valueFormatter(rangeTimeSlider.value)
     rangeStatus.textContent = `Range: ${formatMillis(currentRangeStartMillis)} – ${formatMillis(currentRangeEndMillis)} · Playback ${rangeTimeline.playing ? 'running' : 'paused'} at ${formatMillis(timeMillis)}`
 }
 
@@ -647,6 +747,7 @@ interactiveTimeline.addEventListener('lgs1920-timeline-add-clip', event => {
 
 const updateReadonlyTime = timeMillis => {
     readonlyTimeSlider.value = timeMillis
+    readonlyTimeTooltip.textContent = readonlyTimeSlider.valueFormatter(readonlyTimeSlider.value)
     readonlyPlayButton.textContent = readonlyTimeline.playing ? 'Pause preview' : 'Play preview'
     readonlyStatus.textContent = `External player ${readonlyTimeline.playing ? 'playing' : 'paused'} · ${formatMillis(timeMillis)}`
 }
@@ -673,39 +774,23 @@ document.querySelector('#theme-control').addEventListener('change', event => app
 document.querySelector('#mode-control').addEventListener('change', event => applyMode(event.currentTarget.value))
 document.querySelector('#color-control').addEventListener('change', event => applyBrand(event.currentTarget.value))
 
-const escapeHtml = value => String(value)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;')
+const highlightWithPrism = (source, language) => Prism.highlight(
+    source,
+    Prism.languages[language] ?? Prism.languages.javascript,
+    language,
+)
 
-const codeTokenPattern = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/|`(?:\\.|[^`\\])*`|'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|<\/?[a-z][^>]*>|\b\d+(?:\.\d+)?\b|\b(?:const|let|var|function|return|if|else|for|of|new|true|false|null|undefined|async|await|import|from)\b)/gi
+const highlightMixedCode = source => source.split('\n').map(line => {
+    const language = /<\/?[a-z][^>]*>/i.test(line) ? 'markup' : 'javascript'
+    return highlightWithPrism(line, language)
+}).join('\n')
 
-const codeTokenClass = token => {
-    if (token.startsWith('//') || token.startsWith('/*')) return 'comment'
-    if (/^[`'"]/.test(token)) return 'string'
-    if (token.startsWith('<')) return 'tag'
-    if (/^\d/.test(token)) return 'number'
-    return 'keyword'
-}
-
-const highlightCode = source => {
-    const output = []
-    let cursor = 0
-
-    for (const match of source.matchAll(codeTokenPattern)) {
-        const token = match[0]
-        const index = match.index ?? cursor
-        output.push(escapeHtml(source.slice(cursor, index)))
-        output.push(`<span class="code-token-${codeTokenClass(token)}">${escapeHtml(token)}</span>`)
-        cursor = index + token.length
-    }
-
-    output.push(escapeHtml(source.slice(cursor)))
-    return output.join('')
-}
+const highlightCode = (source, language) => language === 'mixed'
+    ? highlightMixedCode(source)
+    : highlightWithPrism(source, language)
 
 document.querySelectorAll('pre code[data-language]').forEach(code => {
-    code.innerHTML = highlightCode(code.textContent)
+    const language = code.dataset.language ?? 'javascript'
+    code.classList.add(`language-${language}`)
+    code.innerHTML = highlightCode(code.textContent, language)
 })
