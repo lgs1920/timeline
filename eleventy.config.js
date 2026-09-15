@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-14
+ * Last modified: 2026-09-15
  *
  *
  * Copyright © 2026 LGS1920
@@ -21,6 +21,7 @@
  * @returns {Object} Eleventy directory configuration.
  */
 export default eleventyConfig => {
+    eleventyConfig.setServerOptions({port: 4174})
     eleventyConfig.addPassthroughCopy({'demo/src/assets/styles.css': 'assets/styles.css'})
     eleventyConfig.addPassthroughCopy({'demo/src/assets/app.bundle.js': 'assets/app.bundle.js'})
     eleventyConfig.addPassthroughCopy({'demo/src/assets/readme.bundle.js': 'assets/readme.bundle.js'})
