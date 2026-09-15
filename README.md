@@ -1,47 +1,56 @@
-# 🎬 `@lgs1920/timeline`
+# `@lgs1920/timeline`
 
 <p align="center">
-  <strong>A vivid, controlled timeline for Web Awesome applications.</strong><br>
-  Build editing surfaces with tracks, clips, playback, zoom, range selection, and drag-and-drop sources.
+  <strong>A controlled timeline Web Component for Web Awesome applications.</strong><br>
+  Build editing interfaces with tracks, clips, playback, range selection, zoom, and external clip sources.
 </p>
 
 <p align="center">
-  <a href="https://lgs1920.github.io/timeline/"><img src="https://img.shields.io/badge/demo-live-7c3aed?style=for-the-badge" alt="Live demo"></a>
-  <a href="https://www.npmjs.com/package/@lgs1920/timeline"><img src="https://img.shields.io/npm/v/@lgs1920/timeline?style=for-the-badge&color=06b6d4" alt="npm version"></a>
-  <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge" alt="MIT license"></a>
+  <a href="https://lgs1920.github.io/timeline/">Live demo</a> ·
+  <a href="https://lgs1920.github.io/timeline/docs/">API documentation</a> ·
+  <a href="https://www.npmjs.com/package/@lgs1920/timeline">npm</a> ·
+  <a href="https://github.com/lgs1920/timeline">Repository</a>
 </p>
 
-> **Designed for controlled state.** Your application owns the clock, persistence, and business rules. The component renders the timeline, emits `lgs1920-timeline-*` events, and accepts the state you write back.
+The application owns the playback clock, persistence, and business rules. The
+timeline renders the state provided by its host and emits namespaced events for
+user intent and editing results.
 
-[**Open the live demo →**](https://lgs1920.github.io/timeline/) · [**Read the full documentation →**](https://lgs1920.github.io/timeline/docs/) · [npm](https://www.npmjs.com/package/@lgs1920/timeline) · [Repository](https://github.com/lgs1920/timeline)
+The component is designed for Web Awesome applications. It uses Web Awesome
+components, themes, and design tokens for its controls and visual integration.
 
 The current release is `0.1.3`.
 
-## ✨ What you get
+## Overview
 
-| 🎞️ Editing surface | 🎛️ Application control |
+| Timeline editing | Host integration |
 | --- | --- |
 | Multiple tracks with video, audio, marker, or custom clip kinds | Controlled timeline, tracks, playhead, and playback state |
-| Move, resize, snap, reorder, extend, mask, and duplicate clips | Namespaced events with cancelable before/after lifecycles |
+| Move, resize, snap, reorder, extend, mask, and duplicate clips | Namespaced events with cancelable before and after lifecycles |
 | Range handles, frame stepping, keyboard shortcuts, and zoom | Web Component slots, external controls, and a React adapter |
 | Read-only projections for compact sequence summaries | Collision policies and application-defined clip actions |
 
-## Install
+## Installation
 
-The package requires Bun 1.4 or newer or Node.js 20 or newer. Install the package and load the Web Awesome stylesheet in the host application:
+The package supports Bun 1.4 or newer and Node.js 20 or newer.
 
 ```bash
 bun add @lgs1920/timeline
 ```
+
+Import the Web Awesome stylesheet in the host application, then register the
+timeline element:
 
 ```js
 import '@awesome.me/webawesome/dist/styles/webawesome.css'
 import '@lgs1920/timeline'
 ```
 
-The stylesheet belongs to the host application so it controls when Web Awesome styles are loaded. The package registers the Web Awesome components required by the timeline and registers `<lgs1920-timeline>`.
+The stylesheet remains in the host application so the host controls when the
+Web Awesome styles are loaded. The package registers the Web Awesome components
+required by the timeline and registers `<lgs1920-timeline>`.
 
-## Minimal usage
+## Quick start
 
 ```html
 <lgs1920-timeline id="timeline" aria-label="Video timeline"></lgs1920-timeline>
@@ -54,6 +63,7 @@ timeline.timeline = {
     durationMillis: 60_000,
     visible: true,
 }
+
 timeline.tracks = [
     {
         id: 'camera',
@@ -63,6 +73,7 @@ timeline.tracks = [
         ],
     },
 ]
+
 timeline.currentTimeMillis = 0
 timeline.playing = false
 
@@ -71,25 +82,16 @@ timeline.addEventListener('lgs1920-timeline-seek', event => {
 })
 ```
 
-The public timeline and range values use milliseconds. Clip `start` and `end` values use seconds. The element emits intent and interaction results; the host decides whether to persist them or connect them to playback.
+Timeline duration and range values use milliseconds. Clip `start` and `end`
+values use seconds. The component emits user intent and editing results; the
+host decides whether to persist the resulting state or connect it to a media
+player.
 
-On the initial display, the range start handle stays visible by default. When
-there is enough content before it, the component places it at 5% from the
-left edge of the visible timeline. Set `timeline.initialRangeStartVisible` to
-`false` to keep the default scroll position.
+## Controlled playback
 
-During playback, the playhead remains visible while the timeline follows the
-current time. Forward playback holds it at 75% of the visible surface while
-the selected end is still outside the viewport, then lets it move again once
-that end is visible. Reverse playback applies the mirrored rule at 25% while
-the selected start remains outside the viewport.
-
-## ▶️ Connect external playback
-
-Playback is controlled by the host. The component emits an intent; the host
-starts or stops its own media clock and writes the resulting position back
-through `currentTimeMillis`. Scrubbing follows the same loop through the
-`seek` event:
+The component does not advance the application clock. It emits playback
+requests, while the host starts or stops its own clock and writes the current
+position back through `currentTimeMillis`.
 
 ```js
 timeline.addEventListener('lgs1920-timeline-play', () => {
@@ -113,12 +115,47 @@ media.addEventListener('timeupdate', () => {
 })
 ```
 
-The `play`, `pause`, `stop`, `restart`, and `seek` events are requests from the
-timeline UI. The component does not advance the application clock by itself.
+The same loop applies to `stop`, `restart`, and frame navigation. For direct
+host-controlled movement without emitting a seek event, use `setTime()`,
+`advance(durationMillis)`, or `rewind(durationMillis)`.
 
-## 🪄 Add clips from an external source
+## Tracks and clips
 
-Clip sources can live above the timeline in a palette, toolbar, or application menu. They do not need to be placed in a timeline slot. Make the source draggable, serialize a clip option with the exported MIME constant, and drop it on an editable track:
+Tracks are serializable objects identified by a stable `id`. Each track can
+define its label, icon, color classes, visibility, accepted clip kinds, and
+editing policies. Clips use stable identifiers and second-based `start` and
+`end` positions.
+
+```js
+timeline.tracks = [
+    {
+        id: 'camera#main',
+        label: 'Main camera',
+        icon: 'video',
+        clips: [
+            {id: 'intro#001', label: 'Intro', kind: 'video', start: 0, end: 8},
+            {id: 'scene#002', label: 'Scene', kind: 'video', start: 12, end: 36},
+        ],
+    },
+    {
+        id: 'music',
+        label: 'Music',
+        icon: 'music',
+        clips: [
+            {id: 'music#001', label: 'Opening theme', kind: 'audio', start: 0, end: 42},
+        ],
+    },
+]
+```
+
+Set `interactive: false` for a read-only projection. Set `editable: false` to
+keep the interactive surface while disabling editing operations.
+
+## External clip sources
+
+Clip sources can live in a toolbar, palette, or application menu. They do not
+need to be placed in a timeline slot. Serialize a clip option with the
+exported MIME constant and drop it on an editable track:
 
 ```html
 <wa-button id="clip-source" draggable="true">
@@ -148,7 +185,33 @@ document.querySelector('#clip-source').addEventListener('dragstart', event => {
 })
 ```
 
-The pointer represents the clip center during the drag, then the timeline applies the same snap and collision rules used by internal clip dragging. While the source is over a track, the timeline previews the placement; an occupied or otherwise insufficient track is shown in red. If `add-clip` reports `detail.clip === null`, let the user choose another compatible track or drop position. The demo creates a fresh random clip source on click, then lets the user drag it onto the timeline. The complete slot and event reference remains in the [documentation](https://lgs1920.github.io/timeline/docs/).
+The pointer represents the clip center during the drag. Outside a drop track,
+the host can show a floating drag representation; over a compatible track, the
+timeline shows the clip preview. The timeline applies the configured snap and
+collision rules and previews rejected placements. If
+the resulting `add-clip` event has `detail.clip === null`, the host can ask the
+user to choose another track or drop position.
+
+## Range playback and built-in controls
+
+Set `rangeStartMillis` and `rangeEndMillis` to limit the active playback range.
+Set `showTimeSlider` or `showZoomSlider` to display the component's built-in
+controls. External controls can use the `timeline-ruler` and
+`timeline-controls` slots when the host needs a different layout.
+
+```js
+timeline.timeline = {
+    durationMillis: 60_000,
+    rangeStartMillis: 6_000,
+    rangeEndMillis: 24_000,
+    showTimeSlider: true,
+    showZoomSlider: true,
+}
+```
+
+The start and end handles remain visible as the viewport moves. During
+playback, the component follows the playhead when the active range extends
+beyond the visible surface.
 
 ## React adapter
 
@@ -160,7 +223,17 @@ import {LGS1920TimelineReact} from '@lgs1920/timeline/react'
 export const VideoTimeline = props => <LGS1920TimelineReact {...props} />
 ```
 
-Use the same `timeline`, `tracks`, `currentTimeMillis`, and `playing` props as the Web Component. Event callbacks receive `(detail, event)`.
+The adapter accepts the same `timeline`, `tracks`, `currentTimeMillis`, and
+`playing` model as the Web Component. Event callbacks receive `(detail, event)`.
+The complete callback mapping is in the [API documentation](https://lgs1920.github.io/timeline/docs/).
+
+## Documentation
+
+- [Complete component reference](https://lgs1920.github.io/timeline/docs/): properties, data models, slots, events, editing behavior, CSS parts, methods, and accessibility.
+- [Functional, technical, and software specifications](docs/specifications.md)
+- [Live demo](https://lgs1920.github.io/timeline/): controlled playback, clip editing, read-only rendering, range playback, slots, and keyboard interaction.
+- [NPM package](https://www.npmjs.com/package/@lgs1920/timeline)
+- [Source repository](https://github.com/lgs1920/timeline)
 
 ## Development
 
@@ -170,49 +243,43 @@ bun run verify
 bun run pack:check
 ```
 
-The verification command runs the tests, linting, package build, consumer export check, and static demo build. Build and serve the demo independently with:
+The verification command runs the tests, linting, package build, consumer
+export check, and static demo build. Build and serve the demo independently:
 
 ```bash
 bun run demo:build
 bun run demo:serve
 ```
 
-The local demo is served at `http://localhost:4173`. The generated Pages directory is `demo/dist/`; the package bundle is generated in `dist/`. Both are build outputs and must not be edited manually.
+The local demo is served at `http://localhost:4174`. The generated Pages
+directory is `demo/dist/`; the package bundle is generated in `dist/`. These
+directories are build outputs and must not be edited manually.
 
-The repository rules and shared component delivery skill are available through
-[AGENTS.md](AGENTS.md) and the [skills directory](skills/). After cloning,
-activate the local Git hooks once:
+After cloning, install the repository hooks once if you need the project
+header and staged-file checks:
 
 ```bash
 bun run git:hooks:install
 ```
 
-When local guidance links are configured, the pre-commit hook copies their
-targets into the commit and the post-commit hook restores the links. The same
-pre-commit hook updates staged source-file headers. A standalone clone remains
-self-contained; use `bun run headers:check` to verify staged headers without
-changing files.
+## Release
 
-## Release and publication
-
-Preview the next release and its annotated tag message without changing files:
+Preview release metadata before changing the working tree:
 
 ```bash
 bun run publish --preview
 bun run publish --minor --preview
 ```
 
-After reviewing the preview on a clean, validated working tree, the release script can update the version, commit the release, create the annotated tag, and push it:
+After reviewing the preview on a clean, validated working tree, the release
+script can update the version, create the annotated tag, and publish the
+package:
 
 ```bash
 bun run publish
 bun run publish --minor
 bun run publish --major
 ```
-
-The tag workflow reruns verification, checks that the tag matches `package.json`, publishes `@lgs1920/timeline` to npm using the `NPM_TOKEN` repository secret, and creates the GitHub release from the tag notes. Pushes to `main` build and deploy the demo to GitHub Pages.
-
-The complete API reference, including properties, track and clip models, slots, events, editing behavior, CSS tokens, methods, and accessibility notes, is available in the [documentation page of the demo](https://lgs1920.github.io/timeline/docs/). The same reference is also maintained in the [LGS1920 site documentation](https://github.com/lgs1920/site/blob/main/docs/lgs1920-timeline.md).
 
 ## License
 

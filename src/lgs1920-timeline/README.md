@@ -1,12 +1,37 @@
-# LGS1920 Timeline
+# LGS1920 Timeline component reference
 
-`lgs1920-timeline` is a generic video timeline Web Component designed for Web
-Awesome 3 and Font Awesome. It provides a time ruler, a playhead, editable
-track names, track actions, clip rendering, scrubbing,
-reordering, and playback controls.
+`@lgs1920/timeline` is a controlled Web Component for building timeline-based
+editing interfaces. It provides a time ruler, playhead, tracks, clips, range
+selection, scrubbing, playback controls, keyboard interaction, and drag and
+drop support.
 
-The implementation is self-contained JavaScript and CSS for this Web Component,
-with an optional React wrapper exposing the same public model.
+The application remains the source of truth. It supplies the timeline and
+track state, responds to component events, and writes controlled updates back
+to the element. The package includes an optional React adapter with the same
+public model.
+
+This document is the complete API reference. For installation, a short
+integration example, and a guided overview, start with the [package README](../../README.md).
+The detailed [functional, technical, and software specifications](../../docs/specifications.md)
+describe the behavior, architecture, and maintenance requirements behind this
+API.
+
+## Reference map
+
+- [Installation](#installation)
+- [Functional, technical, and software specifications](../../docs/specifications.md)
+- [Usage](#usage)
+- [Public properties](#public-properties)
+- [React wrapper](#react-wrapper)
+- [Slots](#slots)
+- [Keyboard shortcuts](#keyboard-shortcuts)
+- [Track names and controlled editing](#track-names-and-controlled-editing)
+- [Clip and track editing](#clip-and-track-editing)
+- [Events](#events)
+- [CSS customization](#css-customization)
+- [Methods](#methods)
+- [Accessibility](#accessibility)
+- [License](#license)
 
 ## Internal architecture
 
@@ -394,9 +419,11 @@ above it. If it belongs inside the component header, place it in the
 `timeline-toolbar` slot. In both cases, the drag payload must use the exported
 `CLIP_OPTION_DRAG_MIME` constant and contain a JSON clip option. The component
 uses the pointer as the generated clip's center, then uses the same snap and
-collision engine as an internal clip drag. During the native drag,
-the placement is previewed on the track; an occupied or otherwise insufficient
-track is shown in red. The option is accepted on every compatible editable track:
+collision engine as an internal clip drag. During the native drag, the
+placement is previewed only while the pointer is over a track; the host can
+show a floating drag representation outside the drop zone. An occupied or
+otherwise insufficient track is shown in red. The option is accepted on every
+compatible editable track:
 
 ```html
 <wa-button id="clip-source" draggable="true">Add a clip by dragging it</wa-button>
@@ -572,32 +599,32 @@ has focus.
 
 | Focus or context | Shortcut | Action |
 | --- | --- | --- |
-| Timeline surface | `Space` | Toggle local playback. |
-| Timeline surface | `Home` / `End` | Move the playhead to the selected range start or end. |
-| Timeline surface | `Shift+ArrowLeft` / `Shift+ArrowRight` | Move the playhead to the selected range boundary. |
-| Timeline surface | `Shift+ArrowUp` / `Shift+ArrowDown` | Scroll tracks to the top or bottom. |
-| Timeline surface | `ArrowUp` / `ArrowDown` | Increase or decrease row height. |
-| Timeline surface | `ArrowLeft` / `ArrowRight` | Zoom the ruler horizontally when no clip is selected. |
-| Scrollbar rail | `PageUp` / `PageDown` and arrows | Scroll one viewport in the focused direction. |
-| Playhead grip | `ArrowLeft` / `ArrowRight` | Move by `keyboardStepSeconds`. |
-| Playhead grip | `Shift+ArrowLeft` / `Shift+ArrowRight` | Move by ten keyboard steps. |
-| Playhead grip | `Alt+ArrowRight` / `Alt+ArrowLeft` | Move to the range minimum or maximum. |
-| Range handle | `ArrowLeft` / `ArrowRight` | Move the focused boundary by one keyboard step. |
-| Range handle | `Shift+ArrowLeft` / `Shift+ArrowRight` | Move the focused boundary by ten keyboard steps. |
-| Editable clip | `ArrowLeft` / `ArrowRight` | Move the clip by one rendered pixel. |
-| Editable clip | `Alt+ArrowLeft` / `Alt+ArrowRight` | Move the clip by ten rendered pixels. |
-| Editable clip | `Delete` / `Backspace` | Delete the focused clip. |
-| Editable clip | `Mod+C` | Start a copy placement ghost; click to place it. |
-| Editable clip | `Mod+D` | Duplicate the clip immediately after itself. |
-| Editable clip | `M` | Mask or reveal the clip. |
-| Editable clip | `V` | Enable or disable the clip. |
-| Non-movable clip | `Enter` / `Space` | Select the clip. |
-| Clip resize handle | `ArrowLeft` / `ArrowRight` | Resize the focused edge by one keyboard step. |
-| Clip resize handle | `Shift+ArrowLeft` / `Shift+ArrowRight` | Resize the focused edge by ten keyboard steps. |
-| Any active edit | `Escape` | Cancel a copy, drag, resize, or context menu; clear clip selection. |
-| Legend divider | Horizontal arrows | Resize the track legend. |
-| Legend divider | `Shift` + arrows, `Home`, `End`, `Enter` | Change the resize step, select the minimum or maximum, or collapse and restore the legend. |
-| Track label editor | `Enter` / `Escape` | Commit or cancel the label edit. |
+| Timeline surface | <kbd>Space</kbd> | Toggle local playback. |
+| Timeline surface | <kbd>Home</kbd> / <kbd>End</kbd> | Move the playhead to the selected range start or end. |
+| Timeline surface | <kbd>Shift</kbd>+<kbd>ArrowLeft</kbd> / <kbd>Shift</kbd>+<kbd>ArrowRight</kbd> | Move the playhead to the selected range boundary. |
+| Timeline surface | <kbd>Shift</kbd>+<kbd>ArrowUp</kbd> / <kbd>Shift</kbd>+<kbd>ArrowDown</kbd> | Scroll tracks to the top or bottom. |
+| Timeline surface | <kbd>ArrowUp</kbd> / <kbd>ArrowDown</kbd> | Increase or decrease row height. |
+| Timeline surface | <kbd>ArrowLeft</kbd> / <kbd>ArrowRight</kbd> | Zoom the ruler horizontally when no clip is selected. |
+| Scrollbar rail | <kbd>PageUp</kbd> / <kbd>PageDown</kbd> and <kbd>ArrowUp</kbd> / <kbd>ArrowDown</kbd> | Scroll one viewport in the focused direction. |
+| Playhead grip | <kbd>ArrowLeft</kbd> / <kbd>ArrowRight</kbd> | Move by `keyboardStepSeconds`. |
+| Playhead grip | <kbd>Shift</kbd>+<kbd>ArrowLeft</kbd> / <kbd>Shift</kbd>+<kbd>ArrowRight</kbd> | Move by ten keyboard steps. |
+| Playhead grip | <kbd>Alt</kbd>+<kbd>ArrowRight</kbd> / <kbd>Alt</kbd>+<kbd>ArrowLeft</kbd> | Move to the range minimum or maximum. |
+| Range handle | <kbd>ArrowLeft</kbd> / <kbd>ArrowRight</kbd> | Move the focused boundary by one keyboard step. |
+| Range handle | <kbd>Shift</kbd>+<kbd>ArrowLeft</kbd> / <kbd>Shift</kbd>+<kbd>ArrowRight</kbd> | Move the focused boundary by ten keyboard steps. |
+| Editable clip | <kbd>ArrowLeft</kbd> / <kbd>ArrowRight</kbd> | Move the clip by one rendered pixel. |
+| Editable clip | <kbd>Alt</kbd>+<kbd>ArrowLeft</kbd> / <kbd>Alt</kbd>+<kbd>ArrowRight</kbd> | Move the clip by ten rendered pixels. |
+| Editable clip | <kbd>Delete</kbd> / <kbd>Backspace</kbd> | Delete the focused clip. |
+| Editable clip | <kbd>Mod</kbd>+<kbd>C</kbd> | Start a copy placement ghost; click to place it. |
+| Editable clip | <kbd>Mod</kbd>+<kbd>D</kbd> | Duplicate the clip immediately after itself. |
+| Editable clip | <kbd>M</kbd> | Mask or reveal the clip. |
+| Editable clip | <kbd>V</kbd> | Enable or disable the clip. |
+| Non-movable clip | <kbd>Enter</kbd> / <kbd>Space</kbd> | Select the clip. |
+| Clip resize handle | <kbd>ArrowLeft</kbd> / <kbd>ArrowRight</kbd> | Resize the focused edge by one keyboard step. |
+| Clip resize handle | <kbd>Shift</kbd>+<kbd>ArrowLeft</kbd> / <kbd>Shift</kbd>+<kbd>ArrowRight</kbd> | Resize the focused edge by ten keyboard steps. |
+| Any active edit | <kbd>Escape</kbd> | Cancel a copy, drag, resize, or context menu; clear clip selection. |
+| Legend divider | <kbd>ArrowLeft</kbd> / <kbd>ArrowRight</kbd> | Resize the track legend. |
+| Legend divider | <kbd>Shift</kbd> + <kbd>ArrowLeft</kbd> / <kbd>ArrowRight</kbd>, <kbd>Home</kbd>, <kbd>End</kbd>, <kbd>Enter</kbd> | Change the resize step, select the minimum or maximum, or collapse and restore the legend. |
+| Track label editor | <kbd>Enter</kbd> / <kbd>Escape</kbd> | Commit or cancel the label edit. |
 
 `Mod` means `Ctrl` on Windows and Linux, and `Command` on macOS. On the time
 surface, `Shift` or `Alt` plus the wheel changes row height by 4 pixels,
