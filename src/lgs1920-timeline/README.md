@@ -8,6 +8,25 @@ reordering, and playback controls.
 The implementation is self-contained JavaScript and CSS for this Web Component,
 with an optional React wrapper exposing the same public model.
 
+## Internal architecture
+
+The public element remains the single integration boundary. Its implementation
+is split by responsibility:
+
+- `LGS1920TimelineRendering.js` builds the visual structure and clip elements.
+- `LGS1920TimelineEditing.js` coordinates move, resize, snapping, and collision
+  policies.
+- `LGS1920TimelineClipData.js` contains serializable clip operations and the
+  optimized layout checks used by editing.
+- `LGS1920TimelineState.js` compares controlled row snapshots.
+- `LGS1920TimelineDomCache.js` owns indexes for dynamic, clip, and scrollbar
+  elements.
+- `LGS1920TimelineInteraction.js` and `LGS1920TimelineClipScroll.js` handle
+  input and edge scrolling.
+
+These modules are internal implementation details. The custom element name,
+public properties, clip units, and `lgs1920-timeline-*` events remain unchanged.
+
 ## Installation
 
 Import the custom element once in the application entry point:
@@ -124,6 +143,7 @@ clock integration.
 | `currentFrameIndex` | `number` | Currently published absolute frame index. |
 | `rangeStartMillis` | `number` | Video range start in milliseconds. Defaults to `0`. |
 | `rangeEndMillis` | `number` | Video range end in milliseconds. Defaults to `durationMillis`. |
+| `initialRangeStartVisible` | `boolean` | Keeps the start handle visible on the initial mount and places it at 5% from the left when there is room. Defaults to `true`. |
 | `visible` | `boolean` | Controls timeline visibility. Defaults to `true`. |
 | `zoomPercent` | `number` | Initial ruler zoom up to `500`; the minimum is calculated from the available surface width, full timeline duration, and right safety margin. |
 | `legendMinWidth` | `number` | Minimum track legend width in pixels. Defaults to `50`. |
@@ -204,13 +224,49 @@ The controlled playhead position in milliseconds.
 The controlled playback state. The component emits `play` and `pause`; the
 host updates this property after applying the requested state.
 
+The component does not advance the application clock. Connect the events to the
+host media player and write its clock back to `currentTimeMillis`:
+
+```js
+timeline.addEventListener('lgs1920-timeline-play', () => {
+    timeline.playing = true
+    media.play()
+})
+
+timeline.addEventListener('lgs1920-timeline-pause', () => {
+    timeline.playing = false
+    media.pause()
+})
+
+timeline.addEventListener('lgs1920-timeline-seek', event => {
+    const timeMillis = event.detail.timeMillis
+    timeline.currentTimeMillis = timeMillis
+    media.currentTime = timeMillis / 1000
+})
+
+media.addEventListener('timeupdate', () => {
+    timeline.currentTimeMillis = media.currentTime * 1000
+})
+```
+
+While `playing` is `true`, the component keeps the playhead visible without
+letting it disappear at the edge of a long timeline. During forward playback,
+the playhead can move normally until it reaches 75% of the visible surface. If
+the selected range end is still outside the viewport, the timeline scrolls
+under the stationary playhead. Once the range end is visible, the playhead
+moves again. Reverse playback mirrors this behavior at 25% of the viewport
+while the selected range start remains outside the viewport.
+
 When enabled, the built-in time slider emits the normal `seek` lifecycle with
 `source: 'timeline-slider'`. The built-in zoom slider emits the `zoom-change`
 lifecycle with `source: 'timeline-zoom-slider'` and a `zoomPercent` value.
+The time slider uses the Studio-compatible `label-at-start` and `width-auto`
+layout attributes so its label and track stay aligned in compact timelines.
 
 The icon transport controls are, in order, go to start, previous frame,
-play/pause, stop, next frame, and go to end. The component emits the transport
-request but does not advance the application's clock itself. They use the Web Awesome
+play/pause, stop, next frame, and go to end. The start and end buttons update the
+component playhead to the selected range boundaries after the transport request is
+accepted; the host still owns the external playback clock. They use the Web Awesome
 `brand` variant with `plain` appearance. Previous and
 next frame details contain `frameIndex`, `frameCount`,
 `frameIntervalMillis`, `timeMillis`, `progress`, `settled`, and a `source`
@@ -243,7 +299,8 @@ Options displayed by the clip insertion menu. Each option can contain
 and a `clip` object containing application fields to copy to the inserted clip.
 When `clipOptions` is null, the menu exposes one generic `Clip` option. Every
 option can be dragged from the menu and dropped on a compatible editable track;
-the drop position becomes the clip start instead of the current playhead. The
+the pointer represents the clip center instead of placing its beginning edge at
+the pointer. The
 component always assigns an unused clip identifier when an insertion option
 reuses an existing identifier.
 
@@ -289,6 +346,8 @@ Callbacks receive `(detail, event)`, where `detail` is the event payload and
 Slots customize labels, icons, controls, track actions, and clip content. A
 global slot is used for every matching element. A
 targeted slot takes the form `{slot}-{id}` and overrides the global slot.
+The built-in header and transport controls use compact `s` plain buttons so
+slotted actions can sit beside them without an extra frame.
 
 ### Layout slots
 
@@ -334,8 +393,10 @@ The source can live outside the timeline, for example in a palette or toolbar
 above it. If it belongs inside the component header, place it in the
 `timeline-toolbar` slot. In both cases, the drag payload must use the exported
 `CLIP_OPTION_DRAG_MIME` constant and contain a JSON clip option. The component
-places the generated clip at the drop position and accepts the option on every
-compatible editable track:
+uses the pointer as the generated clip's center, then uses the same snap and
+collision engine as an internal clip drag. During the native drag,
+the placement is previewed on the track; an occupied or otherwise insufficient
+track is shown in red. The option is accepted on every compatible editable track:
 
 ```html
 <wa-button id="clip-source" draggable="true">Add a clip by dragging it</wa-button>
@@ -912,10 +973,14 @@ lgs1920-timeline::part(clip) {
 | `--lgs-timeline-range-handle-width` | Video range handle width. |
 | `--lgs-timeline-range-handle-color` | Video range handle color. |
 | `--lgs-timeline-range-end-color` | Video range end handle color. |
+| `--lgs-timeline-range-selection-color` | Light-blue highlight color for the recorded range in the time ruler. |
+| `--lgs-timeline-range-selection-height` | Height of the compact recorded-range highlight in the time ruler. |
+| `--lgs-timeline-range-selection-overflow` | Horizontal overflow on each side of the recorded-range highlight. |
 | `--lgs-timeline-range-handle-focus-ring` | Video range handle focus ring. |
 | `--lgs-timeline-clip-padding` | Clip horizontal padding. |
 | `--lgs-timeline-clip-min-width` | Minimum clip width. |
 | `--lgs-timeline-clip-handle-width` | Clip resize handle width. |
+| `--lgs-timeline-clip-resize-grab-color` | Light overlay shown across the full clip height while resizing. |
 | `--lgs-timeline-clip-handle-color` | Clip resize handle color. |
 | `--lgs-timeline-clip-handle-hover-color` | Clip resize handle hover color. |
 | `--lgs-timeline-clip-handle-focus-ring` | Clip resize handle focus ring. |
@@ -952,6 +1017,8 @@ also provides these small imperative helpers:
 | --- | --- |
 | `applyControlledState(state)` | Apply timeline, tracks, clip options, playback, and playhead values in one controlled synchronization. |
 | `setTime(timeMillis)` | Move the playhead without emitting `seek`. |
+| `advance(durationMillis)` | Move the playhead forward by a duration in milliseconds without emitting `seek`; the active range is respected. |
+| `rewind(durationMillis)` | Move the playhead backward by a duration in milliseconds without emitting `seek`; the active range is respected. |
 | `setPlayheadTimeMillis(timeMillis)` | Update the playhead and optional time slider without refreshing the current-time label or transport controls. |
 | `isCurrentTimeNearViewportEdge(padding)` | Check whether the playhead is close enough to a viewport edge to require following. |
 | `ensureCurrentTimeVisible(padding)` | Scroll the horizontal surface just enough to keep the playhead visible. |
