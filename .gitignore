@@ -1,5 +1,8 @@
 node_modules/
 dist/
+/.agents/
+/agent/
+/.aiassistant/skills
 coverage/
 *.tgz
 .idea/

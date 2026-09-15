@@ -26,9 +26,12 @@
   "sideEffects": true,
   "scripts": {
     "build": "bun scripts/build.mjs",
+    "headers:update": "bun scripts/update-file-headers.mjs --staged",
+    "headers:check": "bun scripts/update-file-headers.mjs --staged --check",
     "demo:assets": "bun scripts/build-demo.mjs",
     "demo:build": "bun run build && bun run demo:assets && bunx --bun @11ty/eleventy && bun scripts/build-demo-pages.mjs",
     "demo:serve": "bun run demo:build && bunx --bun @11ty/eleventy --serve",
+    "git:hooks:install": "git config core.hooksPath .githooks",
     "lint": "bunx --bun oxlint entries src demo scripts test vitest.config.cjs --deny-warnings",
     "pack:check": "bun pm pack --dry-run",
     "prepack": "bun run verify",
