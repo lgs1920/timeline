@@ -7,8 +7,8 @@
  * Author : LGS1920 Team
  * email: studio@lgs1920.fr
  *
- * Created on: 2026-08-30
- * Last modified: 2026-09-14
+ * Created on: 2026-09-14
+ * Last modified: 2026-09-15
  *
  *
  * Copyright © 2026 LGS1920
@@ -18,6 +18,8 @@
     /* Timeline host display mode. */
     display: block;
     position: relative;
+    user-select: none;
+    -webkit-user-select: none;
     /* Timeline host minimum width. */
     min-width: var(--lgs-timeline-min-width, 352px);
     /* Timeline host minimum height. */
@@ -123,9 +125,15 @@
     /* Timeline video range handle width. */
     --lgs-timeline-range-handle-width: 10px;
     /* Timeline video range handle color. */
-    --lgs-timeline-range-handle-color: var(--wa-color-brand-fill-loud, var(--wa-color-brand));
+    /* Video range start handle color. Semantic tokens keep it green in every theme. */
+    --lgs-timeline-range-handle-color: var(--wa-color-success-fill-loud, var(--wa-color-green-60, #22c55e));
     /* Timeline video range end handle color. */
-    --lgs-timeline-range-end-color: var(--wa-color-red-90, #ffdde0);
+    /* Video range end handle color. Semantic tokens keep it red in every theme. */
+    --lgs-timeline-range-end-color: var(--wa-color-danger-fill-loud, var(--wa-color-red-60, #ef4444));
+    /* Light-blue highlight for the recorded range in the time ruler. */
+    --lgs-timeline-range-selection-color: color-mix(in srgb, var(--wa-color-blue-70, #6eb3ff) 24%, transparent);
+    --lgs-timeline-range-selection-height: 0.5rem;
+    --lgs-timeline-range-selection-overflow: 3px;
     /* Timeline video range handle focus ring. */
     --lgs-timeline-range-handle-focus-ring: 2px solid var(--wa-color-focus, var(--wa-color-brand));
     /* Timeline clip horizontal padding. */
@@ -138,6 +146,8 @@
     --lgs-timeline-clip-handle-color: var(--wa-color-on-loud, white);
     /* Timeline clip edge handle hover color. */
     --lgs-timeline-clip-handle-hover-color: var(--wa-color-on-loud, white);
+    /* Timeline clip resize grab zone color. */
+    --lgs-timeline-clip-resize-grab-color: color-mix(in srgb, white 34%, transparent);
     /* Timeline clip edge handle focus ring. */
     --lgs-timeline-clip-handle-focus-ring: 2px solid var(--wa-color-focus, var(--wa-color-brand));
     /* Horizontal padding for the compact track-title editor. */
@@ -192,6 +202,8 @@
         padding: var(--lgs-timeline-padding);
         overflow: hidden;
         color: var(--lgs-timeline-text-color);
+        user-select: none;
+        -webkit-user-select: none;
         background: var(--lgs-timeline-background);
         border: 1px solid var(--lgs-timeline-border-color);
         border-radius: var(--lgs-timeline-radius);
@@ -309,10 +321,10 @@
     & slot[name='custom-menu'],
     & .lgs1920-wa-timeline__transport {
         box-sizing: border-box;
-        margin: 2px;
-        padding: 2px;
-        border: 1px solid var(--wa-color-brand-border-normal);
-        border-radius: var(--wa-border-radius-s);
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
     }
 
     & .lgs1920-wa-timeline__header-start > slot[name='header'] {
@@ -622,12 +634,17 @@
     }
 
     & .lgs1920-wa-timeline__legend-row.lgs1920-wa-timeline__legend-row--clip-drop-target {
-        background: color-mix(in srgb, var(--lgs-timeline-track-drop-indicator-color) 12%, var(--lgs-timeline-surface-color));
-        outline: 1px solid var(--lgs-timeline-track-drop-indicator-color);
+        color: var(--wa-color-success-on-normal);
+        background: color-mix(in srgb, var(--wa-color-success-fill-normal) 38%, var(--lgs-timeline-surface-color));
+        border-bottom-color: var(--wa-color-success-border-normal);
+        outline: 1px solid var(--wa-color-success-border-normal);
         outline-offset: -1px;
     }
 
     & .lgs1920-wa-timeline__legend-row.lgs1920-wa-timeline__legend-row--clip-drop-rejected {
+        color: var(--wa-color-danger-on-normal);
+        background: color-mix(in srgb, var(--wa-color-danger-fill-normal) 56%, var(--lgs-timeline-surface-color));
+        border-bottom-color: var(--wa-color-danger-border-normal);
         outline: 1px solid var(--wa-color-danger-border-normal);
         outline-offset: -1px;
     }
@@ -957,12 +974,32 @@
         box-shadow: var(--wa-shadow-m);
     }
 
+    & .lgs1920-wa-timeline__range-selection {
+        position: absolute;
+        z-index: 0;
+        right: auto;
+        bottom: var(--lgs-gutter-xxs, 0.25rem);
+        left: 0;
+        width: 0;
+        height: var(--lgs-timeline-range-selection-height);
+        border: 0;
+        border-radius: var(--wa-border-radius-s);
+        background: var(--lgs-timeline-range-selection-color);
+        pointer-events: none;
+    }
+
+    & .lgs1920-wa-timeline__surface--read-only :is(.lgs1920-wa-timeline__playhead-grip, .lgs1920-wa-timeline__range-handle) {
+        cursor: default;
+        pointer-events: none;
+    }
+
     & .lgs1920-wa-timeline__timeline-scrubber {
         position: absolute;
         z-index: 8;
         inset-block-start: 0;
         inset-inline-start: 0;
-        display: block;
+        display: flex;
+        align-items: center;
         box-sizing: border-box;
         width: 100%;
         min-width: 0;
@@ -984,23 +1021,66 @@
     }
 
     & .lgs1920-wa-timeline__time-slider {
-        display: block;
+        display: grid;
         box-sizing: border-box;
+        flex: 1 1 auto;
         width: 100%;
         min-width: 0;
-        padding-block: var(--lgs-gutter-xxs, 0.25rem) 6px;
+        padding-block: 0 2px;
         padding-inline: var(--lgs-gutter-s, 0.75rem);
         pointer-events: auto;
         /* Compact the time slider track inside the ruler header. */
         --track-size: 0.25rem;
+        /* Keep the temporal scrubber thumb vertical and clear of the ruler ticks. */
+        --thumb-width: 0.6rem;
+        --thumb-height: 1.1rem;
     }
 
     & .lgs1920-wa-timeline__time-slider::part(slider) {
+        width: 100%;
+        min-width: 0;
         margin-block-start: 0;
     }
 
+    & .lgs1920-wa-timeline__time-slider::part(thumb) {
+        border-radius: var(--wa-border-radius-xs, 0.0625rem);
+    }
+
+    /* Match Studio's labelled slider layout for controls embedded in the timeline. */
+    & wa-slider[label-at-start] {
+        display: grid;
+        align-items: center;
+        flex: 1;
+        grid-template-columns: 50% 50%;
+        gap: var(--lgs-gutter-s, 0.75rem);
+    }
+
+    & wa-slider[label-at-start][width-auto] {
+        display: grid;
+        flex: 0 1 auto;
+        grid-template-columns: auto minmax(8rem, 10rem);
+        gap: var(--lgs-gutter-s, 0.75rem);
+        width: auto;
+        max-width: calc(100% - 2.25rem - var(--lgs-gutter-s, 0.75rem));
+    }
+
+    /* The ruler scrubber owns the available width while keeping its icon in a compact first column. */
     & .lgs1920-wa-timeline__time-slider[label-at-start][width-auto] {
+        flex: 1 1 auto;
         grid-template-columns: auto minmax(0, 1fr);
+        width: 100%;
+        max-width: none;
+        position: relative;
+        z-index: 1;
+    }
+
+    & wa-slider[label-at-start]::part(label) {
+        margin-block-end: 0;
+    }
+
+    & wa-slider[label-at-start]::part(hint) {
+        grid-column: 1 / -1;
+        margin-block-start: 0;
     }
 
     & [data-timeline-ruler-insertion-point] {
@@ -1045,6 +1125,7 @@
     & .lgs1920-wa-timeline__tick {
         position: absolute;
         top: 0;
+        z-index: 1;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1084,6 +1165,7 @@
     & .lgs1920-wa-timeline__minor-tick {
         position: absolute;
         bottom: 0;
+        z-index: 1;
         width: 1px;
         height: var(--lgs-timeline-minor-tick-height);
         background: color-mix(in srgb, var(--lgs-timeline-text-color) 18%, transparent);
@@ -1180,7 +1262,8 @@
     }
 
     & .lgs1920-wa-timeline__playhead {
-        z-index: 6;
+        /* Keep the blue playhead targetable when it overlaps a range handle. */
+        z-index: 22;
         width: var(--lgs-timeline-playhead-width);
         overflow: visible;
         background: transparent;
@@ -1227,11 +1310,11 @@
     }
 
     & .lgs1920-wa-timeline__range-handle--end > .lgs1920-wa-timeline__range-grip > :is(slot, wa-icon) {
-        color: color-mix(in srgb, var(--lgs-timeline-range-end-color) 76%, black);
+        color: var(--wa-color-danger-on-loud, white);
     }
 
     & .lgs1920-wa-timeline__range-handle--start > .lgs1920-wa-timeline__range-grip > :is(slot, wa-icon) {
-        color: color-mix(in srgb, var(--lgs-timeline-range-handle-color) 76%, black);
+        color: var(--wa-color-success-on-loud, white);
     }
 
     & .lgs1920-wa-timeline__playhead > .lgs1920-wa-timeline__playhead-grip > wa-icon {
@@ -1395,6 +1478,10 @@
 
     & .lgs1920-wa-timeline__clip.lgs1920-wa-timeline__clip--dragging {
         opacity: 0.75;
+    }
+
+    & .lgs1920-wa-timeline__clip.lgs1920-wa-timeline__clip--resizing .lgs1920-wa-timeline__clip-handle {
+        background: var(--lgs-timeline-clip-resize-grab-color);
     }
 
     & .lgs1920-wa-timeline__clip.lgs1920-wa-timeline__clip--drag-ghost {
@@ -1687,10 +1774,10 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 1.75rem;
-        min-width: 1.75rem;
-        height: 1.75rem;
-        min-height: 1.75rem;
+        width: 1.5rem;
+        min-width: 1.5rem;
+        height: 1.5rem;
+        min-height: 1.5rem;
         margin: 0;
         padding: 0;
         cursor: pointer;
@@ -1698,10 +1785,10 @@
 
     & .lgs1920-wa-timeline__timeline-tool::part(button) {
         box-sizing: border-box;
-        width: 1.75rem;
-        min-width: 1.75rem;
-        height: 1.75rem;
-        min-height: 1.75rem;
+        width: 1.5rem;
+        min-width: 1.5rem;
+        height: 1.5rem;
+        min-height: 1.5rem;
         margin: 0;
         padding: 0;
     }

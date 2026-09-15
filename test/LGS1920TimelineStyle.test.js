@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-14
+ * Last modified: 2026-09-15
  *
  *
  * Copyright © 2026 LGS1920
@@ -36,5 +36,31 @@ describe('lgs1920-timeline styles', () => {
         expect(styleSource).toContain('& .lgs1920-wa-timeline__surface-controls {')
         expect(styleSource).toContain('& .lgs1920-wa-timeline__clip {')
         expect(styleSource).toContain('& .lgs1920-wa-timeline__playhead {')
+        expect(styleSource).toMatch(/& \.lgs1920-wa-timeline__playhead \{[\s\S]*?z-index: 22;/)
+        const neutralHeaderControlRule = styleSource.match(/& slot\[name='custom-menu'\],[\s\S]*?& \.lgs1920-wa-timeline__header-start > slot\[name='header'\]/)?.[0] ?? ''
+        expect(neutralHeaderControlRule).toContain('border: 0;')
+        expect(styleSource).toContain('width: 1.5rem;')
+        expect(styleSource).toContain('--lgs-timeline-range-handle-color: var(--wa-color-success-fill-loud')
+        expect(styleSource).toContain('--lgs-timeline-range-end-color: var(--wa-color-danger-fill-loud')
+        expect(styleSource).toContain('& .lgs1920-wa-timeline__range-selection {')
+        expect(styleSource).toContain('--lgs-timeline-range-selection-height: 0.5rem')
+        expect(styleSource).toContain('--lgs-timeline-range-selection-overflow: 3px')
+        expect(styleSource).toContain('border: 0;')
+        expect(styleSource).toContain('& .lgs1920-wa-timeline__surface--read-only')
+        expect(styleSource).toContain('--lgs-timeline-clip-resize-grab-color:')
+        expect(styleSource).toContain('.lgs1920-wa-timeline__clip--resizing .lgs1920-wa-timeline__clip-handle')
+        expect(styleSource).toContain('& wa-slider[label-at-start] {')
+        expect(styleSource).toContain('& wa-slider[label-at-start][width-auto] {')
+        expect(styleSource).toContain('grid-template-columns: auto minmax(8rem, 10rem);')
+        expect(styleSource).toContain('& wa-slider[label-at-start]::part(label) {')
+        expect(styleSource).toContain('& wa-slider[label-at-start]::part(hint) {')
+        expect(styleSource).toContain('grid-template-columns: auto minmax(0, 1fr);')
+        expect(styleSource).toContain('max-width: none;')
+        expect(styleSource).toContain('--thumb-width: 0.6rem;')
+        expect(styleSource).toContain('--thumb-height: 1.1rem;')
+        expect(styleSource).toContain('& .lgs1920-wa-timeline__time-slider::part(thumb) {')
+        expect(styleSource).toContain('border-radius: var(--wa-border-radius-xs, 0.0625rem);')
+        expect(styleSource).toContain('user-select: none;')
+        expect(styleSource).toContain('-webkit-user-select: none;')
     })
 })

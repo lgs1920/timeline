@@ -7,8 +7,8 @@
  * Author : LGS1920 Team
  * email: studio@lgs1920.fr
  *
- * Created on: 2026-09-13
- * Last modified: 2026-09-14
+ * Created on: 2026-09-14
+ * Last modified: 2026-09-15
  *
  *
  * Copyright © 2026 LGS1920
@@ -250,6 +250,7 @@ export const LGS1920TimelineReact = ({
     children,
 }) => {
     const _element = useRef(null)
+    const callbacksRef = useRef({})
 
     useEffect(() => {
         const element = _element.current
@@ -343,13 +344,15 @@ export const LGS1920TimelineReact = ({
             onRangeChanging,
             onRangeChange,
             onAfterRangeChange,
+            onClipDoubleClick,
         }
+        callbacksRef.current = callbacks
         const listeners = EVENT_CALLBACKS.map(([name, propName]) => {
-            const listener = event => callbacks[propName]?.(event.detail, event)
+            const listener = event => callbacksRef.current[propName]?.(event.detail, event)
             element.addEventListener(`lgs1920-timeline-${name}`, listener)
             return {name, listener}
         })
-        const clipDoubleClickListener = event => onClipDoubleClick?.(event.detail, event)
+        const clipDoubleClickListener = event => callbacksRef.current.onClipDoubleClick?.(event.detail, event)
         element.addEventListener('lgs1920-timeline-dblclick', clipDoubleClickListener)
         listeners.push({name: 'dblclick', listener: clipDoubleClickListener})
         return () => listeners.forEach(({name, listener}) => element.removeEventListener(`lgs1920-timeline-${name}`, listener))

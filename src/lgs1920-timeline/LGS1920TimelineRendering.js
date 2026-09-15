@@ -7,8 +7,8 @@
  * Author : LGS1920 Team
  * email: studio@lgs1920.fr
  *
- * Created on: 2026-08-31
- * Last modified: 2026-09-14
+ * Created on: 2026-09-14
+ * Last modified: 2026-09-15
  *
  *
  * Copyright © 2026 LGS1920
@@ -97,6 +97,16 @@ export const createTimelineRenderer = ({
         : []).some(target => target?.getAttribute?.('slot') === 'timeline-ruler')
 
     /**
+     * Check whether an event belongs to one of the timeline's own controls.
+     *
+     * @param {Event} event - Native event to inspect.
+     * @returns {boolean} Whether the event belongs to a timeline control.
+     */
+    const isTimelineControlEvent = event => event.target?.closest?.(
+        '[data-timeline-time-slider], [data-timeline-zoom-slider], [part="surface-controls"], [part="timeline-scrubber"]',
+    )
+
+    /**
      * Create one visual timeline clip.
      *
      * @param {Object} value - Timeline clip.
@@ -157,7 +167,7 @@ export const createTimelineRenderer = ({
         )
         if (selectable) {
             element.addEventListener('pointerdown', event => {
-                if (event.target.closest('[data-clip-handle]')) return
+                if (event.button !== 0 || event.target.closest('[data-clip-handle]')) return
                 const wasSelected = isClipSelected(value)
                 selectClip(value, event, element)
                 if (movable) startClipInteraction(event, value.id, 'move', null, wasSelected)
@@ -299,6 +309,7 @@ export const createTimelineRenderer = ({
         handle.append(contextualSlot(`clip-${edge}-handle`, value.id, `clip-${edge}-handle`, createIcon('grip-lines-vertical', 'solid')))
         if (enabled) {
             handle.addEventListener('pointerdown', event => {
+                if (event.button !== 0) return
                 selectClip(value, event, handle.closest('[data-clip-id]'))
                 startClipInteraction(event, value.id, 'resize', edge)
             })
@@ -328,10 +339,13 @@ export const createTimelineRenderer = ({
             'aria-valuenow': timeMillis,
         })
         const grip = createElement('span', 'lgs1920-wa-timeline__range-grip', {part: `timeline-${edge}-grip`})
-        grip.append(...globalSlotContent(`timeline-${edge}-handle`, createIcon('grip-dots-vertical', 'solid')))
+        if (interactive) grip.append(...globalSlotContent(`timeline-${edge}-handle`, createIcon('grip-dots-vertical', 'solid')))
         handle.append(grip)
         if (interactive) {
-            handle.addEventListener('pointerdown', event => startRangeInteraction(event, edge))
+            handle.addEventListener('pointerdown', event => {
+                if (event.button !== 0) return
+                startRangeInteraction(event, edge)
+            })
             handle.addEventListener('keydown', event => moveRangeByKeyboard(edge, event))
             handle.addEventListener('dblclick', event => setRangeBoundaryToLimit(edge, event))
         }
@@ -353,15 +367,18 @@ export const createTimelineRenderer = ({
         const readOnly = row.editable === false
         const label = resolveRowLabel(row)
         const dragState = getDragState()
+        const isClipDropRejected = dragState?.type === 'clip'
+            && dragState.targetTrackId === row.id
+            && dragState.dropRejected === true
         const isClipDropTarget = dragState?.type === 'clip'
             && dragState.targetTrackId === row.id
-            && dragState.sourceTrackId !== row.id
+            && !isClipDropRejected
         const isRejectedRow = dragState?.type === 'row'
             && dragState.rowId === row.id
             && dragState.dropRejected === true
         const hostNoDragClass = String(timeline.hostNoDragClass ?? '').trim()
         const hostNoDragClasses = hostNoDragClass ? ` ${hostNoDragClass}` : ''
-        const element = createElement('div', `lgs1920-wa-timeline__legend-row ${resolveColorClasses(row.colorClasses)}${readOnly ? ' lgs1920-wa-timeline__legend-row--read-only' : hostNoDragClasses}${row.visible === false ? ' lgs1920-wa-timeline__legend-row--hidden' : ''}${titleDisabled ? ' lgs1920-wa-timeline__legend-row--title-disabled' : ''}${editable ? ' lgs1920-wa-timeline__legend-row--movable' : ''}${dragState?.rowId === row.id ? ' lgs1920-wa-timeline__legend-row--dragging' : ''}${isClipDropTarget ? ' lgs1920-wa-timeline__legend-row--clip-drop-target' : ''}`, {
+        const element = createElement('div', `lgs1920-wa-timeline__legend-row ${resolveColorClasses(row.colorClasses)}${readOnly ? ' lgs1920-wa-timeline__legend-row--read-only' : hostNoDragClasses}${row.visible === false ? ' lgs1920-wa-timeline__legend-row--hidden' : ''}${titleDisabled ? ' lgs1920-wa-timeline__legend-row--title-disabled' : ''}${editable ? ' lgs1920-wa-timeline__legend-row--movable' : ''}${dragState?.rowId === row.id ? ' lgs1920-wa-timeline__legend-row--dragging' : ''}${isClipDropTarget ? ' lgs1920-wa-timeline__legend-row--clip-drop-target' : ''}${isClipDropRejected ? ' lgs1920-wa-timeline__legend-row--clip-drop-rejected' : ''}`, {
             part: 'legend-row',
             id: `lgs1920-timeline-track-${String(row.id ?? '')}`,
             'data-row-id': row.id,
@@ -466,7 +483,7 @@ export const createTimelineRenderer = ({
         const interactive = getTimelineConfig().interactive !== false
         const hostNoDragClass = String(getTimelineConfig().hostNoDragClass ?? '').trim()
         const hostNoDragClasses = hostNoDragClass ? ` ${hostNoDragClass}` : ''
-        const surface = createElement('wa-card', `lgs1920-wa-timeline__surface${hostNoDragClasses}`, {
+        const surface = createElement('wa-card', `lgs1920-wa-timeline__surface${interactive ? '' : ' lgs1920-wa-timeline__surface--read-only'}${hostNoDragClasses}`, {
             part: 'surface',
             appearance: 'plain',
             'data-surface': '',
@@ -479,6 +496,11 @@ export const createTimelineRenderer = ({
         canvas.style.width = `${getContentWidth()}px`
         const ruler = createElement('div', 'lgs1920-wa-timeline__ruler', {part: 'ruler'})
         ruler.style.width = `${getContentWidth()}px`
+        ruler.append(createElement('div', 'lgs1920-wa-timeline__range-selection', {
+            part: 'range-selection',
+            'data-range-selection': '',
+            'aria-hidden': 'true',
+        }))
         for (let index = 0; index <= scaleCount; index += 1) ruler.append(rulerUnit(index, majorSeconds, scaleSplitCount))
         ruler.append(
             createElement('span', '', {
@@ -508,13 +530,16 @@ export const createTimelineRenderer = ({
         tracks.style.width = `${getContentWidth()}px`
         getRows().forEach(row => {
             const dragState = getDragState()
+            const isClipDropRejected = dragState?.type === 'clip'
+                && dragState.targetTrackId === row.id
+                && dragState.dropRejected === true
             const isClipDropTarget = dragState?.type === 'clip'
                 && dragState.targetTrackId === row.id
-            const isClipDropRejected = isClipDropTarget && dragState.dropRejected === true
+                && !isClipDropRejected
             const isRejectedRow = dragState?.type === 'row'
                 && dragState.rowId === row.id
                 && dragState.dropRejected === true
-            const track = createElement('div', `lgs1920-wa-timeline__track${row.editable === false ? ' lgs1920-wa-timeline__track--read-only' : ''}${row.visible === false ? ' lgs1920-wa-timeline__track--hidden' : ''}${dragState?.type === 'row' && dragState.rowId === row.id ? ' lgs1920-wa-timeline__track--dragging' : ''}${isRejectedRow ? ' lgs1920-wa-timeline__track--drop-rejected' : ''}${isClipDropTarget ? ' lgs1920-wa-timeline__track--clip-drop-target' : ''}`, {part: 'track', 'data-row-id': row.id})
+            const track = createElement('div', `lgs1920-wa-timeline__track${row.editable === false ? ' lgs1920-wa-timeline__track--read-only' : ''}${row.visible === false ? ' lgs1920-wa-timeline__track--hidden' : ''}${dragState?.type === 'row' && dragState.rowId === row.id ? ' lgs1920-wa-timeline__track--dragging' : ''}${isRejectedRow ? ' lgs1920-wa-timeline__track--drop-rejected' : ''}${isClipDropTarget ? ' lgs1920-wa-timeline__track--clip-drop-target' : ''}${isClipDropRejected ? ' lgs1920-wa-timeline__track--clip-drop-rejected' : ''}`, {part: 'track', 'data-row-id': row.id})
             track.style.height = 'var(--lgs-timeline-row-height)'
             const trackBackground = createElement('div', `lgs1920-wa-timeline__track-background${row.editable === false ? ' lgs1920-wa-timeline__track-background--read-only' : ''}${row.visible === false ? ' lgs1920-wa-timeline__track-background--hidden' : ''}${isClipDropRejected ? ' lgs1920-wa-timeline__track-background--clip-drop-rejected' : ''}`, {
                 part: 'track-background',
@@ -547,7 +572,7 @@ export const createTimelineRenderer = ({
             'aria-valuenow': getCurrentTimeMillis(),
         })
         const playheadGrip = createElement('span', 'lgs1920-wa-timeline__playhead-grip', {part: 'playhead-grip'})
-        playheadGrip.append(createIcon('grip-dots-vertical', 'solid'))
+        if (interactive) playheadGrip.append(createIcon('grip-dots-vertical', 'solid'))
         playhead.append(playheadGrip)
         if (interactive) {
             playheadGrip.addEventListener('pointerdown', event => startPlayheadInteraction(event))
@@ -583,9 +608,9 @@ export const createTimelineRenderer = ({
             ruler.addEventListener('pointerdown', event => handleRulerPointerDown(event))
             ruler.addEventListener('click', event => handleRulerClick(event))
             surface.addEventListener('pointerdown', event => {
-                if (isTimelineRulerSlotEvent(event)) return
+                if (isTimelineRulerSlotEvent(event) || isTimelineControlEvent(event)) return
                 if (event.button !== 0 || event.target.closest('.lgs1920-wa-timeline__clip')) return
-                if (event.target.closest('[data-range-handle]')) return
+                if (event.target.closest('[data-range-handle], [data-playhead]')) return
                 const rangeHandle = [...overlay.querySelectorAll('[data-range-handle]')]
                     .map(handle => ({
                         handle,
@@ -598,14 +623,14 @@ export const createTimelineRenderer = ({
                 startRangeInteraction(event, rangeHandle.handle.getAttribute('data-range-handle'))
             }, true)
             surface.addEventListener('click', event => {
-                if (isTimelineRulerSlotEvent(event)) return
+                if (isTimelineRulerSlotEvent(event) || isTimelineControlEvent(event)) return
                 if (event.target.closest('.lgs1920-wa-timeline__clip, [data-range-handle], [data-playhead]')) return
                 seek(event.clientX, true)
             })
             surface.addEventListener('wheel', event => handleWheel(event))
             surface.addEventListener('keydown', event => handleKeyDown(event))
             surface.addEventListener('pointerdown', event => {
-                if (isTimelineRulerSlotEvent(event)) return
+                if (isTimelineRulerSlotEvent(event) || isTimelineControlEvent(event)) return
                 if (event.button !== 0 || event.target.closest('.lgs1920-wa-timeline__clip')) return
                 if (allowsHostInteraction()) return
                 setScrubPointerId(event.pointerId)
