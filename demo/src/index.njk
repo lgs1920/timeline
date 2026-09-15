@@ -63,8 +63,8 @@
 
     <header class="demo-header">
         <p class="eyebrow">@lgs1920/timeline vx.y.z</p>
-        <h1>A timeline you can shape.</h1>
-        <p class="intro">Explore the component through focused examples: a Studio-style controlled timeline, external time and zoom sliders, read-only rendering, range editing, slots, and event-driven updates.</p>
+        <h1>A modular and adaptable timeline</h1>
+        <p class="intro">Built for Web Awesome applications, this component uses Web Awesome controls, themes, and design tokens to provide a consistent timeline surface. Explore focused examples: a Studio-style controlled timeline, external time and zoom sliders, read-only rendering, range editing, slots, and event-driven updates.</p>
     </header>
 
     <section class="demo-panel playground studio-demo" aria-labelledby="studio-title">
@@ -75,30 +75,77 @@
             </div>
             <span id="studio-status" class="event-status" role="status" aria-live="polite">Ready</span>
         </div>
-        <p class="section-intro">The timeline stays controlled by its host. The standard time and zoom controls remain inside the component. The play button emits a playback intent, then the host clock advances <code>currentTimeMillis</code>. The host adds 10-second seek actions through the top menu slot.</p>
+        <p class="section-intro">The timeline stays controlled by its host. The standard time and zoom controls remain inside the component. The play button emits a playback intent, then the host clock advances <code>currentTimeMillis</code>. The host also controls playback speed at 1×, 2×, or 5× through the top menu slot. Play opens a draggable Three.js Pac-Man companion that eats the clips in chronological order.</p>
+        <wa-details class="demo-details" summary="What this demo shows" appearance="filled-outlined">
+            <p>The timeline is controlled by the host application. The component emits playback and seek requests, while the host clock writes the resulting position back through <code>currentTimeMillis</code>.</p>
+            <ul>
+                <li>Use the top menu to move the playhead by ten seconds.</li>
+                <li>Drag the generated sources to create video, audio, text, or other clips.</li>
+                <li>Use the standard time and zoom controls rendered by the component.</li>
+                <li>Play the timeline to open the draggable Pac-Man view and watch clips disappear as they are consumed.</li>
+            </ul>
+        </wa-details>
         <div class="clip-source-panel" aria-label="External random clip source">
             <div class="clip-source-copy">
                 <p class="eyebrow">External clip source</p>
                 <strong>Drag a clip to the timeline</strong>
-                <span>Two generated clips are always ready below. Drop one into a compatible track to choose its position; a new clip replaces it immediately.</span>
+                <span>Four generated clips are always ready below: video, audio, text, and other. Drop one into a compatible track to choose its position; a replacement of the same type appears immediately.</span>
             </div>
             <div class="clip-source-actions">
                 <div id="generated-clip-sources" class="generated-clip-sources" aria-label="Generated clips"></div>
             </div>
         </div>
         <lgs1920-timeline id="studio-timeline" class="demo-studio-timeline" aria-label="Studio style interactive timeline">
-            <span slot="custom-menu" class="demo-skip-controls" aria-label="Ten second seek controls">
-                <wa-button id="studio-seek-backward" appearance="plain" variant="brand" size="s" aria-label="Back 10 seconds" title="Back 10 seconds">
+            <span slot="custom-menu" class="demo-skip-controls" aria-label="Playback controls">
+                <wa-button-group id="studio-playback-rate" label="Playback speed">
+                    <wa-button data-playback-rate="1" appearance="filled" variant="brand" size="s" aria-pressed="true">x1</wa-button>
+                    <wa-button data-playback-rate="2" appearance="filled" variant="neutral" size="s" aria-pressed="false">x2</wa-button>
+                    <wa-button data-playback-rate="5" appearance="filled" variant="neutral" size="s" aria-pressed="false">x5</wa-button>
+                </wa-button-group>
+                <wa-button id="studio-seek-backward" appearance="plain" variant="brand" size="s" aria-label="Back 10 seconds">
                     <wa-icon slot="start" name="arrow-rotate-left" variant="solid" aria-hidden="true"></wa-icon>
                     -10s
                 </wa-button>
-                <wa-button id="studio-seek-forward" appearance="plain" variant="brand" size="s" aria-label="Forward 10 seconds" title="Forward 10 seconds">
+                <wa-tooltip for="studio-seek-backward" placement="bottom">Back 10 seconds</wa-tooltip>
+                <wa-button id="studio-seek-forward" appearance="plain" variant="brand" size="s" aria-label="Forward 10 seconds">
                     <wa-icon slot="start" name="arrow-rotate-right" variant="solid" aria-hidden="true"></wa-icon>
                     +10s
                 </wa-button>
+                <wa-tooltip for="studio-seek-forward" placement="bottom">Forward 10 seconds</wa-tooltip>
             </span>
             <span slot="overlay-text">Preparing timeline...</span>
         </lgs1920-timeline>
+        <wa-popup id="studio-pacman-popup" anchor="studio-timeline" placement="top-end" distance="12" flip shift>
+            <div class="pacman-popup" role="dialog" aria-labelledby="studio-pacman-title" aria-describedby="studio-pacman-description">
+                <div class="pacman-popup-header" data-pacman-drag-handle>
+                    <div>
+                        <p class="eyebrow">Three.js playback companion</p>
+                        <h3 id="studio-pacman-title">Pac-Man eats the clips</h3>
+                    </div>
+                    <wa-button id="studio-pacman-close" appearance="plain" size="s" aria-label="Close Pac-Man demo">
+                        <wa-icon name="xmark" variant="solid" aria-hidden="true"></wa-icon>
+                    </wa-button>
+                </div>
+                <div class="pacman-audio-controls" aria-label="Pac-Man audio controls">
+                    <wa-button id="studio-pacman-sound" appearance="plain" size="s" aria-pressed="true">
+                        <wa-icon name="volume-high" variant="solid" aria-hidden="true"></wa-icon>
+                        <span id="studio-pacman-sound-label">Sound on</span>
+                    </wa-button>
+                    <wa-button id="studio-pacman-music" appearance="plain" size="s" aria-pressed="true">
+                        <wa-icon name="music" variant="solid" aria-hidden="true"></wa-icon>
+                        <span id="studio-pacman-music-label">Music on</span>
+                    </wa-button>
+                </div>
+                <div class="pacman-canvas-frame">
+                    <canvas id="studio-pacman-canvas" aria-label="Pac-Man animation following the timeline clips"></canvas>
+                </div>
+                <div class="pacman-popup-footer">
+                    <span id="studio-pacman-status">Ready for playback</span>
+                    <strong id="studio-pacman-progress">0 clips eaten</strong>
+                </div>
+                <p id="studio-pacman-description" class="pacman-popup-note">Press play in Demo 01. Pac-Man jumps to each clip start, eats it in place, then jumps to the next one. A clip may remain almost eaten when the next clip starts.</p>
+            </div>
+        </wa-popup>
         <div class="timeline-output">
             <span>Last event</span>
             <code id="studio-output">None</code>
@@ -107,10 +154,15 @@
         <div class="demo-explanation">
             <article>
                 <p class="eyebrow">What to observe</p>
-            <p>The host receives <code>seek</code> intent and writes <code>event.detail.timeMillis</code> back to the component. It also owns the playback clock: <code>play</code> starts it, <code>pause</code> stops it, and each frame updates <code>currentTimeMillis</code>. The standard time and zoom controls stay inside the component. The top menu slot contains the 10-second rewind and advance buttons. The clip sources are outside the custom element, so they can live in a toolbar, palette, or application menu. Two randomized clips are always available for dragging, and each accepted drop replaces its source with a new one.</p>
+            <p>The host receives <code>seek</code> intent and writes <code>event.detail.timeMillis</code> back to the component. It also owns the playback clock: <code>play</code> starts it, <code>pause</code> stops it, each frame updates <code>currentTimeMillis</code>, and the selected rate changes elapsed time without moving the playhead. The standard time and zoom controls stay inside the component. The top menu slot contains the playback speed and 10-second seek controls. The clip sources are outside the custom element, so they can live in a toolbar, palette, or application menu. Two randomized clips are always available for dragging, and each accepted drop replaces its source with a new one.</p>
             </article>
-            <pre><code data-language="mixed">&lt;lgs1920-timeline&gt;
+            <pre class="demo-code"><code data-language="mixed">&lt;lgs1920-timeline&gt;
     &lt;span slot="custom-menu"&gt;
+        &lt;wa-button-group label="Playback speed"&gt;
+            &lt;wa-button data-playback-rate="1" appearance="filled" variant="brand" size="s" aria-pressed="true"&gt;x1&lt;/wa-button&gt;
+            &lt;wa-button data-playback-rate="2" appearance="filled" variant="neutral" size="s" aria-pressed="false"&gt;x2&lt;/wa-button&gt;
+            &lt;wa-button data-playback-rate="5" appearance="filled" variant="neutral" size="s" aria-pressed="false"&gt;x5&lt;/wa-button&gt;
+        &lt;/wa-button-group&gt;
         &lt;wa-button appearance="plain" variant="brand" size="s" aria-label="Back 10 seconds"&gt;&lt;wa-icon slot="start" name="arrow-rotate-left" variant="solid"&gt;&lt;/wa-icon&gt;-10s&lt;/wa-button&gt;
         &lt;wa-button appearance="plain" variant="brand" size="s" aria-label="Forward 10 seconds"&gt;&lt;wa-icon slot="start" name="arrow-rotate-right" variant="solid"&gt;&lt;/wa-icon&gt;+10s&lt;/wa-button&gt;
     &lt;/span&gt;
@@ -141,7 +193,7 @@ timeline.addEventListener('lgs1920-timeline-seek', event =&gt; {
 
 const clipSources = document.querySelector('#generated-clip-sources')
 const replenishClipSources = () =&gt; {
-    while (clipSources.children.length &lt; 2) {
+    while (clipSources.children.length &lt; 4) {
     const option = createRandomClipOption()
     const clip = document.createElement('wa-button')
     clip.textContent = `${option.label} · ${option.duration}s`
@@ -157,7 +209,43 @@ const replenishClipSources = () =&gt; {
 replenishClipSources()
 </code></pre>
         </div>
-        <p id="clip-drag-status" class="demo-note" role="status" aria-live="polite">Drag one of the two clips onto the timeline. Each accepted drop creates a replacement clip.</p>
+        <p id="clip-drag-status" class="demo-note" role="status" aria-live="polite">Drag one of the four clip types onto the timeline. Each accepted drop creates a replacement of the same type.</p>
+        <wa-details class="demo-details" summary="Pac-Man companion code" appearance="filled-outlined">
+            <p>This simplified excerpt uses the same controlled clock as the timeline. Three.js renders the miniature ruler and clips, while the current time selects the clip to visit, moves Pac-Man from its start toward its end, and reduces the remaining clip width. Web Audio generates the chomp effect and an arcade-inspired fallback loop.</p>
+            <pre class="demo-code"><code data-language="html">&lt;wa-popup id="pacman-popup" anchor="studio-timeline" placement="top-end"&gt;
+    &lt;canvas id="pacman-canvas" aria-label="Pac-Man timeline companion"&gt;&lt;/canvas&gt;
+&lt;/wa-popup&gt;</code></pre>
+            <pre class="demo-code"><code data-language="javascript">import * as THREE from 'three'
+
+const clips = timeline.tracks
+    .flatMap(track =&gt; track.clips.map(clip =&gt; ({...clip, trackId: track.id})))
+    .sort((left, right) =&gt; left.start - right.start)
+
+const pacman = new THREE.Group()
+const pacmanBody = new THREE.Mesh(
+    new THREE.CircleGeometry(0.36, 40, 0.2, (Math.PI * 2) - 0.4),
+    new THREE.MeshBasicMaterial({
+        color: getComputedStyle(document.documentElement).getPropertyValue('--wa-color-brand-60').trim() || '#ffd23f',
+    }),
+)
+pacman.add(pacmanBody)
+
+const updatePacman = (timeMillis, playing) =&gt; {
+    const activeIndex = clips.findLastIndex(clip =&gt; clip.start * 1000 &lt;= timeMillis)
+    const clip = clips[activeIndex]
+    if (!clip) return
+
+    const progress = Math.min(1, Math.max(0,
+        (timeMillis - (clip.start * 1000)) / ((clip.end - clip.start) * 1000),
+    ))
+    pacman.position.copy(positionAtClip(clip, progress))
+    clipMeshes[activeIndex].scale.x = Math.max(0.04, 1 - progress)
+
+    if (playing) {
+        pacmanAudio.playChomp()
+    }
+}</code></pre>
+        </wa-details>
     </section>
 
     <section class="demo-panel playground" aria-labelledby="interactive-title">
@@ -169,6 +257,14 @@ replenishClipSources()
             <span id="event-status" class="event-status" role="status" aria-live="polite">Ready</span>
         </div>
         <p class="section-intro">Drag a clip, resize it, change a track label, or use the playback toolbar. The host advances the clock after a <code>play</code> event, so this demo shows the same integration pattern as the Studio example. Every interaction emits a namespaced event; this demo writes accepted track changes back to the element.</p>
+        <wa-details class="demo-details" summary="What this demo shows" appearance="filled-outlined">
+            <p>This example focuses on editing and event handling. Move or resize a clip, edit a track name, change visibility, and inspect the serialized event detail in the fixed-height event panel.</p>
+            <ul>
+                <li>Apply <code>event.detail.tracks</code> when a clip or track edit is accepted.</li>
+                <li>Use the before and after event lifecycle when an action needs validation or persistence.</li>
+                <li>The host playback clock continues to own <code>currentTimeMillis</code>.</li>
+            </ul>
+        </wa-details>
         <lgs1920-timeline id="interactive-timeline" aria-label="Interactive editing timeline"></lgs1920-timeline>
         <div class="timeline-output demo02-event-output">
             <div class="demo02-event-controls">
@@ -190,9 +286,18 @@ timeline.addEventListener('lgs1920-timeline-seek', event =&gt; {
             <p class="eyebrow">Demo 03 · Read only</p>
             <h2>Mirror an external player</h2>
             <p>The timeline is a read-only projection: an external player owns the controls and sends its current time to the component. Use this pattern for a video player, a presentation preview, or a monitoring screen.</p>
+            <wa-details class="demo-details" summary="What this demo shows" appearance="filled-outlined">
+                <p>Read-only mode is useful when another component owns playback and editing. The host keeps sending the external player position to the timeline, while the timeline only renders the projection.</p>
+                <ul>
+                    <li>Set <code>interactive: false</code> to remove timeline editing and playback interactions.</li>
+                    <li>Keep the external player's slider and transport controls outside the timeline.</li>
+                    <li>Use this pattern for monitoring views, review screens, or compact sequence summaries.</li>
+                </ul>
+            </wa-details>
             <div class="readonly-controls">
                 <wa-button id="readonly-play" appearance="accent" size="s">Play preview</wa-button>
-                <wa-slider id="readonly-time-slider" label="External player time" size="s" variant="brand" with-tooltip min="0" max="30000" step="33.333" value="0"></wa-slider>
+                <wa-slider id="readonly-time-slider" label="External player time" size="s" variant="brand" min="0" max="30000" step="33.333" value="0"></wa-slider>
+                <wa-tooltip id="readonly-time-tooltip" for="readonly-time-slider" placement="top">00:00 / 00:30</wa-tooltip>
             </div>
             <lgs1920-timeline id="readonly-timeline" aria-label="Read only timeline"></lgs1920-timeline>
             <p id="readonly-status" class="demo-note" role="status" aria-live="polite">External player paused · 00:00</p>
@@ -210,7 +315,16 @@ player.addEventListener('timeupdate', event =&gt; {
             <p class="eyebrow">Demo 04 · Video range</p>
             <h2>Limit playback to a selected range</h2>
             <p>Drag the colored start and end handles on the ruler. The playback clock stops at the selected end, which is useful when the timeline represents an in and out range. Keyboard users can focus the handles and move them with the arrow keys.</p>
-            <wa-slider id="range-time-slider" label="Range playback time" size="s" variant="brand" with-tooltip min="0" max="30000" step="33.333" value="0"></wa-slider>
+            <wa-details class="demo-details" summary="What this demo shows" appearance="filled-outlined">
+                <p>The selected range defines the portion of the timeline that can be played. The light-blue ruler area shows the portion that will actually be recorded or played back.</p>
+                <ul>
+                    <li>Drag the green start handle and red end handle to change the range.</li>
+                    <li>Use the external slider to inspect the current position inside the selected range.</li>
+                    <li>The host updates the playback clock when a range change is committed.</li>
+                </ul>
+            </wa-details>
+            <wa-slider id="range-time-slider" label="Range playback time" size="s" variant="brand" min="0" max="30000" step="33.333" value="0"></wa-slider>
+            <wa-tooltip id="range-time-tooltip" for="range-time-slider" placement="top">00:00 / 00:30</wa-tooltip>
             <lgs1920-timeline id="range-timeline" aria-label="Timeline with editable video range"></lgs1920-timeline>
             <p id="range-status" class="demo-note" role="status" aria-live="polite">Range: 00:06 – 00:24 · Playback paused at 00:06</p>
             <pre class="demo-code"><code data-language="javascript">timeline.timeline = {
@@ -228,6 +342,15 @@ timeline.addEventListener('lgs1920-timeline-range-change', event =&gt; {
         <p class="eyebrow">Demo 05 · Slots and controlled state</p>
         <h2 id="slots-title">Compose the surrounding UI</h2>
         <p class="section-intro">The component owns the timeline surface while the application owns its context: a time slider in <code>timeline-ruler</code>, a zoom control in <code>timeline-controls</code>, and application actions in <code>custom-menu</code>. The full slot reference is available in the documentation.</p>
+        <wa-details class="demo-details" summary="What this demo shows" appearance="filled-outlined">
+            <p>Slots let the host place application controls around the timeline without coupling those controls to the component implementation.</p>
+            <ul>
+                <li><code>timeline-ruler</code> places content above the time ruler.</li>
+                <li><code>timeline-controls</code> adds controls to the surface control band.</li>
+                <li><code>custom-menu</code> adds host actions to the timeline header.</li>
+                <li><code>overlay-text</code> replaces the initial construction message.</li>
+            </ul>
+        </wa-details>
         <div class="slot-list" aria-label="Slots used in the demos">
             <span class="demo-slot-chip">timeline-ruler · external scrubber</span>
             <span class="demo-slot-chip">timeline-controls · horizontal zoom</span>
@@ -245,6 +368,14 @@ timeline.addEventListener('lgs1920-timeline-range-change', event =&gt; {
         <p class="eyebrow">Demo 06 · Keyboard shortcuts</p>
         <h2 id="keyboard-title">Keep editing within reach of the keyboard</h2>
         <p class="section-intro">Focus the timeline surface, a range handle, a clip, a clip resize handle, or the legend divider, then use the matching shortcuts below. The live status line records the last key pressed inside the Studio-style timeline.</p>
+        <wa-details class="demo-details" summary="What this demo shows" appearance="filled-outlined">
+            <p>The keyboard model follows the same controlled event flow as pointer interaction. Focus determines the target, and the timeline reports the resulting action through its namespaced events.</p>
+            <ul>
+                <li>Use the timeline surface for playback, range navigation, scrolling, and zoom.</li>
+                <li>Focus a playhead or range handle for frame-sized movement.</li>
+                <li>Focus a clip to move, resize, duplicate, mask, enable, or delete it.</li>
+            </ul>
+        </wa-details>
         <p id="keyboard-status" class="keyboard-status" role="status" aria-live="polite">Click the Studio timeline, then press a shortcut.</p>
         <div class="keyboard-table-wrap">
             <table class="keyboard-table">
@@ -263,7 +394,7 @@ timeline.addEventListener('lgs1920-timeline-range-change', event =&gt; {
                     <tr><th scope="row">Timeline surface</th><td><kbd>Shift</kbd> + <kbd>↑</kbd> / <kbd>↓</kbd></td><td>Scroll tracks to the top or bottom.</td></tr>
                     <tr><th scope="row">Timeline surface</th><td><kbd>↑</kbd> / <kbd>↓</kbd></td><td>Increase or decrease row height.</td></tr>
                     <tr><th scope="row">Timeline surface</th><td><kbd>←</kbd> / <kbd>→</kbd></td><td>Zoom the ruler horizontally when no clip is selected.</td></tr>
-                    <tr><th scope="row">Scrollbar rail</th><td><kbd>PageUp</kbd> · <kbd>PageDown</kbd> · arrows</td><td>Scroll one viewport in the focused direction.</td></tr>
+                    <tr><th scope="row">Scrollbar rail</th><td><kbd>PageUp</kbd> · <kbd>PageDown</kbd> · <kbd>↑</kbd> / <kbd>↓</kbd></td><td>Scroll one viewport in the focused direction.</td></tr>
                     <tr><th scope="row">Playhead grip</th><td><kbd>←</kbd> / <kbd>→</kbd></td><td>Move by <code>keyboardStepSeconds</code>.</td></tr>
                     <tr><th scope="row">Playhead grip</th><td><kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd></td><td>Move by ten keyboard steps.</td></tr>
                     <tr><th scope="row">Playhead grip</th><td><kbd>Alt</kbd> + <kbd>→</kbd> / <kbd>←</kbd></td><td>Jump to the range minimum or maximum.</td></tr>
@@ -281,7 +412,7 @@ timeline.addEventListener('lgs1920-timeline-range-change', event =&gt; {
                     <tr><th scope="row">Clip resize handle</th><td><kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd></td><td>Resize the focused edge by ten keyboard steps.</td></tr>
                     <tr><th scope="row">Any active edit</th><td><kbd>Escape</kbd></td><td>Cancel a copy, drag, resize, or context menu; clear clip selection.</td></tr>
                     <tr><th scope="row">Legend divider</th><td><kbd>←</kbd> / <kbd>→</kbd></td><td>Resize the track legend.</td></tr>
-                    <tr><th scope="row">Legend divider</th><td><kbd>Shift</kbd> + arrows · <kbd>Home</kbd> · <kbd>End</kbd> · <kbd>Enter</kbd></td><td>Change the resize step, select the minimum or maximum, or collapse and restore the legend.</td></tr>
+                    <tr><th scope="row">Legend divider</th><td><kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd> · <kbd>Home</kbd> · <kbd>End</kbd> · <kbd>Enter</kbd></td><td>Change the resize step, select the minimum or maximum, or collapse and restore the legend.</td></tr>
                     <tr><th scope="row">Track label editor</th><td><kbd>Enter</kbd> · <kbd>Escape</kbd></td><td>Commit or cancel the label edit.</td></tr>
                 </tbody>
             </table>
