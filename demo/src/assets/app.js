@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-14
+ * Last modified: 2026-09-15
  *
  *
  * Copyright © 2026 LGS1920
@@ -22,6 +22,7 @@ import '@awesome.me/webawesome/dist/components/option/option.js'
 import '@awesome.me/webawesome/dist/components/select/select.js'
 import '@awesome.me/webawesome/dist/components/slider/slider.js'
 import '@lgs1920/timeline'
+import '@awesome.me/webawesome/dist/components/toast/toast.js'
 import {CLIP_OPTION_DRAG_MIME, formatRulerTime} from '@lgs1920/timeline'
 
 const THEME_CONFIG = {
@@ -43,31 +44,43 @@ const modeClasses = ['wa-light', 'wa-dark']
 const brandClasses = ['wa-brand-blue', 'wa-brand-red', 'wa-brand-orange', 'wa-brand-green', 'wa-brand-cyan', 'wa-brand-purple', 'wa-brand-pink']
 
 const studioTimeline = document.querySelector('#studio-timeline')
-const studioTimeSlider = document.querySelector('#studio-time-slider')
-const studioZoomSlider = document.querySelector('#studio-zoom-slider')
+const studioSeekBackwardButton = document.querySelector('#studio-seek-backward')
+const studioSeekForwardButton = document.querySelector('#studio-seek-forward')
 const studioStatus = document.querySelector('#studio-status')
 const studioOutput = document.querySelector('#studio-output')
-const randomClipSource = document.querySelector('#random-clip-source')
-const createEmptyTrackButton = document.querySelector('#create-empty-track')
+const studioToast = document.querySelector('#studio-toast')
+
+const showStudioToast = (message, icon) => {
+    studioToast?.create(message, {
+        duration: 3_000,
+        icon,
+        variant: 'brand',
+    })
+}
+const generatedClipSources = document.querySelector('#generated-clip-sources')
 const clipDragStatus = document.querySelector('#clip-drag-status')
 const interactiveTimeline = document.querySelector('#interactive-timeline')
 const readonlyTimeline = document.querySelector('#readonly-timeline')
+const readonlyPlayButton = document.querySelector('#readonly-play')
+const readonlyTimeSlider = document.querySelector('#readonly-time-slider')
+const readonlyStatus = document.querySelector('#readonly-status')
 const rangeTimeline = document.querySelector('#range-timeline')
+const rangeTimeSlider = document.querySelector('#range-time-slider')
 const eventOutput = document.querySelector('#event-output')
 const eventStatus = document.querySelector('#event-status')
 const rangeStatus = document.querySelector('#range-status')
 const keyboardStatus = document.querySelector('#keyboard-status')
 
 const DEMO_DURATION_MILLIS = 60_000
+const SHORT_DEMO_DURATION_MILLIS = 30_000
 const formatMillis = value => formatRulerTime(Number(value) / 1000)
-const randomClipNames = ['Sunrise', 'City pulse', 'Interview', 'Map reveal', 'Sound bed', 'Title card', 'Wide shot']
+const MAX_PENDING_CLIPS = 2
 const randomClipKinds = ['video', 'audio', 'graphic', 'marker']
 const randomClipIcons = ['film', 'camera', 'microphone', 'music', 'map', 'wand-magic-sparkles', 'bookmark']
 const randomClipColors = ['blue', 'cyan', 'green', 'orange', 'pink', 'purple', 'red', 'yellow']
-let generatedClipIndex = 0
-let generatedTrackIndex = 0
 
 const randomItem = values => values[Math.floor(Math.random() * values.length)]
+let generatedClipIndex = 0
 
 /**
  * Create the option payload accepted by the timeline's native clip drop zone.
@@ -76,14 +89,15 @@ const randomItem = values => values[Math.floor(Math.random() * values.length)]
  */
 const createRandomClipOption = () => {
     const color = randomItem(randomClipColors)
-    const label = randomItem(randomClipNames)
+    generatedClipIndex += 1
+    const label = `Clip #${String(generatedClipIndex).padStart(3, '0')}`
     const kind = randomItem(randomClipKinds)
     const icon = randomItem(randomClipIcons)
     const duration = Number((2 + (Math.random() * 10)).toFixed(1))
 
     return {
         group: 'demo-random',
-        key: `${kind}-${Date.now()}`,
+        key: `generated-clip-${generatedClipIndex}`,
         label,
         kind,
         icon,
@@ -98,55 +112,13 @@ const createRandomClipOption = () => {
     }
 }
 
-const demoTrackAcceptsClip = (track, kind) => track.editable !== false
-    && track.droppable !== false
-    && track.acceptsClips !== false
-    && (!Array.isArray(track.accepts) || track.accepts.length === 0 || track.accepts.includes(kind))
-
-const demoClipOverlaps = (track, start, end) => (track.clips ?? []).some(clip => {
-    const clipStart = Number(clip.start) || 0
-    const clipEnd = Number(clip.end) || clipStart
-    return clipStart < end && start < clipEnd
-})
-
-const createEmptyDemoTrack = () => {
-    generatedTrackIndex += 1
-    return {
-        id: `generated-${generatedTrackIndex}`,
-        label: `Generated clips ${generatedTrackIndex}`,
-        icon: 'wand-magic-sparkles',
-        colorClasses: ['wa-neutral', 'wa-neutral-purple'],
-        canHide: true,
-        clips: [],
-    }
-}
-
-const addRandomClipAtPlayhead = () => {
-    const option = createRandomClipOption()
-    const start = Math.max(0, Number(studioTimeline.currentTimeMillis) / 1000 || 0)
-    const duration = Number(option.duration) || 1
-    const end = start + duration
-    const nextTracks = studioTimeline.tracks.map(track => ({
-        ...track,
-        clips: [...(track.clips ?? [])],
-    }))
-    let target = nextTracks.find(track => demoTrackAcceptsClip(track, option.kind)
-        && !demoClipOverlaps(track, start, end))
-    let createdTrack = false
-    if (!target) {
-        target = createEmptyDemoTrack()
-        nextTracks.push(target)
-        createdTrack = true
-    }
-    generatedClipIndex += 1
-    target.clips.push({
-        ...option.clip,
-        id: `generated-clip-${generatedClipIndex}`,
-        start,
-        end,
-    })
-    studioTimeline.tracks = nextTracks
-    clipDragStatus.textContent = `${createdTrack ? 'Created an empty track and added' : 'Added'} ${option.label} · ${duration.toFixed(1)}s · ${option.kind}`
+const removeGeneratedClipSource = option => {
+    const optionKey = String(option?.key ?? '')
+    const source = [...generatedClipSources.querySelectorAll('[data-generated-clip]')]
+        .find(element => element.getAttribute('data-clip-option-key') === optionKey)
+    if (!source) return false
+    source.remove()
+    return true
 }
 
 const tracks = [
@@ -216,10 +188,18 @@ const tracks = [
  * @param {Array} source - Track definitions.
  * @returns {Array} Detached track definitions.
  */
-const cloneTracks = source => source.map(track => ({
-    ...track,
-    clips: track.clips.map(clip => ({...clip})),
-}))
+const cloneTracks = (source, durationMillis = DEMO_DURATION_MILLIS) => {
+    const durationSeconds = Math.max(0, Number(durationMillis) || 0) / 1000
+    return source.map(track => ({
+        ...track,
+        clips: track.clips
+            .filter(clip => Number(clip.start) < durationSeconds)
+            .map(clip => ({
+                ...clip,
+                end: Math.min(Number(clip.end) || 0, durationSeconds),
+            })),
+    }))
+}
 
 /**
  * Configure one demonstration timeline.
@@ -229,17 +209,19 @@ const cloneTracks = source => source.map(track => ({
  * @returns {void}
  */
 const configureTimeline = (element, options = {}) => {
+    const durationMillis = Number(options.durationMillis) > 0
+        ? Number(options.durationMillis)
+        : DEMO_DURATION_MILLIS
     const clipOptions = options.interactive === true
         ? [{key: 'marker', label: 'Add marker', kind: 'marker', duration: 4, icon: 'bookmark'}]
         : []
     element.timeline = {
-        durationMillis: 60_000,
+        durationMillis,
         visible: true,
-        legendWidth: 128,
         showClipMenu: options.interactive === true,
         ...options,
     }
-    element.tracks = cloneTracks(tracks)
+    element.tracks = cloneTracks(tracks, durationMillis)
     element.clipOptions = clipOptions
     element.currentTimeMillis = 0
     element.playing = false
@@ -254,6 +236,8 @@ const studioTimelineOptions = {
     frameIntervalMillis: 1000 / 30,
     rangeStartMillis: 0,
     rangeEndMillis: DEMO_DURATION_MILLIS,
+    showTimeSlider: true,
+    showZoomSlider: true,
     collisionPolicy: 'prevent',
     resizeCollisionPolicy: 'ripple',
     resizeExtendsDuration: true,
@@ -261,9 +245,6 @@ const studioTimelineOptions = {
     keyboardZoomActive: true,
     showBuildingOverlay: false,
     showClipMenu: false,
-    legendMinWidth: 190,
-    legendWidth: 240,
-    legendMaxWidth: 320,
 }
 
 const emitStatus = event => {
@@ -291,81 +272,315 @@ const applyBrand = value => {
 }
 
 configureTimeline(studioTimeline, studioTimelineOptions)
-configureTimeline(interactiveTimeline, {interactive: true, showClipMenu: false})
-configureTimeline(readonlyTimeline, {interactive: false, editable: false})
+configureTimeline(interactiveTimeline, {
+    durationMillis: SHORT_DEMO_DURATION_MILLIS,
+    interactive: true,
+    showClipMenu: false,
+})
+configureTimeline(readonlyTimeline, {
+    durationMillis: SHORT_DEMO_DURATION_MILLIS,
+    interactive: false,
+    editable: false,
+})
 configureTimeline(rangeTimeline, {
+    durationMillis: SHORT_DEMO_DURATION_MILLIS,
     interactive: true,
     editable: true,
-    rangeStartMillis: 12_000,
-    rangeEndMillis: 48_000,
+    rangeStartMillis: 6_000,
+    rangeEndMillis: 24_000,
     showClipMenu: false,
 })
 
-studioTimeSlider.valueFormatter = value => `${formatMillis(value)} / ${formatMillis(DEMO_DURATION_MILLIS)}`
-studioZoomSlider.valueFormatter = value => `${Math.round(Number(value))}%`
+/**
+ * Keep a timeline's current time moving after its host receives a play intent.
+ * The component exposes the intent; the host owns this clock and writes the
+ * resulting time back through currentTimeMillis.
+ *
+ * @param {Object} options Clock configuration.
+ * @returns {Object} Host playback clock controls.
+ */
+const createPlaybackClock = ({timeline, startMillis = 0, endMillis = DEMO_DURATION_MILLIS, onTime = () => {}}) => {
+    const getStartMillis = typeof startMillis === 'function' ? startMillis : () => startMillis
+    const getEndMillis = typeof endMillis === 'function' ? endMillis : () => endMillis
+    let intervalId = null
+    let clockStartMillis = 0
+    let clockStartedAt = 0
 
-const updateStudioTime = value => {
-    const timeMillis = Math.max(0, Math.min(DEMO_DURATION_MILLIS, Number(value) || 0))
-    studioTimeline.currentTimeMillis = timeMillis
-    studioTimeSlider.value = timeMillis
-    studioStatus.textContent = `Current time · ${formatMillis(timeMillis)}`
-    studioOutput.textContent = `currentTimeMillis = ${timeMillis}`
+    const stopClock = () => {
+        if (intervalId === null) return
+        window.clearInterval(intervalId)
+        intervalId = null
+    }
+
+    const sync = value => {
+        const start = Number(getStartMillis()) || 0
+        const end = Math.max(start, Number(getEndMillis()) || DEMO_DURATION_MILLIS)
+        const timeMillis = Math.max(start, Math.min(end, Number(value) || 0))
+        timeline.currentTimeMillis = timeMillis
+        onTime(timeMillis)
+        return timeMillis
+    }
+
+    const tick = () => {
+        if (!timeline.playing) {
+            stopClock()
+            return
+        }
+        const nextTime = sync(clockStartMillis + (performance.now() - clockStartedAt))
+        const end = Number(getEndMillis()) || DEMO_DURATION_MILLIS
+        if (nextTime >= end) {
+            timeline.playing = false
+            stopClock()
+            onTime(nextTime)
+        }
+    }
+
+    const start = () => {
+        stopClock()
+        const startMillisValue = Number(getStartMillis()) || 0
+        const endMillisValue = Number(getEndMillis()) || DEMO_DURATION_MILLIS
+        const current = Number(timeline.currentTimeMillis) || startMillisValue
+        clockStartMillis = Math.max(startMillisValue, Math.min(endMillisValue, current))
+        sync(clockStartMillis)
+        clockStartedAt = performance.now()
+        intervalId = window.setInterval(tick, 33)
+        tick()
+    }
+
+    const pause = () => {
+        stopClock()
+        sync(timeline.currentTimeMillis)
+    }
+
+    const stop = () => {
+        timeline.playing = false
+        stopClock()
+        sync(getEndMillis())
+    }
+
+    const restart = () => {
+        sync(getStartMillis())
+        if (timeline.playing) start()
+    }
+
+    const seek = value => {
+        const timeMillis = sync(value)
+        if (timeline.playing) start()
+        return timeMillis
+    }
+
+    return {start, pause, stop, restart, seek, sync}
 }
 
-studioTimeSlider.addEventListener('input', event => updateStudioTime(event.currentTarget.value))
-studioTimeSlider.addEventListener('change', event => updateStudioTime(event.currentTarget.value))
-studioTimeline.addEventListener('lgs1920-timeline-seek', event => updateStudioTime(event.detail.timeMillis))
+interactiveTimeSlider.valueFormatter = value => `${formatMillis(value)} / ${formatMillis(SHORT_DEMO_DURATION_MILLIS)}`
+readonlyTimeSlider.valueFormatter = value => `${formatMillis(value)} / ${formatMillis(SHORT_DEMO_DURATION_MILLIS)}`
+rangeTimeSlider.valueFormatter = value => `${formatMillis(value)} / ${formatMillis(SHORT_DEMO_DURATION_MILLIS)}`
+
+const studioClock = createPlaybackClock({
+    timeline: studioTimeline,
+    onTime: timeMillis => {
+        studioSeekBackwardButton.disabled = timeMillis <= 0
+        studioSeekForwardButton.disabled = timeMillis >= DEMO_DURATION_MILLIS
+        studioStatus.textContent = studioTimeline.playing
+            ? `Playing · ${formatMillis(timeMillis)}`
+            : `Current time · ${formatMillis(timeMillis)}`
+        studioOutput.textContent = `currentTimeMillis = ${timeMillis}`
+    },
+})
+
+const seekStudioBy = (button, method, durationMillis) => {
+    button.addEventListener('pointerdown', event => event.stopPropagation())
+    button.addEventListener('click', event => {
+        event.stopPropagation()
+        studioClock.seek(studioTimeline[method](durationMillis))
+    })
+}
+
+seekStudioBy(studioSeekBackwardButton, 'rewind', 10_000)
+seekStudioBy(studioSeekForwardButton, 'advance', 10_000)
+
+studioTimeline.addEventListener('lgs1920-timeline-seek', event => {
+    studioClock.seek(event.detail.timeMillis)
+})
 studioTimeline.addEventListener('lgs1920-timeline-play', () => {
+    showStudioToast('Clip started', 'play')
     studioTimeline.playing = true
-    studioStatus.textContent = 'Playback intent · play'
+    studioClock.start()
 })
 studioTimeline.addEventListener('lgs1920-timeline-pause', () => {
+    showStudioToast('Clip paused', 'pause')
     studioTimeline.playing = false
-    studioStatus.textContent = 'Playback intent · pause'
+    studioClock.pause()
 })
 studioTimeline.addEventListener('lgs1920-timeline-stop', () => {
-    studioTimeline.playing = false
-    updateStudioTime(0)
+    showStudioToast('Clip stopped', 'stop')
+    studioClock.stop()
 })
-studioTimeline.addEventListener('lgs1920-timeline-restart', () => updateStudioTime(0))
-studioZoomSlider.addEventListener('input', event => {
-    const zoomPercent = Number(event.currentTarget.value)
-    studioTimeline.setZoom(zoomPercent)
-    studioStatus.textContent = `Horizontal zoom · ${Math.round(zoomPercent)}%`
-    studioOutput.textContent = `timeline.setZoom(${Math.round(zoomPercent)})`
+studioTimeline.addEventListener('lgs1920-timeline-restart', event => {
+    studioClock.seek(event.detail.timeMillis)
 })
-studioZoomSlider.addEventListener('change', event => studioTimeline.setZoom(Number(event.currentTarget.value)))
 
-randomClipSource.addEventListener('dragstart', event => {
-    const option = createRandomClipOption()
+const setClipDragData = (event, option) => {
+    if (!event.dataTransfer) return
+    if (typeof event.dataTransfer.setDragImage === 'function') {
+        const transparentDragImage = document.createElement('canvas')
+        transparentDragImage.width = 1
+        transparentDragImage.height = 1
+        event.dataTransfer.setDragImage(transparentDragImage, 0, 0)
+    }
+    const payload = JSON.stringify(option)
     event.dataTransfer.effectAllowed = 'copy'
-    event.dataTransfer.setData(CLIP_OPTION_DRAG_MIME, JSON.stringify(option))
+    event.dataTransfer.setData(CLIP_OPTION_DRAG_MIME, payload)
+    event.dataTransfer.setData('text/plain', payload)
     clipDragStatus.textContent = `Dragging ${option.label} · ${option.duration}s · ${option.kind} · ${option.clip.timelineColor}`
-})
-randomClipSource.addEventListener('click', () => addRandomClipAtPlayhead())
-randomClipSource.addEventListener('dragend', () => {
-    clipDragStatus.textContent = 'Click to add at the playhead, or drag into a compatible track.'
-})
-createEmptyTrackButton.addEventListener('click', () => {
-    const track = createEmptyDemoTrack()
-    studioTimeline.tracks = [...studioTimeline.tracks, track]
-    clipDragStatus.textContent = `Created ${track.label}. Drag or click a random clip to use it.`
-})
+}
+
+const createGeneratedClipSource = option => {
+    const source = document.createElement('div')
+
+    const isTrackElement = target => target?.getAttribute?.('part') === 'track'
+    const isOverTimelineTrack = event => {
+        const pathTrack = event.composedPath?.().some(isTrackElement)
+        const relatedPathTrack = event.relatedTarget?.getAttribute?.('part') === 'track'
+        const coordinatesTrack = [...document.querySelectorAll('lgs1920-timeline')].some(timeline => (
+            [...timeline.shadowRoot?.querySelectorAll('[part="track"]') ?? []].some(track => {
+                const rect = track.getBoundingClientRect()
+                return event.clientX >= rect.left && event.clientX <= rect.right
+                    && event.clientY >= rect.top && event.clientY <= rect.bottom
+            })
+        ))
+        if (event.type === 'dragleave' && !relatedPathTrack && !coordinatesTrack) return false
+        return pathTrack || relatedPathTrack || coordinatesTrack
+    }
+
+    const updateSourceVisibility = event => {
+        source.classList.toggle('demo-generated-clip--dragging', isOverTimelineTrack(event))
+    }
+
+    const clearDragState = () => {
+        source.classList.remove('demo-generated-clip--dragging')
+        window.removeEventListener('drag', updateSourceVisibility, true)
+        window.removeEventListener('dragenter', updateSourceVisibility, true)
+        window.removeEventListener('dragover', updateSourceVisibility, true)
+        window.removeEventListener('dragleave', updateSourceVisibility, true)
+        window.removeEventListener('dragend', clearDragState, true)
+    }
+
+    const startDragState = event => {
+        updateSourceVisibility(event)
+        window.addEventListener('drag', updateSourceVisibility, true)
+        window.addEventListener('dragenter', updateSourceVisibility, true)
+        window.addEventListener('dragover', updateSourceVisibility, true)
+        window.addEventListener('dragleave', updateSourceVisibility, true)
+        window.addEventListener('dragend', clearDragState, true)
+    }
+
+    const handleDragStart = event => {
+        startDragState(event)
+        setClipDragData(event, option)
+    }
+
+    const handleDragEnd = () => {
+        clearDragState()
+        if (!source.isConnected) return
+        clipDragStatus.textContent = `Created ${option.label}. Drag it onto a compatible track.`
+    }
+
+    const appendDragListeners = () => {
+        source.addEventListener('dragstart', handleDragStart)
+        source.addEventListener('dragend', handleDragEnd)
+    }
+
+    const setSourceMarkup = () => {
+        source.className = 'demo-generated-clip'
+        source.setAttribute('data-generated-clip', '')
+        source.setAttribute('data-clip-option-key', option.key)
+        source.setAttribute('draggable', 'true')
+        source.draggable = true
+        source.setAttribute('role', 'button')
+        source.setAttribute('tabindex', '0')
+        source.setAttribute('aria-label', `Drag ${option.label} onto the timeline`)
+        source.classList.add('wa-neutral', `wa-neutral-${option.clip.timelineColor}`)
+    }
+
+    setSourceMarkup()
+    const icon = document.createElement('wa-icon')
+    icon.name = option.icon
+    icon.variant = 'regular'
+    icon.label = ''
+    icon.className = 'demo-generated-clip-icon'
+    icon.setAttribute('aria-hidden', 'true')
+    const label = document.createElement('span')
+    label.className = 'demo-generated-clip-label'
+    label.textContent = option.label
+    const duration = document.createElement('span')
+    duration.className = 'demo-generated-clip-duration'
+    duration.textContent = `${option.duration.toFixed(1)}s`
+    source.append(
+        icon,
+        label,
+        duration,
+    )
+    appendDragListeners()
+    return source
+}
+
+const replenishGeneratedClipSources = () => {
+    while (generatedClipSources.children.length < MAX_PENDING_CLIPS) {
+        generatedClipSources.append(createGeneratedClipSource(createRandomClipOption()))
+    }
+}
+
 studioTimeline.addEventListener('lgs1920-timeline-add-clip', event => {
     const detail = event.detail ?? {}
     const clip = detail.clip
     if (!clip) {
-        clipDragStatus.textContent = 'No compatible track accepted this clip. Create an empty track above, then try again.'
+        clipDragStatus.textContent = 'No compatible track accepted this clip. Drag it over another track or time.'
         return
     }
+    if (removeGeneratedClipSource(detail.option)) replenishGeneratedClipSources()
     studioTimeline.tracks = detail.tracks
     clipDragStatus.textContent = `Added ${clip.label} · ${Number(clip.end - clip.start).toFixed(1)}s · ${clip.kind}`
 })
 
+replenishGeneratedClipSources()
+
+let currentRangeStartMillis = 6_000
+let currentRangeEndMillis = 24_000
+
+const updateRangeStatus = timeMillis => {
+    rangeTimeSlider.value = timeMillis
+    rangeStatus.textContent = `Range: ${formatMillis(currentRangeStartMillis)} – ${formatMillis(currentRangeEndMillis)} · Playback ${rangeTimeline.playing ? 'running' : 'paused'} at ${formatMillis(timeMillis)}`
+}
+
+const rangeClock = createPlaybackClock({
+    timeline: rangeTimeline,
+    startMillis: () => currentRangeStartMillis,
+    endMillis: () => currentRangeEndMillis,
+    onTime: updateRangeStatus,
+})
+
 rangeTimeline.addEventListener('lgs1920-timeline-range-change', event => {
     const {rangeStartMillis, rangeEndMillis} = event.detail
-    rangeStatus.textContent = `Range: ${formatMillis(rangeStartMillis)} – ${formatMillis(rangeEndMillis)}`
+    currentRangeStartMillis = rangeStartMillis
+    currentRangeEndMillis = rangeEndMillis
+    rangeClock.seek(rangeTimeline.currentTimeMillis)
 })
+
+rangeTimeSlider.addEventListener('input', event => rangeClock.seek(event.currentTarget.value))
+rangeTimeSlider.addEventListener('change', event => rangeClock.seek(event.currentTarget.value))
+rangeTimeline.addEventListener('lgs1920-timeline-play', () => {
+    rangeTimeline.playing = true
+    rangeClock.start()
+})
+rangeTimeline.addEventListener('lgs1920-timeline-pause', () => {
+    rangeTimeline.playing = false
+    rangeClock.pause()
+})
+rangeTimeline.addEventListener('lgs1920-timeline-stop', () => rangeClock.stop())
+rangeTimeline.addEventListener('lgs1920-timeline-restart', event => rangeClock.seek(event.detail.timeMillis))
+rangeTimeline.addEventListener('lgs1920-timeline-seek', event => rangeClock.seek(event.detail.timeMillis))
+rangeClock.sync(currentRangeStartMillis)
 
 const formatKeyboardKey = event => {
     const key = {' ': 'Space', Spacebar: 'Space', Escape: 'Esc'}[event.key] ?? event.key
@@ -389,22 +604,31 @@ const eventNames = [
 ]
 eventNames.forEach(name => interactiveTimeline.addEventListener(`lgs1920-timeline-${name}`, emitStatus))
 
+const updateInteractiveTime = timeMillis => {
+    if (interactiveTimeline.playing) {
+        eventStatus.textContent = `Playing · ${formatMillis(timeMillis)}`
+    }
+}
+
+const interactiveClock = createPlaybackClock({
+    timeline: interactiveTimeline,
+    endMillis: SHORT_DEMO_DURATION_MILLIS,
+    onTime: updateInteractiveTime,
+})
+
 interactiveTimeline.addEventListener('lgs1920-timeline-seek', event => {
-    interactiveTimeline.currentTimeMillis = event.detail.timeMillis
+    interactiveClock.seek(event.detail.timeMillis)
 })
 interactiveTimeline.addEventListener('lgs1920-timeline-play', () => {
     interactiveTimeline.playing = true
+    interactiveClock.start()
 })
 interactiveTimeline.addEventListener('lgs1920-timeline-pause', () => {
     interactiveTimeline.playing = false
+    interactiveClock.pause()
 })
-interactiveTimeline.addEventListener('lgs1920-timeline-stop', () => {
-    interactiveTimeline.playing = false
-    interactiveTimeline.currentTimeMillis = 0
-})
-interactiveTimeline.addEventListener('lgs1920-timeline-restart', () => {
-    interactiveTimeline.currentTimeMillis = 0
-})
+interactiveTimeline.addEventListener('lgs1920-timeline-stop', () => interactiveClock.stop())
+interactiveTimeline.addEventListener('lgs1920-timeline-restart', event => interactiveClock.seek(event.detail.timeMillis))
 interactiveTimeline.addEventListener('lgs1920-timeline-clip-change', event => {
     interactiveTimeline.tracks = event.detail.tracks
 })
@@ -420,6 +644,30 @@ interactiveTimeline.addEventListener('lgs1920-timeline-track-visibility-change',
 interactiveTimeline.addEventListener('lgs1920-timeline-add-clip', event => {
     interactiveTimeline.tracks = event.detail.tracks
 })
+
+const updateReadonlyTime = timeMillis => {
+    readonlyTimeSlider.value = timeMillis
+    readonlyPlayButton.textContent = readonlyTimeline.playing ? 'Pause preview' : 'Play preview'
+    readonlyStatus.textContent = `External player ${readonlyTimeline.playing ? 'playing' : 'paused'} · ${formatMillis(timeMillis)}`
+}
+
+const readonlyClock = createPlaybackClock({
+    timeline: readonlyTimeline,
+    endMillis: SHORT_DEMO_DURATION_MILLIS,
+    onTime: updateReadonlyTime,
+})
+
+readonlyPlayButton.addEventListener('click', () => {
+    if (readonlyTimeline.playing) {
+        readonlyTimeline.playing = false
+        readonlyClock.pause()
+        return
+    }
+    readonlyTimeline.playing = true
+    readonlyClock.start()
+})
+readonlyTimeSlider.addEventListener('input', event => readonlyClock.seek(event.currentTarget.value))
+readonlyTimeSlider.addEventListener('change', event => readonlyClock.seek(event.currentTarget.value))
 
 document.querySelector('#theme-control').addEventListener('change', event => applyTheme(event.currentTarget.value))
 document.querySelector('#mode-control').addEventListener('change', event => applyMode(event.currentTarget.value))

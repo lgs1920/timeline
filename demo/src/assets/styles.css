@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-14
+ * Last modified: 2026-09-15
  *
  *
  * Copyright © 2026 LGS1920
@@ -442,56 +442,19 @@ h2 {
 
 .studio-demo lgs1920-timeline {
     min-block-size: 34rem;
-    /* Reserve a visible ruler band for the external time slider. */
+    /* Reserve a visible ruler band for the built-in time slider. */
     --lgs-timeline-header-height: 56px;
 }
 
-.demo-scrubber {
-    position: absolute;
-    z-index: 8;
-    inset-block-start: 0;
-    inset-inline-start: 0;
-    display: block;
-    inline-size: 100%;
-    block-size: var(--lgs-timeline-header-height, 56px);
-    min-inline-size: 0;
-    pointer-events: none;
-    background: transparent;
-    transform: translateX(var(--lgs-timeline-ruler-scroll-offset, 0px));
-}
-
-.demo-scrubber-control {
-    position: absolute;
-    inset-block-start: 0;
-    inset-inline: 0;
-    display: flex;
-    align-items: center;
-    gap: var(--wa-space-xs);
-    inline-size: 100%;
-    padding: var(--wa-space-2xs) var(--wa-space-s) 0;
-    pointer-events: auto;
-}
-
-.demo-scrubber wa-slider,
-.demo-zoom-control wa-slider {
-    display: block;
-    flex: 1 1 auto;
-    inline-size: 100%;
-    min-inline-size: 0;
-    --track-size: 0.25rem;
-}
-
-.demo-zoom-control {
-    display: flex;
-    flex: 1 1 auto;
-    align-items: center;
-    gap: var(--wa-space-xs);
-    inline-size: 100%;
-    min-inline-size: 0;
-}
-
-.demo-zoom-control wa-icon {
+.demo-skip-controls {
+    display: inline-flex;
     flex: 0 0 auto;
+    align-items: center;
+    gap: var(--wa-space-2xs);
+}
+
+.demo-skip-controls wa-button {
+    white-space: nowrap;
 }
 
 .clip-source-panel {
@@ -538,18 +501,59 @@ h2 {
     gap: var(--wa-space-xs);
 }
 
-.demo-add-clip {
+.generated-clip-sources {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--wa-space-xs);
+}
+
+.demo-generated-clip {
+    display: inline-flex;
+    flex: 0 1 auto;
+    align-items: center;
+    gap: var(--wa-space-2xs, 0.25rem);
+    min-block-size: 2rem;
     max-inline-size: 100%;
+    padding: 0.35rem 0.65rem;
+    overflow: hidden;
+    color: var(--wa-color-neutral-on);
+    background: var(--wa-color-neutral-50);
+    border: 1px solid var(--wa-color-neutral-60);
+    border-radius: var(--wa-border-radius-s);
+    font-weight: 600;
+    cursor: grab;
+    user-select: none;
     white-space: nowrap;
 }
 
-.demo-add-clip::part(label) {
+.demo-generated-clip:active {
+    cursor: grabbing;
+}
+
+.demo-generated-clip--dragging {
+    opacity: 0;
+}
+
+.demo-generated-clip:focus-visible {
+    outline: 2px dashed currentColor;
+    outline-offset: 2px;
+}
+
+.demo-generated-clip-icon {
+    flex: 0 0 auto;
+}
+
+.demo-generated-clip-label {
+    min-inline-size: 0;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.demo-add-track {
-    white-space: nowrap;
+.demo-generated-clip-duration {
+    flex: 0 0 auto;
+    opacity: 0.82;
+    font-variant-numeric: tabular-nums;
 }
 
 .section-intro {
@@ -668,6 +672,26 @@ lgs1920-timeline {
     margin-block-start: 1.5rem;
 }
 
+.readonly-controls {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: var(--wa-space-s);
+    margin-block-start: 1.25rem;
+}
+
+.readonly-controls wa-slider,
+#range-time-slider {
+    display: block;
+    inline-size: 100%;
+    min-inline-size: 0;
+    --track-size: 0.25rem;
+}
+
+#readonly-status {
+    margin-block: 0.75rem 0;
+}
+
 .timeline-output {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
@@ -681,6 +705,24 @@ lgs1920-timeline {
     overflow: auto;
     color: var(--demo-text);
     white-space: pre-wrap;
+}
+
+.demo02-event-output {
+    align-items: start;
+}
+
+.demo02-event-controls {
+    display: grid;
+    gap: var(--wa-space-s);
+    min-inline-size: 0;
+}
+
+.demo02-event-output code {
+    display: block;
+    block-size: 10rem;
+    min-block-size: 10rem;
+    max-block-size: 10rem;
+    overflow: auto;
 }
 
 .example-grid {
@@ -708,6 +750,10 @@ lgs1920-timeline {
 
 .example-card lgs1920-timeline {
     min-block-size: 16rem;
+}
+
+.example-card > #range-time-slider {
+    margin-block: 1.25rem 0.5rem;
 }
 
 .keyboard-reference {
@@ -863,5 +909,9 @@ kbd {
 
     .docs-main {
         padding: var(--wa-space-s);
+    }
+
+    .demo02-event-output {
+        grid-template-columns: 1fr;
     }
 }

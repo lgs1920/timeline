@@ -75,98 +75,89 @@
             </div>
             <span id="studio-status" class="event-status" role="status" aria-live="polite">Ready</span>
         </div>
-        <p class="section-intro">The timeline stays controlled by its host. The time slider drives <code>currentTimeMillis</code>; the second slider calls <code>setZoom()</code>. Both controls are supplied through component slots, like in Studio.</p>
+        <p class="section-intro">The timeline stays controlled by its host. The standard time and zoom controls remain inside the component. The play button emits a playback intent, then the host clock advances <code>currentTimeMillis</code>. The host adds 10-second seek actions through the top menu slot.</p>
         <div class="clip-source-panel" aria-label="External random clip source">
             <div class="clip-source-copy">
                 <p class="eyebrow">External clip source</p>
-                <strong>Click or drag a generated clip</strong>
-                <span>Click adds it at the playhead. Drag it into any compatible track to choose the position, or create an empty track first.</span>
+                <strong>Drag a clip to the timeline</strong>
+                <span>Two generated clips are always ready below. Drop one into a compatible track to choose its position; a new clip replaces it immediately.</span>
             </div>
             <div class="clip-source-actions">
-                <wa-button id="random-clip-source" class="demo-add-clip" variant="brand" size="s" draggable="true">
-                    <wa-icon name="wand-magic-sparkles" variant="regular" label="" aria-hidden="true"></wa-icon>
-                    Click or drag a random clip
-                </wa-button>
-                <wa-button id="create-empty-track" class="demo-add-track" appearance="outlined" size="s">
-                    <wa-icon name="plus" variant="regular" label="" aria-hidden="true"></wa-icon>
-                    Create an empty track
-                </wa-button>
+                <div id="generated-clip-sources" class="generated-clip-sources" aria-label="Generated clips"></div>
             </div>
         </div>
         <lgs1920-timeline id="studio-timeline" class="demo-studio-timeline" aria-label="Studio style interactive timeline">
-            <span slot="timeline-ruler" class="demo-scrubber" data-timeline-ruler-fixed="">
-                <span class="demo-scrubber-control">
-                    <wa-slider id="studio-time-slider" label="Current time" size="s" variant="brand" with-tooltip min="0" max="60000" step="33.333" value="0"></wa-slider>
-                </span>
+            <span slot="custom-menu" class="demo-skip-controls" aria-label="Ten second seek controls">
+                <wa-button id="studio-seek-backward" appearance="plain" variant="brand" size="s" aria-label="Back 10 seconds" title="Back 10 seconds">
+                    <wa-icon slot="start" name="arrow-rotate-left" variant="solid" aria-hidden="true"></wa-icon>
+                    -10s
+                </wa-button>
+                <wa-button id="studio-seek-forward" appearance="plain" variant="brand" size="s" aria-label="Forward 10 seconds" title="Forward 10 seconds">
+                    <wa-icon slot="start" name="arrow-rotate-right" variant="solid" aria-hidden="true"></wa-icon>
+                    +10s
+                </wa-button>
             </span>
-            <span slot="timeline-controls" class="demo-zoom-control">
-                <wa-icon name="arrows-left-right" variant="regular" label="" aria-hidden="true"></wa-icon>
-                <wa-slider id="studio-zoom-slider" label="Horizontal zoom" size="s" variant="brand" with-tooltip min="-50" max="500" step="1" value="0"></wa-slider>
-            </span>
-            <span slot="custom-menu" class="demo-slot-chip">Custom menu slot</span>
             <span slot="overlay-text">Preparing timeline...</span>
         </lgs1920-timeline>
         <div class="timeline-output">
             <span>Last event</span>
             <code id="studio-output">None</code>
         </div>
+        <wa-toast id="studio-toast" placement="bottom-end"></wa-toast>
         <div class="demo-explanation">
             <article>
                 <p class="eyebrow">What to observe</p>
-                <p>The host receives seek intent, updates the component, and keeps the external slider synchronized. The zoom slider changes only the visual ruler scale. The clip source is outside the custom element, so it can live in a toolbar, palette, or application menu. Click to add at the playhead, or drag it over a compatible track to choose the position. If no track accepts the clip, create an empty track and try again.</p>
+            <p>The host receives <code>seek</code> intent and writes <code>event.detail.timeMillis</code> back to the component. It also owns the playback clock: <code>play</code> starts it, <code>pause</code> stops it, and each frame updates <code>currentTimeMillis</code>. The standard time and zoom controls stay inside the component. The top menu slot contains the 10-second rewind and advance buttons. The clip sources are outside the custom element, so they can live in a toolbar, palette, or application menu. Two randomized clips are always available for dragging, and each accepted drop replaces its source with a new one.</p>
             </article>
             <pre><code data-language="mixed">&lt;lgs1920-timeline&gt;
-    &lt;wa-slider slot="timeline-ruler"
-               id="time"
-               min="0"
-               max="60000"&gt;&lt;/wa-slider&gt;
-    &lt;wa-slider slot="timeline-controls"
-               id="zoom"
-               min="-50"
-               max="500"&gt;&lt;/wa-slider&gt;
+    &lt;span slot="custom-menu"&gt;
+        &lt;wa-button appearance="plain" variant="brand" size="s" aria-label="Back 10 seconds"&gt;&lt;wa-icon slot="start" name="arrow-rotate-left" variant="solid"&gt;&lt;/wa-icon&gt;-10s&lt;/wa-button&gt;
+        &lt;wa-button appearance="plain" variant="brand" size="s" aria-label="Forward 10 seconds"&gt;&lt;wa-icon slot="start" name="arrow-rotate-right" variant="solid"&gt;&lt;/wa-icon&gt;+10s&lt;/wa-button&gt;
+    &lt;/span&gt;
 &lt;/lgs1920-timeline&gt;
 
-&lt;wa-button id="clip-source" draggable="true"&gt;
-    Click or drag a random clip
-&lt;/wa-button&gt;
-
-time.addEventListener('input', event =&gt; {
-    timeline.currentTimeMillis = event.target.value
+timeline.addEventListener('lgs1920-timeline-seek', event =&gt; {
+    clock.seek(event.detail.timeMillis)
 })
-zoom.addEventListener('input', event =&gt; {
-    timeline.setZoom(event.target.value)
+
+&lt;p&gt;Drag a clip to the timeline&lt;/p&gt;
+&lt;div id="generated-clip-sources"&gt;&lt;/div&gt;
+</code></pre>
+            <pre class="demo-code"><code data-language="javascript">timeline.addEventListener('lgs1920-timeline-play', () =&gt; {
+    timeline.playing = true
+    clock.start()
+})
+
+timeline.addEventListener('lgs1920-timeline-pause', () =&gt; {
+    timeline.playing = false
+    clock.stop()
+})
+
+timeline.addEventListener('lgs1920-timeline-seek', event =&gt; {
+    timeline.currentTimeMillis = event.detail.timeMillis
+    clock.seek(event.detail.timeMillis)
 })</code></pre>
             <pre class="demo-code"><code data-language="javascript">import {CLIP_OPTION_DRAG_MIME} from '@lgs1920/timeline'
 
-const source = document.querySelector('#clip-source')
-source.addEventListener('click', () =&gt; addRandomClipAtPlayhead())
-source.addEventListener('dragstart', event =&gt; {
+const clipSources = document.querySelector('#generated-clip-sources')
+const replenishClipSources = () =&gt; {
+    while (clipSources.children.length &lt; 2) {
     const option = createRandomClipOption()
-    event.dataTransfer.setData(
-        CLIP_OPTION_DRAG_MIME,
-        JSON.stringify(option),
-    )
-})
+    const clip = document.createElement('wa-button')
+    clip.textContent = `${option.label} · ${option.duration}s`
+    clip.draggable = true
+    clip.addEventListener('dragstart', event =&gt; {
+        event.dataTransfer.effectAllowed = 'copy'
+        event.dataTransfer.setData(CLIP_OPTION_DRAG_MIME, JSON.stringify(option))
+    })
+    clipSources.append(clip)
+    }
+}
 
-document.querySelector('#create-empty-track').addEventListener('click', () =&gt; {
-    timeline.tracks = [...timeline.tracks, {
-        id: `generated-${Date.now()}`,
-        label: 'Generated clips',
-        clips: [],
-    }]
-})
-
-const option = {
-    label: 'Random clip',
-    kind: 'video',
-    duration: 7.4,
-    clip: {
-        icon: 'camera',
-        colorClasses: ['wa-neutral', 'wa-neutral-purple'],
-    },
-}</code></pre>
+replenishClipSources()
+</code></pre>
         </div>
-        <p id="clip-drag-status" class="demo-note" role="status" aria-live="polite">Click to add at the playhead, or drag into a compatible track.</p>
+        <p id="clip-drag-status" class="demo-note" role="status" aria-live="polite">Drag one of the two clips onto the timeline. Each accepted drop creates a replacement clip.</p>
     </section>
 
     <section class="demo-panel playground" aria-labelledby="interactive-title">
@@ -177,10 +168,12 @@ const option = {
             </div>
             <span id="event-status" class="event-status" role="status" aria-live="polite">Ready</span>
         </div>
-        <p class="section-intro">Drag a clip, resize it, change a track label, or use the playback toolbar. Every interaction emits a namespaced event; this demo writes accepted track changes back to the element.</p>
+        <p class="section-intro">Drag a clip, resize it, change a track label, or use the playback toolbar. The host advances the clock after a <code>play</code> event, so this demo shows the same integration pattern as the Studio example. Every interaction emits a namespaced event; this demo writes accepted track changes back to the element.</p>
         <lgs1920-timeline id="interactive-timeline" aria-label="Interactive editing timeline"></lgs1920-timeline>
-        <div class="timeline-output">
-            <span>Last event</span>
+        <div class="timeline-output demo02-event-output">
+            <div class="demo02-event-controls">
+                <span>Last event</span>
+            </div>
             <code id="event-output">None</code>
         </div>
         <pre class="demo-code"><code data-language="javascript">timeline.addEventListener('lgs1920-timeline-clip-change', event =&gt; {
@@ -195,24 +188,34 @@ timeline.addEventListener('lgs1920-timeline-seek', event =&gt; {
     <section class="example-grid" aria-label="Timeline examples">
         <article class="demo-panel example-card">
             <p class="eyebrow">Demo 03 · Read only</p>
-            <h2>Display a prepared sequence</h2>
-            <p>Disable interaction to use the same component as a compact visual summary.</p>
+            <h2>Mirror an external player</h2>
+            <p>The timeline is a read-only projection: an external player owns the controls and sends its current time to the component. Use this pattern for a video player, a presentation preview, or a monitoring screen.</p>
+            <div class="readonly-controls">
+                <wa-button id="readonly-play" appearance="accent" size="s">Play preview</wa-button>
+                <wa-slider id="readonly-time-slider" label="External player time" size="s" variant="brand" with-tooltip min="0" max="30000" step="33.333" value="0"></wa-slider>
+            </div>
             <lgs1920-timeline id="readonly-timeline" aria-label="Read only timeline"></lgs1920-timeline>
+            <p id="readonly-status" class="demo-note" role="status" aria-live="polite">External player paused · 00:00</p>
             <pre class="demo-code"><code data-language="javascript">timeline.timeline = {
     interactive: false,
     editable: false,
 }
+
+player.addEventListener('timeupdate', event =&gt; {
+    timeline.currentTimeMillis = event.detail.timeMillis
+})
 </code></pre>
         </article>
         <article class="demo-panel example-card">
             <p class="eyebrow">Demo 04 · Video range</p>
             <h2>Limit playback to a selected range</h2>
-            <p>Drag the colored start and end handles on the ruler. Keyboard users can focus the handles and move them with the arrow keys.</p>
+            <p>Drag the colored start and end handles on the ruler. The playback clock stops at the selected end, which is useful when the timeline represents an in and out range. Keyboard users can focus the handles and move them with the arrow keys.</p>
+            <wa-slider id="range-time-slider" label="Range playback time" size="s" variant="brand" with-tooltip min="0" max="30000" step="33.333" value="0"></wa-slider>
             <lgs1920-timeline id="range-timeline" aria-label="Timeline with editable video range"></lgs1920-timeline>
-            <p id="range-status" class="demo-note" role="status" aria-live="polite">Range: 00:00 – 01:00</p>
+            <p id="range-status" class="demo-note" role="status" aria-live="polite">Range: 00:06 – 00:24 · Playback paused at 00:06</p>
             <pre class="demo-code"><code data-language="javascript">timeline.timeline = {
-    rangeStartMillis: 12_000,
-    rangeEndMillis: 48_000,
+    rangeStartMillis: 6_000,
+    rangeEndMillis: 24_000,
 }
 
 timeline.addEventListener('lgs1920-timeline-range-change', event =&gt; {
