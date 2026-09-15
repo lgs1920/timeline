@@ -102,12 +102,18 @@ const createDataTransfer = () => {
 }
 
 const createDragEvent = (type, dataTransfer, options = {}) => {
-    const event = new Event(type, {bubbles: true, cancelable: true})
+    const event = new Event(type, {
+        bubbles: true,
+        cancelable: true,
+        composed: options.composed ?? false,
+    })
     Object.defineProperties(event, {
         dataTransfer: {value: dataTransfer},
         clientX: {value: options.clientX ?? 0},
         clientY: {value: options.clientY ?? 0},
         relatedTarget: {value: options.relatedTarget ?? null},
+        shiftKey: {value: options.shiftKey === true},
+        altKey: {value: options.altKey === true},
     })
     return event
 }
@@ -614,6 +620,11 @@ describe('lgs1920-timeline Web Component', () => {
         expect(zoomSlider.value).toBe(0)
         expect(typeof zoomSlider.valueFormatter).toBe('function')
 
+        const zoomSliderDuringInput = zoomSlider
+        zoomSlider.value = 75
+        zoomSlider.dispatchEvent(new Event('input', {bubbles: true}))
+        expect(timeline.shadowRoot.querySelector('[data-timeline-zoom-slider]')).toBe(zoomSliderDuringInput)
+
         timeSlider.value = 5_000
         timeSlider.dispatchEvent(new Event('input', {bubbles: true}))
         expect(timeline.currentTimeMillis).toBe(5_000)
@@ -625,7 +636,7 @@ describe('lgs1920-timeline Web Component', () => {
 
         zoomSlider.value = 100
         zoomSlider.dispatchEvent(new Event('change', {bubbles: true}))
-        expect(zoomChange.mock.calls[0][0].detail).toMatchObject({
+        expect(zoomChange.mock.calls.at(-1)[0].detail).toMatchObject({
             settled: true,
             source: 'timeline-zoom-slider',
             zoomPercent: 100,
@@ -2816,6 +2827,42 @@ describe('lgs1920-timeline Web Component', () => {
         expect(timeline.tracks[0].label).toBe('Map')
     })
 
+    it('commits the track label input when Enter is pressed', () => {
+        const timeline = new LGS1920Timeline()
+        const labelChanges = vi.fn()
+        timeline.addEventListener('lgs1920-timeline-track-label-change', labelChanges)
+        timeline.timeline = {durationMillis: 12_000, visible: true}
+        timeline.tracks = [{id: 'map', label: 'Map', editable: true, clips: []}]
+        document.body.append(timeline)
+
+        timeline.shadowRoot.querySelector('slot[name="track-label-map"]')
+            .dispatchEvent(new MouseEvent('dblclick', {bubbles: true, cancelable: true}))
+        const input = timeline.shadowRoot.querySelector('[data-edit-row-id="map"]')
+        input.value = 'Journey map'
+        input.dispatchEvent(new KeyboardEvent('keydown', {
+            key: 'Enter',
+            bubbles: true,
+            cancelable: true,
+        }))
+
+        expect(labelChanges).toHaveBeenCalledOnce()
+        expect(labelChanges.mock.calls[0][0].detail.label).toBe('Journey map')
+        expect(timeline.tracks[0].label).toBe('Journey map')
+
+        timeline.shadowRoot.querySelector('slot[name="track-label-map"]')
+            .dispatchEvent(new MouseEvent('dblclick', {bubbles: true, cancelable: true}))
+        const secondInput = timeline.shadowRoot.querySelector('[data-edit-row-id="map"]')
+        secondInput.value = 'Final map'
+        secondInput.dispatchEvent(new KeyboardEvent('keydown', {
+            key: 'Enter',
+            bubbles: true,
+            cancelable: true,
+        }))
+
+        expect(labelChanges).toHaveBeenCalledTimes(2)
+        expect(timeline.tracks[0].label).toBe('Final map')
+    })
+
     it('resizes clips through start and end handles and emits the committed change', () => {
         const timeline = new LGS1920Timeline()
         const changeStart = vi.fn()
@@ -4749,6 +4796,38 @@ describe('lgs1920-timeline Web Component', () => {
         ]))
     })
 
+    it('keeps an external drag copy-enabled until it reaches a track', () => {
+        const timeline = new LGS1920Timeline()
+        const additions = vi.fn()
+        const option = {group: 'media', key: 'external-window', label: 'External window', kind: 'video', duration: 2}
+        configureTimeline(timeline, {clipOptions: []})
+        timeline.addEventListener('lgs1920-timeline-add-clip', additions)
+        document.body.append(timeline)
+
+        const surface = timeline.shadowRoot.querySelector('[data-surface]')
+        vi.spyOn(surface, 'getBoundingClientRect').mockReturnValue({left: 0, top: 0, right: 600, bottom: 300, width: 600, height: 300})
+        const track = timeline.shadowRoot.querySelector('[part="track"][data-row-id="main#one"]')
+        const dataTransfer = createDataTransfer()
+        dataTransfer.setData(CLIP_OPTION_DRAG_MIME, JSON.stringify(option))
+        const source = document.createElement('div')
+        document.body.append(source)
+
+        source.dispatchEvent(createDragEvent('dragstart', dataTransfer, {clientX: 20, clientY: 20}))
+        const outsideDragOver = createDragEvent('dragover', dataTransfer, {clientX: 700, clientY: 320})
+        source.dispatchEvent(outsideDragOver)
+
+        expect(outsideDragOver.defaultPrevented).toBe(true)
+        expect(dataTransfer.dropEffect).toBe('copy')
+        expect(timeline.shadowRoot.querySelector('[data-clip-option-preview]')).toBeNull()
+
+        track.dispatchEvent(createDragEvent('dragover', dataTransfer, {clientX: 240, clientY: 50}))
+        expect(timeline.shadowRoot.querySelector('[data-clip-option-preview]')).not.toBeNull()
+        track.dispatchEvent(createDragEvent('drop', dataTransfer, {clientX: 240, clientY: 50}))
+
+        expect(additions).toHaveBeenCalledOnce()
+        expect(additions.mock.calls[0][0].detail.clip).toMatchObject({label: 'External window'})
+    })
+
     it('keeps an external clip drop target active when dragover hides the payload value', () => {
         const timeline = new LGS1920Timeline()
         const additions = vi.fn()
@@ -4850,6 +4929,159 @@ describe('lgs1920-timeline Web Component', () => {
             .classList.contains('lgs1920-wa-timeline__clip--drop-rejected')).toBe(true)
         renderedBlockedTrack.dispatchEvent(createDragEvent('dragleave', blockedTransfer, {clientX: 108, clientY: 50}))
         expect(blockedTimeline.hasAttribute('data-clip-drop-rejected')).toBe(false)
+    })
+
+    it('routes a composed external drop only to the timeline that owns the track', () => {
+        const firstTimeline = new LGS1920Timeline()
+        const secondTimeline = new LGS1920Timeline()
+        const firstAdditions = vi.fn()
+        const secondAdditions = vi.fn()
+        const option = {group: 'media', key: 'shared', label: 'Shared', kind: 'video', duration: 2}
+        const tracks = [{id: 'shared-track', label: 'Shared track', clips: []}]
+        configureTimeline(firstTimeline, {tracks, clipOptions: []})
+        configureTimeline(secondTimeline, {tracks, clipOptions: []})
+        firstTimeline.addEventListener('lgs1920-timeline-add-clip', firstAdditions)
+        secondTimeline.addEventListener('lgs1920-timeline-add-clip', secondAdditions)
+        document.body.append(firstTimeline, secondTimeline)
+
+        const firstSurface = firstTimeline.shadowRoot.querySelector('[data-surface]')
+        const secondSurface = secondTimeline.shadowRoot.querySelector('[data-surface]')
+        vi.spyOn(firstSurface, 'getBoundingClientRect').mockReturnValue({left: 0, top: 0, right: 600, bottom: 200, width: 600, height: 200})
+        vi.spyOn(secondSurface, 'getBoundingClientRect').mockReturnValue({left: 0, top: 220, right: 600, bottom: 420, width: 600, height: 200})
+        const secondTrack = secondTimeline.shadowRoot.querySelector('[part="track"][data-row-id="shared-track"]')
+        const dataTransfer = createDataTransfer()
+        dataTransfer.setData(CLIP_OPTION_DRAG_MIME, JSON.stringify(option))
+
+        window.dispatchEvent(createDragEvent('dragstart', dataTransfer, {clientX: 20, clientY: 20}))
+
+        expect(firstTimeline.shadowRoot.querySelector('[data-clip-option-preview]')).toBeNull()
+        expect(secondTimeline.shadowRoot.querySelector('[data-clip-option-preview]')).toBeNull()
+
+        secondTrack.dispatchEvent(createDragEvent('dragover', dataTransfer, {
+            clientX: 240,
+            clientY: 270,
+            composed: true,
+        }))
+        secondTrack.dispatchEvent(createDragEvent('drop', dataTransfer, {
+            clientX: 240,
+            clientY: 270,
+            composed: true,
+        }))
+
+        expect(firstAdditions).not.toHaveBeenCalled()
+        expect(secondAdditions).toHaveBeenCalledOnce()
+        expect(secondAdditions.mock.calls[0][0].detail.trackId).toBe('shared-track')
+        expect(firstTimeline.shadowRoot.querySelector('[data-clip-option-preview]')).toBeNull()
+    })
+
+    it('marks a non-droppable track red during an external clip drag', () => {
+        const timeline = new LGS1920Timeline()
+        const option = {group: 'media', key: 'blocked', label: 'Blocked', kind: 'video', duration: 2}
+        configureTimeline(timeline, {
+            tracks: [{id: 'blocked', label: 'Blocked', editable: false, clips: []}],
+            clipOptions: [],
+        })
+        document.body.append(timeline)
+
+        const surface = timeline.shadowRoot.querySelector('[data-surface]')
+        vi.spyOn(surface, 'getBoundingClientRect').mockReturnValue({left: 0, top: 0, right: 600, bottom: 200, width: 600, height: 200})
+        const track = timeline.shadowRoot.querySelector('[part="track"][data-row-id="blocked"]')
+        const dataTransfer = createDataTransfer()
+        dataTransfer.setData(CLIP_OPTION_DRAG_MIME, JSON.stringify(option))
+        track.dispatchEvent(createDragEvent('dragover', dataTransfer, {clientX: 240, clientY: 50}))
+
+        expect(dataTransfer.dropEffect).toBe('none')
+        expect(timeline.hasAttribute('data-clip-drop-rejected')).toBe(true)
+        expect(track.classList.contains('lgs1920-wa-timeline__track--clip-drop-rejected')).toBe(true)
+        expect(timeline.shadowRoot.querySelector('[part="track-background"][data-row-id="blocked"]')
+            .classList.contains('lgs1920-wa-timeline__track-background--clip-drop-rejected')).toBe(true)
+        expect(timeline.shadowRoot.querySelector('[part="legend-row"][data-row-id="blocked"]')
+            .classList.contains('lgs1920-wa-timeline__legend-row--clip-drop-rejected')).toBe(true)
+    })
+
+    it('clears the track preview when dragleave reports zero coordinates', () => {
+        const timeline = new LGS1920Timeline()
+        const option = {group: 'media', key: 'pointer', label: 'Pointer', kind: 'video', duration: 2}
+        configureTimeline(timeline, {clipOptions: []})
+        document.body.append(timeline)
+
+        const surface = timeline.shadowRoot.querySelector('[data-surface]')
+        vi.spyOn(surface, 'getBoundingClientRect').mockReturnValue({left: 0, top: 0, right: 600, bottom: 200, width: 600, height: 200})
+        const track = timeline.shadowRoot.querySelector('[part="track"][data-row-id="main#one"]')
+        const dataTransfer = createDataTransfer()
+        dataTransfer.setData(CLIP_OPTION_DRAG_MIME, JSON.stringify(option))
+        track.dispatchEvent(createDragEvent('dragover', dataTransfer, {clientX: 240, clientY: 50}))
+        expect(timeline.shadowRoot.querySelector('[data-clip-option-preview]')).not.toBeNull()
+
+        track.dispatchEvent(createDragEvent('dragleave', dataTransfer, {clientX: 0, clientY: 0}))
+
+        expect(timeline.shadowRoot.querySelector('[data-clip-option-preview]')).toBeNull()
+        expect(timeline.hasAttribute('data-clip-drop-rejected')).toBe(false)
+    })
+
+    it('recomputes the final drop when a modifier changes at the same pointer position', () => {
+        const createScenario = () => {
+            const timeline = new LGS1920Timeline()
+            const additions = vi.fn()
+            const option = {group: 'media', key: 'modifier', label: 'Modifier', kind: 'video', duration: 2}
+            configureTimeline(timeline, {
+                timeline: {snap: true},
+                tracks: [{id: 'target', label: 'Target', clips: []}],
+                clipOptions: [],
+            })
+            timeline.addEventListener('lgs1920-timeline-add-clip', additions)
+            document.body.append(timeline)
+            const surface = timeline.shadowRoot.querySelector('[data-surface]')
+            vi.spyOn(surface, 'getBoundingClientRect').mockReturnValue({left: 0, top: 0, right: 600, bottom: 200, width: 600, height: 200})
+            const track = timeline.shadowRoot.querySelector('[part="track"][data-row-id="target"]')
+            const dataTransfer = createDataTransfer()
+            dataTransfer.setData(CLIP_OPTION_DRAG_MIME, JSON.stringify(option))
+            return {timeline, additions, track, dataTransfer}
+        }
+
+        const staleScenario = createScenario()
+        staleScenario.track.dispatchEvent(createDragEvent('dragover', staleScenario.dataTransfer, {clientX: 170, clientY: 50}))
+        staleScenario.track.dispatchEvent(createDragEvent('drop', staleScenario.dataTransfer, {
+            clientX: 170,
+            clientY: 50,
+            altKey: true,
+        }))
+
+        const currentScenario = createScenario()
+        currentScenario.track.dispatchEvent(createDragEvent('dragover', currentScenario.dataTransfer, {
+            clientX: 170,
+            clientY: 50,
+            altKey: true,
+        }))
+        currentScenario.track.dispatchEvent(createDragEvent('drop', currentScenario.dataTransfer, {
+            clientX: 170,
+            clientY: 50,
+            altKey: true,
+        }))
+
+        expect(staleScenario.additions.mock.calls[0][0].detail.clip.start)
+            .toBe(currentScenario.additions.mock.calls[0][0].detail.clip.start)
+    })
+
+    it('coalesces rapid external preview updates into one animation frame', () => {
+        const timeline = new LGS1920Timeline()
+        const option = {group: 'media', key: 'frame', label: 'Frame', kind: 'video', duration: 2}
+        configureTimeline(timeline, {clipOptions: []})
+        document.body.append(timeline)
+
+        const surface = timeline.shadowRoot.querySelector('[data-surface]')
+        vi.spyOn(surface, 'getBoundingClientRect').mockReturnValue({left: 0, top: 0, right: 600, bottom: 200, width: 600, height: 200})
+        const track = timeline.shadowRoot.querySelector('[part="track"][data-row-id="main#one"]')
+        const dataTransfer = createDataTransfer()
+        dataTransfer.setData(CLIP_OPTION_DRAG_MIME, JSON.stringify(option))
+        const frame = vi.spyOn(globalThis, 'requestAnimationFrame')
+        frame.mockClear()
+
+        track.dispatchEvent(createDragEvent('dragover', dataTransfer, {clientX: 160, clientY: 50}))
+        track.dispatchEvent(createDragEvent('dragover', dataTransfer, {clientX: 180, clientY: 50}))
+
+        expect(frame).toHaveBeenCalledTimes(1)
+        frame.mockRestore()
     })
 
     it('applies ripple insertion and extends the timeline when configured', () => {

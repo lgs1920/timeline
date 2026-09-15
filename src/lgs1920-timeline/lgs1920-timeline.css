@@ -368,6 +368,12 @@
         flex: 0 0 auto;
     }
 
+    & .lgs1920-wa-timeline__transport-buttons > wa-tooltip,
+    & .lgs1920-wa-timeline__timeline-scrubber > wa-tooltip,
+    & .lgs1920-wa-timeline__zoom-control > wa-tooltip {
+        display: contents;
+    }
+
     & .lgs1920-wa-timeline__playback-controls {
         display: flex;
         align-items: center;
@@ -788,18 +794,18 @@
         display: block;
         align-self: center;
         flex: 1 1 auto;
-        min-width: 5rem;
-        max-width: 12rem;
+        min-width: 0;
+        max-width: none;
         height: auto;
         min-height: 0;
         margin-block: 0;
-        margin-inline: 0;
-        padding-block: var(--lgs-timeline-label-editor-padding-block);
-        padding-inline: var(--lgs-timeline-label-editor-padding-inline);
+        margin-inline: 2px;
+        padding-block: 0;
+        padding-inline: 0;
         /* Keep the Web Awesome control compact without coupling it to row height. */
         --wa-form-control-height: auto;
-        --wa-form-control-padding-block: var(--lgs-timeline-label-editor-padding-block);
-        --wa-form-control-padding-inline: var(--lgs-timeline-label-editor-padding-inline);
+        --wa-form-control-padding-block: 0;
+        --wa-form-control-padding-inline: 0;
         --wa-form-control-value-line-height: 1;
     }
 
@@ -820,8 +826,8 @@
         height: auto;
         min-height: 0;
         margin: 0;
-        padding-block: var(--lgs-timeline-label-editor-padding-block);
-        padding-inline: var(--lgs-timeline-label-editor-padding-inline);
+        padding-block: 0;
+        padding-inline: 0;
         line-height: 1;
     }
 
@@ -929,6 +935,13 @@
         min-width: 0;
         /* Compact the zoom slider track inside the control band. */
         --track-size: 0.25rem;
+        --thumb-width: 0.75rem;
+        --thumb-height: 0.75rem;
+        pointer-events: auto;
+    }
+
+    & .lgs1920-wa-timeline__zoom-slider::part(thumb) {
+        border-radius: 50%;
     }
 
     & .lgs1920-wa-timeline__surface-controls > slot[name='timeline-controls'] {
@@ -1031,9 +1044,8 @@
         pointer-events: auto;
         /* Compact the time slider track inside the ruler header. */
         --track-size: 0.25rem;
-        /* Keep the temporal scrubber thumb vertical and clear of the ruler ticks. */
-        --thumb-width: 0.6rem;
-        --thumb-height: 1.1rem;
+        --thumb-width: 0.75rem;
+        --thumb-height: 0.75rem;
     }
 
     & .lgs1920-wa-timeline__time-slider::part(slider) {
@@ -1043,7 +1055,7 @@
     }
 
     & .lgs1920-wa-timeline__time-slider::part(thumb) {
-        border-radius: var(--wa-border-radius-xs, 0.0625rem);
+        border-radius: 50%;
     }
 
     /* Match Studio's labelled slider layout for controls embedded in the timeline. */

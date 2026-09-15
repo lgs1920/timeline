@@ -397,14 +397,44 @@ export const createTimelineRenderer = ({
             })
             : contextualSlot(labelPrefix, row.id, ['name', 'track-label'], document.createTextNode(label))
         if (editing) {
-            labelElement.addEventListener('input', event => {
-                setEditingLabelValue(event.target.value ?? '')
+            const readEditorValue = event => event.currentTarget?.value ?? event.target?.value ?? ''
+            const updateEditorValue = event => setEditingLabelValue(readEditorValue(event))
+            const handleEditorKeyDown = event => {
+                if (event.key === 'Enter') {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    updateEditorValue(event)
+                    commitTrackLabelEdit(event)
+                }
+                if (event.key === 'Escape') {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    cancelTrackLabelEdit()
+                }
+            }
+            labelElement.addEventListener('input', updateEditorValue)
+            labelElement.addEventListener('change', event => {
+                updateEditorValue(event)
+                commitTrackLabelEdit(event)
             })
-            labelElement.addEventListener('change', event => commitTrackLabelEdit(event))
-            labelElement.addEventListener('blur', event => commitTrackLabelEdit(event))
-            labelElement.addEventListener('keydown', event => {
-                if (event.key === 'Enter') commitTrackLabelEdit(event)
-                if (event.key === 'Escape') cancelTrackLabelEdit()
+            labelElement.addEventListener('blur', event => {
+                updateEditorValue(event)
+                commitTrackLabelEdit(event)
+            })
+            labelElement.addEventListener('keydown', handleEditorKeyDown)
+            labelElement.updateComplete?.then(() => {
+                const nativeInput = labelElement.shadowRoot?.querySelector('input')
+                if (!nativeInput) return
+                nativeInput.addEventListener('input', updateEditorValue)
+                nativeInput.addEventListener('keydown', handleEditorKeyDown)
+                nativeInput.addEventListener('change', event => {
+                    updateEditorValue(event)
+                    commitTrackLabelEdit(event)
+                })
+                nativeInput.addEventListener('blur', event => {
+                    updateEditorValue(event)
+                    commitTrackLabelEdit(event)
+                })
             })
         }
         const trackContent = createElement('span', `lgs1920-wa-timeline__track-content${titleDisabled ? ' lgs1920-wa-timeline__track-content--title-disabled' : ''}`, {
