@@ -485,6 +485,8 @@
         overflow: hidden;
         background: var(--lgs-timeline-surface-color);
         box-shadow: var(--wa-shadow-m);
+        container-name: lgs1920-timeline-legend-ruler;
+        container-type: inline-size;
     }
 
     & .lgs1920-wa-timeline__legend-viewport {
@@ -1831,6 +1833,16 @@
         align-items: center;
         justify-content: center;
         flex: 0 0 auto;
+    }
+}
+
+@container lgs1920-timeline-legend-ruler (max-width: 14rem) {
+    :host .lgs1920-wa-timeline__legend-ruler > wa-button[data-testid='lgs1920-wa-add-track']::part(label) {
+        display: none;
+    }
+
+    :host .lgs1920-wa-timeline__legend-ruler > wa-button[data-testid='lgs1920-wa-add-track']::part(base) {
+        padding-inline: 0.5rem;
     }
 }
 
