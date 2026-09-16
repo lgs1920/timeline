@@ -197,6 +197,7 @@
         position: relative;
         box-sizing: border-box;
         display: flex;
+        flex: 1 1 auto;
         flex-direction: column;
         width: 100%;
         height: 100%;
@@ -366,7 +367,7 @@
     & .lgs1920-wa-timeline__transport-buttons {
         display: inline-flex;
         align-items: center;
-        gap: var(--lgs-gutter-xxs, 0.25rem);
+        gap: 0;
         flex: 0 0 auto;
     }
 
@@ -378,14 +379,62 @@
 
     & .lgs1920-wa-timeline__playback-controls {
         display: flex;
+        flex: 1 1 auto;
         align-items: center;
         justify-content: flex-end;
+        min-width: 0;
         gap: 0.2rem;
         min-height: 1.5rem;
         margin-bottom: var(--lgs-gutter-xxs, 0.25rem);
         color: var(--lgs-timeline-quiet-text-color);
         font-variant-numeric: tabular-nums;
         text-align: right;
+    }
+
+    & .lgs1920-wa-timeline__playback-transport {
+        display: inline-flex;
+        flex: 0 1 auto;
+        align-items: center;
+        gap: 0;
+        min-width: 0;
+    }
+
+    & .lgs1920-wa-timeline__playback-controls > slot[name='playback-total'] {
+        margin-inline-start: 0.2rem;
+    }
+
+    & .lgs1920-wa-timeline__playback-controls > slot[name='time-slider'] {
+        display: inline-flex;
+        flex: 1 1 auto;
+        align-items: center;
+        min-width: 0;
+    }
+
+    & .lgs1920-wa-timeline__playback-controls > slot[name='time-slider']::slotted(*) {
+        display: inline-flex;
+        flex: 1 1 auto;
+        align-items: center;
+        min-width: 0;
+    }
+
+    & .lgs1920-wa-timeline__playback-controls > slot[name='time-slider'] > .lgs1920-wa-timeline__timeline-scrubber {
+        position: static;
+        flex: 1 1 auto;
+        width: 100%;
+        height: auto;
+        min-height: 1.5rem;
+        transform: none;
+    }
+
+    & .lgs1920-wa-timeline__playback-transport > slot[name='transport'] {
+        display: inline-flex;
+        align-items: center;
+        min-width: 0;
+        gap: 0;
+    }
+
+    & .lgs1920-wa-timeline__playback-transport > wa-tooltip {
+        display: contents;
     }
 
     & .lgs1920-wa-timeline__layout {
