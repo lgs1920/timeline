@@ -249,7 +249,7 @@ The complete callback mapping is in the [API documentation](https://lgs1920.gith
 
 - [Complete component reference](https://lgs1920.github.io/timeline/docs/): properties, data models, slots, events, editing behavior, CSS parts, methods, and accessibility.
 - [Functional, technical, and software specifications](docs/specifications.md)
-- [Live demo](https://lgs1920.github.io/timeline/): controlled playback, clip editing, read-only rendering, range playback, slots, and keyboard interaction.
+- [Live demo](https://lgs1920.github.io/timeline/): controlled playback, clip editing, readonly playback, range playback, slots, and keyboard interaction.
 - [NPM package](https://www.npmjs.com/package/@lgs1920/timeline)
 - [Source repository](https://github.com/lgs1920/timeline)
 

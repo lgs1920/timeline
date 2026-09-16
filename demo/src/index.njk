@@ -64,7 +64,7 @@
     <header class="demo-header">
         <p class="eyebrow">@lgs1920/timeline vx.y.z</p>
         <h1>A modular and adaptable timeline</h1>
-        <p class="intro">Built for Web Awesome applications, this component uses Web Awesome controls, themes, and design tokens to provide a consistent timeline surface. Explore focused examples: a Studio-style controlled timeline, external time and zoom sliders, read-only rendering, range editing, slots, and event-driven updates.</p>
+        <p class="intro">Built for Web Awesome applications, this component uses Web Awesome controls, themes, and design tokens to provide a consistent timeline surface. Explore focused examples: a Studio-style controlled timeline, external time and zoom sliders, readonly playback, range editing, slots, and event-driven updates.</p>
     </header>
 
     <section class="demo-panel playground studio-demo" aria-labelledby="studio-title">
@@ -369,7 +369,7 @@ timeline.addEventListener('lgs1920-timeline-range-change', event =&gt; {
     <section class="demo-panel api-demo keyboard-reference" aria-labelledby="keyboard-title">
         <p class="eyebrow">Demo 06 · Keyboard shortcuts</p>
         <h2 id="keyboard-title">Keep editing within reach of the keyboard</h2>
-        <p class="section-intro">Focus the timeline surface, a range handle, a clip, a clip resize handle, or the legend divider, then use the matching shortcuts below. The live status line records the last key pressed inside the Studio-style timeline.</p>
+        <p class="section-intro">Focus the timeline surface, a range handle, a clip, a clip resize handle, or the legend divider, then use the matching shortcuts below. The divider shows the brand state while it is focused or being resized. The live status line records the last key pressed inside the Studio-style timeline.</p>
         <wa-details class="demo-details" summary="What this demo shows" appearance="filled-outlined">
             <p>The keyboard model follows the same controlled event flow as pointer interaction. Focus determines the target, and the timeline reports the resulting action through its namespaced events.</p>
             <ul>
