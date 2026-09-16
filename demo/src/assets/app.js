@@ -1548,9 +1548,9 @@ readonlyTimeline.addEventListener('lgs1920-timeline-stop', () => readonlyClock.s
 readonlyTimeline.addEventListener('lgs1920-timeline-restart', event => readonlyClock.seek(event.detail.timeMillis))
 readonlyTimeline.addEventListener('lgs1920-timeline-seek', event => seekFromTimelineEvent(readonlyClock, event))
 
-document.querySelector('#theme-control').addEventListener('change', event => applyTheme(event.currentTarget.value))
-document.querySelector('#mode-control').addEventListener('change', event => applyMode(event.currentTarget.value))
-document.querySelector('#color-control').addEventListener('change', event => applyBrand(event.currentTarget.value))
+document.querySelector('[data-theme-control="theme"]').addEventListener('change', event => applyTheme(event.currentTarget.value))
+document.querySelector('[data-theme-control="mode"]').addEventListener('change', event => applyMode(event.currentTarget.value))
+document.querySelector('[data-theme-control="color"]').addEventListener('change', event => applyBrand(event.currentTarget.value))
 
 const highlightWithPrism = (source, language) => Prism.highlight(
     source,

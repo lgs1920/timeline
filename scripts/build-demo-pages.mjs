@@ -29,17 +29,17 @@ const readGitReleases = () => {
     return parseReleaseTags(new TextDecoder().decode(result.stdout))
 }
 
-const banner = currentPage => `
+const banner = (currentPage, basePath = './') => `
 <nav class="site-banner" aria-label="Site navigation">
     <div class="site-banner-left">
         <a class="site-banner-logo" href="https://lgs1920.fr/" target="_blank" rel="noopener noreferrer" aria-label="LGS1920 website">
-            <img src="./assets/logo/logo-horizontal.png" alt="LGS1920">
+            <img src="${basePath}assets/logo/logo-horizontal.png" alt="LGS1920">
         </a>
         <div class="site-banner-pages">
-            <a href="./">Demo</a>
-            <a href="./docs/"${currentPage === 'docs' ? ' aria-current="page"' : ''}>Documentation</a>
-            <a href="./readme.html"${currentPage === 'readme' ? ' aria-current="page"' : ''}>README</a>
-            <a href="./changelog.html"${currentPage === 'changelog' ? ' aria-current="page"' : ''}>Changelog</a>
+            <a href="${basePath}"${currentPage === 'demo' ? ' aria-current="page"' : ''}>Demo</a>
+            <a href="${basePath}docs/"${currentPage === 'docs' ? ' aria-current="page"' : ''}>Documentation</a>
+            <a href="${basePath}readme.html"${currentPage === 'readme' ? ' aria-current="page"' : ''}>README</a>
+            <a href="${basePath}changelog.html"${currentPage === 'changelog' ? ' aria-current="page"' : ''}>Changelog</a>
         </div>
     </div>
     ${controls}
@@ -115,21 +115,8 @@ const docsPage = ({title, description, navigation, markdown, footer}) => `<!doct
     <link rel="stylesheet" href="../assets/styles.css">
 </head>
 <body>
+${banner('docs', '../')}
 <wa-page class="docs-page" mobile-breakpoint="52rem">
-    <header slot="header" class="docs-header">
-        <a class="docs-header-brand" href="../" aria-label="LGS1920 Timeline demo home">
-            <img src="../assets/logo/logo-horizontal.png" alt="LGS1920">
-            <span>Timeline docs</span>
-        </a>
-        <div class="docs-header-links" aria-label="Site navigation">
-            <a href="../">Demo</a>
-            <a href="../readme.html">README</a>
-            <a href="../changelog.html">Changelog</a>
-            <a href="https://github.com/lgs1920/timeline" target="_blank" rel="noopener noreferrer">GitHub</a>
-            <a href="https://www.npmjs.com/package/@lgs1920/timeline" target="_blank" rel="noopener noreferrer">npm</a>
-        </div>
-        ${controls}
-    </header>
     <nav slot="navigation" class="docs-navigation" aria-label="Documentation sections">
         ${navigation}
     </nav>

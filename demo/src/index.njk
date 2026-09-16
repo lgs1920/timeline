@@ -19,37 +19,16 @@
             <a href="./docs/">Documentation</a>
             <a href="./readme.html">README</a>
             <a href="./changelog.html">Changelog</a>
-            <a href="https://github.com/lgs1920/timeline" target="_blank" rel="noopener noreferrer">GitHub</a>
-            <a href="https://www.npmjs.com/package/@lgs1920/timeline" target="_blank" rel="noopener noreferrer">NPM</a>
         </div>
     </div>
-    <div class="site-banner-controls" aria-label="Demo settings">
-        <wa-select id="theme-control" label="Theme" size="small" value="default">
-            <wa-option value="default">Default</wa-option>
-            <wa-option value="awesome">Awesome</wa-option>
-            <wa-option value="shoelace">Shoelace</wa-option>
-        </wa-select>
-        <wa-select id="mode-control" label="Color mode" size="small" value="dark">
-            <wa-option value="light"><wa-icon slot="start" name="sun"></wa-icon>Light</wa-option>
-            <wa-option value="dark"><wa-icon slot="start" name="moon"></wa-icon>Dark</wa-option>
-        </wa-select>
-        <wa-select id="color-control" label="Brand color" size="small" value="blue">
-            <wa-option value="blue">Blue</wa-option>
-            <wa-option value="red">Red</wa-option>
-            <wa-option value="orange">Orange</wa-option>
-            <wa-option value="green">Green</wa-option>
-            <wa-option value="cyan">Cyan</wa-option>
-            <wa-option value="purple">Purple</wa-option>
-            <wa-option value="pink">Pink</wa-option>
-        </wa-select>
+    <div class="site-banner-controls" aria-label="Display settings">
+        <label>Theme <select data-theme-control="theme"><option>default</option><option>awesome</option><option>shoelace</option></select></label>
+        <label>Mode <select data-theme-control="mode"><option value="dark">Dark</option><option value="light">Light</option></select></label>
+        <label>Brand <select data-theme-control="color"><option>blue</option><option>red</option><option>orange</option><option>green</option><option>cyan</option><option>purple</option><option>pink</option></select></label>
     </div>
     <div class="site-banner-external">
-        <a href="https://github.com/lgs1920/timeline" target="_blank" rel="noopener noreferrer" aria-label="GitHub repository">
-            <wa-icon name="github" family="brands"></wa-icon>
-        </a>
-        <a href="https://www.npmjs.com/package/@lgs1920/timeline" target="_blank" rel="noopener noreferrer" aria-label="npm package">
-            <wa-icon name="npm" family="brands"></wa-icon>
-        </a>
+        <a href="https://github.com/lgs1920/timeline" target="_blank" rel="noopener noreferrer" aria-label="GitHub repository">GitHub</a>
+        <a href="https://www.npmjs.com/package/@lgs1920/timeline" target="_blank" rel="noopener noreferrer" aria-label="npm package">npm</a>
     </div>
 </nav>
 

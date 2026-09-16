@@ -233,6 +233,7 @@ body {
     --menu-width: 17rem;
     --main-width: minmax(0, 1fr);
     min-block-size: 100vh;
+    padding-block-start: 5rem;
     background: var(--demo-background);
     color: var(--demo-text);
 }
@@ -1150,6 +1151,10 @@ kbd {
         align-items: flex-start;
         flex-direction: column;
         padding-inline: var(--wa-space-m);
+    }
+
+    .docs-page {
+        padding-block-start: 9rem;
     }
 
     .docs-header-links {
