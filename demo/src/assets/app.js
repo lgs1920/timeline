@@ -1124,17 +1124,23 @@ const shuffleValues = values => {
 
 const shuffleStudioClips = () => {
     const sourceTracks = studioTimeline.tracks ?? []
+    if (sourceTracks.length === 0) return
     const tracks = sourceTracks.map(track => ({...track, clips: []}))
     const clips = shuffleValues(sourceTracks.flatMap(track => (track.clips ?? []).map(clip => ({...clip}))))
+    if (clips.length === 0) return
     const durationSeconds = (Number(studioTimeline.timeline?.durationMillis) || DEMO_DURATION_MILLIS) / 1000
+    const firstTrackForClip = shuffleValues(tracks)
 
     clips
         .sort((left, right) => (Number(right.end) - Number(right.start)) - (Number(left.end) - Number(left.start)))
-        .forEach(clip => {
+        .forEach((clip, clipIndex) => {
             const clipDuration = Math.max(0, Number(clip.end) - Number(clip.start))
             const latestStart = Math.max(0, durationSeconds - clipDuration)
             const candidates = []
-            shuffleValues(tracks).forEach(track => {
+            const trackOrder = clipIndex < firstTrackForClip.length
+                ? [firstTrackForClip[clipIndex], ...shuffleValues(tracks.filter(track => track !== firstTrackForClip[clipIndex]))]
+                : shuffleValues(tracks)
+            trackOrder.forEach(track => {
                 for (let attempt = 0; attempt < 40; attempt += 1) {
                     const start = Number((Math.random() * latestStart).toFixed(2))
                     const end = start + clipDuration
