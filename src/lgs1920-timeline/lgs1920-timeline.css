@@ -941,7 +941,7 @@
 
     & .lgs1920-wa-timeline__footer-controls > slot[name='timeline-controls'] {
         display: flex;
-        flex: 1 1 auto;
+        flex: 0 1 auto;
         min-width: 0;
     }
 
