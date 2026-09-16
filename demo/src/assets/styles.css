@@ -710,7 +710,7 @@ h2 {
 
 .demo-details {
     display: block;
-    margin-block-start: 1rem;
+    margin-block: 1rem 1.5rem;
     --spacing: 1rem;
 }
 
