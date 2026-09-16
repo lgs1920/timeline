@@ -49,7 +49,7 @@ body {
     z-index: 10;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: var(--wa-space-l);
     padding: 0.75rem 1rem;
     border: 1px solid var(--demo-panel-border);
@@ -72,13 +72,18 @@ body {
 }
 
 .site-banner-controls {
-    flex: 1 1 auto;
-    justify-content: center;
-    gap: var(--wa-space-xs);
+    flex: 0 0 auto;
+    justify-content: flex-start;
+    margin-inline-start: clamp(1rem, 4vw, 4rem);
+    gap: var(--wa-space-2xs);
+}
+
+.site-banner-external {
+    margin-inline-start: auto;
 }
 
 .site-banner-controls wa-select {
-    inline-size: clamp(5rem, 9vw, 7rem);
+    inline-size: 6rem;
     min-inline-size: 0;
 }
 
@@ -91,7 +96,8 @@ body {
 }
 
 .site-banner-controls select {
-    min-inline-size: 5rem;
+    inline-size: 6rem;
+    min-inline-size: 6rem;
     padding: 0.25rem;
     border: 1px solid var(--demo-panel-border);
     border-radius: var(--wa-border-radius-s);
@@ -1105,6 +1111,8 @@ kbd {
     .site-banner-controls {
         order: 3;
         flex-basis: 100%;
+        justify-content: center;
+        margin-inline-start: 0;
     }
 }
 
@@ -1132,6 +1140,22 @@ kbd {
 
     .site-banner-external {
         gap: var(--wa-space-s);
+    }
+
+    .site-banner-controls {
+        gap: var(--wa-space-2xs);
+        justify-content: center;
+    }
+
+    .site-banner-controls label {
+        gap: 0;
+        font-size: 0;
+    }
+
+    .site-banner-controls select {
+        inline-size: 5.5rem;
+        min-inline-size: 5.5rem;
+        padding-inline: 0.15rem;
     }
 
     .demo-shell {
