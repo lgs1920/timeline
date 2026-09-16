@@ -60,8 +60,6 @@
     --lgs-timeline-building-overlay-gap: var(--lgs-gutter-xs, 0.5rem);
     /* Timeline header height used by row sizing. */
     --lgs-timeline-header-height: 42px;
-    /* Height reserved below the track viewport for surface controls. */
-    --lgs-timeline-controls-height: 2.5rem;
     /* Timeline minimum width. */
     --lgs-timeline-min-width: 352px;
     /* Timeline minimum height. */
@@ -403,6 +401,34 @@
         border-radius: var(--wa-border-radius-s);
     }
 
+    & .lgs1920-wa-timeline__footer {
+        display: flex;
+        align-items: center;
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        gap: var(--lgs-timeline-gap);
+        padding-block: var(--lgs-gutter-xxs, 0.25rem) var(--lgs-gutter-xs, 0.5rem);
+        padding-inline: var(--lgs-gutter-s, 0.75rem);
+        overflow: hidden;
+        border-top: 1px solid var(--lgs-timeline-quiet-border-color);
+    }
+
+    & .lgs1920-wa-timeline__footer-controls {
+        display: flex;
+        flex: 1 1 auto;
+        align-items: center;
+        min-width: 0;
+        gap: var(--lgs-timeline-gap);
+    }
+
+    & .lgs1920-wa-timeline__footer > slot[name='footer'] {
+        display: flex;
+        flex: 0 1 auto;
+        align-items: center;
+        min-width: 0;
+    }
+
     & .lgs1920-wa-timeline__split-panel {
         flex: 1 1 auto;
         width: 100%;
@@ -522,17 +548,7 @@
     }
 
     & .lgs1920-wa-timeline__scroll-shell--legend {
-        height: calc(100% - var(--lgs-timeline-header-height) - var(--lgs-timeline-controls-height));
-    }
-
-    & .lgs1920-wa-timeline__legend-controls-spacer {
-        display: block;
-        box-sizing: border-box;
-        width: 100%;
-        height: var(--lgs-timeline-controls-height);
-        min-height: var(--lgs-timeline-controls-height);
-        background: var(--lgs-timeline-surface-color);
-        border-top: 1px solid var(--lgs-timeline-quiet-border-color);
+        height: 100%;
     }
 
     & .lgs1920-wa-timeline__scroll-shell > .view {
@@ -579,7 +595,7 @@
 
     & [data-scrollbar-view='tracks'].lgs1920-wa-timeline__scrollbar-track.track-vertical {
         top: calc(var(--lgs-timeline-header-height) + 2px);
-        bottom: calc(var(--lgs-timeline-controls-height) + 2px);
+        bottom: 2px;
     }
 
     & .lgs1920-wa-timeline__scrollbar-track[hidden] {
@@ -855,7 +871,7 @@
     & .lgs1920-wa-timeline__surface-edge-gutter {
         position: absolute;
         top: var(--lgs-timeline-header-height);
-        bottom: var(--lgs-timeline-controls-height);
+        bottom: 0;
         box-sizing: border-box;
         width: var(--lgs-timeline-viewport-margin);
         background: var(--lgs-timeline-surface-color);
@@ -882,35 +898,15 @@
     }
 
     & .lgs1920-wa-timeline__surface > .lgs1920-wa-timeline__canvas {
-        height: calc(100% - var(--lgs-timeline-controls-height));
+        height: 100%;
         min-height: 0;
     }
 
-    & .lgs1920-wa-timeline__surface-controls {
-        position: absolute;
-        z-index: 7;
-        inset-block-end: 0;
-        inset-inline-start: 0;
-        display: flex;
-        align-items: center;
-        box-sizing: border-box;
-        width: 100%;
-        min-width: 0;
-        height: var(--lgs-timeline-controls-height);
-        min-height: var(--lgs-timeline-controls-height);
-        gap: var(--lgs-timeline-gap);
-        padding-block: var(--lgs-gutter-xxs, 0.25rem) var(--lgs-gutter-xs, 0.5rem);
-        padding-inline: var(--lgs-gutter-s, 0.75rem);
-        overflow: hidden;
-        background: var(--lgs-timeline-surface-color);
-        border-top: 1px solid var(--lgs-timeline-quiet-border-color);
-    }
-
-    & .lgs1920-wa-timeline__surface-controls > .lgs1920-wa-timeline__timeline-tools {
+    & .lgs1920-wa-timeline__footer-controls > .lgs1920-wa-timeline__timeline-tools {
         flex: 0 0 auto;
     }
 
-    & .lgs1920-wa-timeline__surface-controls > .lgs1920-wa-timeline__zoom-control {
+    & .lgs1920-wa-timeline__footer-controls > .lgs1920-wa-timeline__zoom-control {
         display: flex;
         flex: 1 1 auto;
         align-items: center;
@@ -943,7 +939,7 @@
         border-radius: 50%;
     }
 
-    & .lgs1920-wa-timeline__surface-controls > slot[name='timeline-controls'] {
+    & .lgs1920-wa-timeline__footer-controls > slot[name='timeline-controls'] {
         display: flex;
         flex: 1 1 auto;
         min-width: 0;

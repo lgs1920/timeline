@@ -43,9 +43,7 @@ export const createTimelineRenderer = ({
     getDurationMillis,
     getContentWidth,
     getZoom,
-    timelineTools,
     timelineScrubber,
-    timelineZoomControl,
     isClipSelected,
     contextualSlot,
     hasContextualSlot,
@@ -101,7 +99,7 @@ export const createTimelineRenderer = ({
      * @returns {boolean} Whether the event belongs to a timeline control.
      */
     const isTimelineControlEvent = event => event.target?.closest?.(
-        '[data-timeline-time-slider], [data-timeline-zoom-slider], [part="surface-controls"], [part="timeline-scrubber"]',
+        '[data-timeline-time-slider], [data-timeline-zoom-slider], [part="timeline-scrubber"]',
     )
 
     /**
@@ -620,14 +618,6 @@ export const createTimelineRenderer = ({
         )
         tracksViewport.append(tracks)
         canvas.append(ruler, tracksViewport, overlay)
-        const controls = createElement('div', 'lgs1920-wa-timeline__surface-controls', {
-            part: 'surface-controls',
-        })
-        const tools = timelineTools?.()
-        if (tools) controls.append(tools)
-        const zoomControl = timelineZoomControl?.()
-        if (zoomControl) controls.append(zoomControl)
-        controls.append(createElement('slot', '', {name: 'timeline-controls'}))
         const scrubber = timelineScrubber?.()
         if (scrubber) surface.append(scrubber)
         surface.append(createElement('slot', '', {name: 'timeline-ruler'}), canvas)
@@ -666,7 +656,7 @@ export const createTimelineRenderer = ({
                 seek(event.clientX, false)
             })
         }
-        return {surface, controls}
+        return {surface}
     }
 
     return {clip, clipHandle, legendRow, rangeHandle, surfaceElement, updateRulerDuration}

@@ -138,6 +138,7 @@ timeline.timeline = {
     showClipMenu: true,
     showTimeSlider: true,
     showZoomSlider: true,
+    noZoomControls: false,
     collisionPolicy: 'prevent',
     resizeCollisionPolicy: 'prevent',
     resizeExtendsDuration: true,
@@ -201,7 +202,8 @@ clock integration.
 | `readonly` attribute | `boolean` | Keeps the standard playback controls, fixed start/end range handles, and draggable playhead grip. Disables ruler/surface scrubbing, range editing, view tools, clip editing, menus, drag targets, and clip selection. |
 | `showBuildingOverlay` | `boolean` | Shows the construction overlay during the initial mount. Defaults to `true`. |
 | `showTimeSlider` | `boolean` | Displays the branded time slider above the ruler. Defaults to `false`. |
-| `showZoomSlider` | `boolean` | Displays the branded horizontal zoom slider in the surface controls. Defaults to `false`. |
+| `showZoomSlider` | `boolean` | Displays the branded horizontal zoom slider in the timeline footer. Defaults to `false`. |
+| `noZoomControls` property / `nozoomcontrols` attribute | `boolean` | Hides the built-in horizontal and vertical zoom controls, including the optional zoom slider. Defaults to `false`. |
 | `collisionPolicy` | `'allow' \| 'prevent' \| 'ripple'` | Default clip collision policy for tracks. Defaults to `prevent`. |
 | `resizeCollisionPolicy` | `'allow' \| 'prevent' \| 'ripple'` | Default collision policy for clip resizes. Defaults to `prevent`. |
 | `snapThresholdPixels` | `number` | Distance from a ruler or clip edge at which snapping starts. Defaults to `8`. |
@@ -422,9 +424,9 @@ slotted actions can sit beside them without an extra frame.
 | `timeline-toolbar` | Toolbar content beside the clip menu. |
 | `legend-ruler` | Replacement content for the title-column ruler area. The default fallback contains `timeline-toolbar`, the direct track button, and the optional clip-menu button. |
 | `timeline-ruler` | Additional content over the time ruler. |
-| `timeline-controls` | Controls displayed in the bottom band of the time surface, below the track viewport and outside the global footer. |
+| `timeline-controls` | Application controls displayed in the timeline footer alongside the built-in zoom controls. |
 | `overlay-text` | Initial construction-overlay label. Falls back to `Building...`. |
-| `footer` | Content below the timeline layout. |
+| `footer` | Application content displayed in the timeline footer. The footer also contains the built-in view tools and optional zoom slider. |
 | `empty-state` | Content displayed when the clip menu has no options. |
 
 ```html

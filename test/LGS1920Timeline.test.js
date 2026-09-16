@@ -538,8 +538,8 @@ describe('lgs1920-timeline Web Component', () => {
         const header = timeline.shadowRoot.querySelector('[part="header"]')
         const headerStart = timeline.shadowRoot.querySelector('[part="header-start"]')
         const ruler = timeline.shadowRoot.querySelector('[part="ruler"]')
-        const surfaceControls = timeline.shadowRoot.querySelector('[part="surface-controls"]')
-        const surfaceShell = timeline.shadowRoot.querySelector('[data-scrollbar-shell="surface"]')
+        const footer = timeline.shadowRoot.querySelector('[part="footer"]')
+        const footerControls = timeline.shadowRoot.querySelector('[part="footer-controls"]')
         const surface = timeline.shadowRoot.querySelector('[data-scroll-view="surface"]')
         const controlsSpacer = timeline.shadowRoot.querySelector('[part="controls-spacer"]')
         const headerEnd = timeline.shadowRoot.querySelector('[part="header-end"]')
@@ -549,15 +549,15 @@ describe('lgs1920-timeline Web Component', () => {
         const vertical = tools.querySelector('[data-testid="lgs1920-wa-tools-vertical-zoom"]')
         const tooltips = tools.querySelectorAll('wa-tooltip')
         expect(tools).not.toBeNull()
-        expect(tools.parentElement).toBe(surfaceControls)
-        expect(surfaceControls.parentElement).toBe(surfaceShell)
-        expect(surface.contains(surfaceControls)).toBe(false)
-        expect(surfaceControls.getAttribute('slot')).toBeNull()
+        expect(footer).not.toBeNull()
+        expect(tools.parentElement).toBe(footerControls)
+        expect(footerControls.parentElement).toBe(footer)
+        expect(surface.querySelector('[part="footer-controls"]')).toBeNull()
         expect(headerStart.contains(tools)).toBe(false)
         expect(ruler.contains(tools)).toBe(false)
-        expect(surfaceControls.contains(tools)).toBe(true)
+        expect(footerControls.contains(tools)).toBe(true)
         expect(timeline.shadowRoot.querySelector('slot[name="footer"]')).not.toBeNull()
-        expect(controlsSpacer).not.toBeNull()
+        expect(controlsSpacer).toBeNull()
         expect(customMenu.parentElement).toBe(header)
         expect(transport.parentElement).toBe(headerEnd)
         expect([...header.children]).toEqual([headerStart, customMenu, headerEnd])
@@ -630,7 +630,7 @@ describe('lgs1920-timeline Web Component', () => {
         expect(timeSlider.value).toBe(1_000)
         expect(typeof timeSlider.valueFormatter).toBe('function')
         expect(zoomSlider).not.toBeNull()
-        expect(zoomSlider.closest('[part="surface-controls"]')).not.toBeNull()
+        expect(zoomSlider.closest('[part="footer-controls"]')).not.toBeNull()
         expect(zoomSlider.hasAttribute('label')).toBe(false)
         expect(zoomSlider.hasAttribute('aria-label')).toBe(false)
         expect(timeline.shadowRoot.querySelector('[part="zoom-control"] > wa-icon')?.getAttribute('name'))
@@ -671,6 +671,24 @@ describe('lgs1920-timeline Web Component', () => {
 
         expect(timeline.shadowRoot.querySelector('[data-timeline-time-slider]')).toBeNull()
         expect(timeline.shadowRoot.querySelector('[data-timeline-zoom-slider]')).toBeNull()
+    })
+
+    it('hides all built-in zoom controls with noZoomControls', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline, {timeline: {showZoomSlider: true}})
+        timeline.noZoomControls = true
+        document.body.append(timeline)
+
+        expect(timeline.noZoomControls).toBe(true)
+        expect(timeline.hasAttribute('nozoomcontrols')).toBe(true)
+        expect(timeline.shadowRoot.querySelector('[part="timeline-tools"]')).toBeNull()
+        expect(timeline.shadowRoot.querySelector('[data-timeline-zoom-slider]')).toBeNull()
+        expect(timeline.shadowRoot.querySelector('[part="footer"]')).not.toBeNull()
+
+        timeline.noZoomControls = false
+
+        expect(timeline.shadowRoot.querySelector('[part="timeline-tools"]')).not.toBeNull()
+        expect(timeline.shadowRoot.querySelector('[data-timeline-zoom-slider]')).not.toBeNull()
     })
 
     it('observes the timeline host instead of the split-panel surface', () => {

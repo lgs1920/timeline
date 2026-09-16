@@ -100,6 +100,7 @@ const STRUCTURAL_CONFIG_KEYS = Object.freeze([
     'showClipMenu',
     'showTimeSlider',
     'showZoomSlider',
+    'noZoomControls',
     'legendMinWidth',
     'legendMaxWidth',
     'legendWidth',
@@ -220,7 +221,7 @@ export class LGS1920Timeline extends HTMLElement {
     #isReadonlyMode = () => this.readonly
 
     static get observedAttributes() {
-        return ['readonly']
+        return ['readonly', 'nozoomcontrols']
     }
 
     /**
@@ -231,8 +232,11 @@ export class LGS1920Timeline extends HTMLElement {
      * @param {string|null} nextValue - New attribute value.
      */
     attributeChangedCallback(name, previousValue, nextValue) {
-        if (name !== 'readonly' || previousValue === nextValue) return
-        this.timeline = this.#timelineConfig
+        if (!['readonly', 'nozoomcontrols'].includes(name) || previousValue === nextValue) return
+        const config = name === 'nozoomcontrols'
+            ? {...this.#timelineConfig, noZoomControls: this.hasAttribute('nozoomcontrols')}
+            : this.#timelineConfig
+        this.timeline = config
     }
 
     /**
@@ -251,6 +255,24 @@ export class LGS1920Timeline extends HTMLElement {
      */
     set readonly(value) {
         this.toggleAttribute('readonly', value === true)
+    }
+
+    /**
+     * Whether the built-in timeline zoom controls are hidden.
+     *
+     * @returns {boolean} Whether zoom controls are disabled.
+     */
+    get noZoomControls() {
+        return this.hasAttribute('nozoomcontrols') || this.#timelineConfig.noZoomControls === true
+    }
+
+    /**
+     * Toggle the built-in timeline zoom controls.
+     *
+     * @param {boolean} value - Whether zoom controls should be hidden.
+     */
+    set noZoomControls(value) {
+        this.toggleAttribute('nozoomcontrols', value === true)
     }
 
     /**
@@ -806,6 +828,7 @@ export class LGS1920Timeline extends HTMLElement {
         if (!Number.isFinite(this.#legendWidth)) this.#legendWidth = initial
         this.#timelineConfig = Object.assign({}, config, {
             readonly: this.readonly,
+            noZoomControls: config.noZoomControls === true || this.hasAttribute('nozoomcontrols'),
             legendMinWidth: minimum,
             legendMaxWidth: maximum,
             legendWidth: initial,
@@ -2510,7 +2533,22 @@ export class LGS1920Timeline extends HTMLElement {
         if (clipContextMenu) section.append(clipContextMenu)
         const trackContextMenu = this.#trackContextMenu()
         if (trackContextMenu) section.append(trackContextMenu)
-        section.append(createElement('slot', '', {name: 'footer'}))
+        const footer = createElement('footer', 'lgs1920-wa-timeline__footer', {
+            part: 'footer',
+        })
+        const footerControls = createElement('span', 'lgs1920-wa-timeline__footer-controls', {
+            part: 'footer-controls',
+        })
+        const tools = this.#timelineTools()
+        if (tools) footerControls.append(tools)
+        const zoomControl = this.#timelineZoomControl()
+        if (zoomControl) footerControls.append(zoomControl)
+        footerControls.append(createElement('slot', '', {name: 'timeline-controls'}))
+        footer.append(
+            footerControls,
+            createElement('slot', '', {name: 'footer'}),
+        )
+        section.append(footer)
         return section
     }
 
@@ -2847,7 +2885,7 @@ export class LGS1920Timeline extends HTMLElement {
      * @returns {HTMLElement} Timeline view controls.
      */
     #timelineTools = () => {
-        if (this.#isReadonlyMode()) return null
+        if (this.#isReadonlyMode() || this.#timelineConfig.noZoomControls === true) return null
         const tools = createElement('span', `lgs1920-wa-timeline__timeline-tools${this.#hostNoDragClasses()}`, {
             part: 'timeline-tools',
             'aria-label': 'Timeline view tools',
@@ -2951,7 +2989,10 @@ export class LGS1920Timeline extends HTMLElement {
      * @returns {HTMLElement|null} Zoom control, or null when disabled.
      */
     #timelineZoomControl = () => {
-        if (this.#isReadonlyMode() || this.#timelineConfig.interactive === false || this.#timelineConfig.showZoomSlider !== true) return null
+        if (this.#isReadonlyMode()
+            || this.#timelineConfig.interactive === false
+            || this.#timelineConfig.noZoomControls === true
+            || this.#timelineConfig.showZoomSlider !== true) return null
         const control = createElement('span', `lgs1920-wa-timeline__zoom-control${this.#hostNoDragClasses()}`, {
             part: 'zoom-control',
             'data-testid': 'lgs1920-wa-timeline-zoom-control',
@@ -5118,11 +5159,9 @@ export class LGS1920Timeline extends HTMLElement {
     }
 
     #surfaceElement = (scaleCount, majorSeconds, scaleSplitCount) => {
-        const {surface, controls} = this.#renderer.surfaceElement(scaleCount, majorSeconds, scaleSplitCount)
+        const {surface} = this.#renderer.surfaceElement(scaleCount, majorSeconds, scaleSplitCount)
         const tracksViewport = surface.querySelector('[data-tracks-viewport]')
-        const shell = this.#scrollbarShell(surface, {role: 'surface', horizontal: true, vertical: true, verticalView: tracksViewport ?? surface})
-        shell.append(controls)
-        return shell
+        return this.#scrollbarShell(surface, {role: 'surface', horizontal: true, vertical: true, verticalView: tracksViewport ?? surface})
     }
 
     /**

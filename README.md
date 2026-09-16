@@ -213,9 +213,13 @@ user to choose another track or drop position.
 ## Range playback and built-in controls
 
 Set `rangeStartMillis` and `rangeEndMillis` to limit the active playback range.
-Set `showTimeSlider` or `showZoomSlider` to display the component's built-in
-controls. External controls can use the `timeline-ruler` and
-`timeline-controls` slots when the host needs a different layout.
+The built-in time slider is displayed by default in the left playback area.
+Set `noTimeSlider: true` to hide it. `showTimeSlider: false` remains supported
+for compatibility. Set `showZoomSlider` to display the component's built-in
+horizontal zoom control in the footer. The footer also contains the built-in
+horizontal-fit and vertical-zoom buttons unless `noZoomControls` is enabled.
+External controls can use the `timeline-ruler`, `timeline-controls`, and
+`footer` slots when the host needs a different layout.
 
 ```js
 timeline.timeline = {
@@ -224,6 +228,7 @@ timeline.timeline = {
     rangeEndMillis: 24_000,
     showTimeSlider: true,
     showZoomSlider: true,
+    noZoomControls: false,
 }
 ```
 

@@ -33,7 +33,9 @@ describe('lgs1920-timeline styles', () => {
 
     it('uses balanced nested CSS selectors and generic integration boundaries', () => {
         expect((styleSource.match(/{/g) ?? []).length).toBe((styleSource.match(/}/g) ?? []).length)
-        expect(styleSource).toContain('& .lgs1920-wa-timeline__surface-controls {')
+        expect(styleSource).toContain('& .lgs1920-wa-timeline__footer {')
+        expect(styleSource).not.toContain('surface-controls')
+        expect(styleSource).not.toContain('--lgs-timeline-controls-height')
         expect(styleSource).toContain('container-name: lgs1920-timeline-legend-ruler;')
         expect(styleSource).toContain('@container lgs1920-timeline-legend-ruler (max-width: 8rem) {')
         expect(styleSource).toContain("wa-button[data-testid='lgs1920-wa-add-track'] > slot[name='add-track-label'] {")
@@ -66,7 +68,7 @@ describe('lgs1920-timeline styles', () => {
         expect(styleSource).toContain('--lgs-timeline-label-editor-padding-block: 0.25rem;')
         expect(styleSource).toContain('user-select: text;')
         expect(styleSource).toContain('top: var(--lgs-timeline-header-height);')
-        expect(styleSource).toContain('bottom: var(--lgs-timeline-controls-height);')
+        expect(styleSource).toContain('bottom: 0;')
         expect(styleSource).toContain('border: 1px solid var(--lgs-timeline-quiet-border-color);')
         expect(styleSource).toContain('z-index: 3;')
         expect(styleSource).toContain('& .lgs1920-wa-timeline__clip {')

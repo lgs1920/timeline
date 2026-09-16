@@ -349,20 +349,23 @@ timeline.addEventListener('lgs1920-timeline-range-change', event =&gt; {
             <p>Slots let the host place application controls around the timeline without coupling those controls to the component implementation.</p>
             <ul>
                 <li><code>timeline-ruler</code> places content above the time ruler.</li>
-                <li><code>timeline-controls</code> adds controls to the surface control band.</li>
+                <li><code>timeline-controls</code> adds controls alongside the built-in zoom controls in the footer.</li>
                 <li><code>custom-menu</code> adds host actions to the timeline header.</li>
                 <li><code>overlay-text</code> replaces the initial construction message.</li>
+                <li><code>footer</code> adds application content at the bottom of the timeline.</li>
             </ul>
         </wa-details>
         <div class="slot-list" aria-label="Slots used in the demos">
             <span class="demo-slot-chip">timeline-ruler · external scrubber</span>
-            <span class="demo-slot-chip">timeline-controls · horizontal zoom</span>
+            <span class="demo-slot-chip">timeline-controls · footer controls</span>
+            <span class="demo-slot-chip">footer · application content</span>
             <span class="demo-slot-chip">custom-menu · host actions</span>
             <span class="demo-slot-chip">overlay-text · initial loading label</span>
         </div>
         <pre class="demo-code"><code data-language="html">&lt;lgs1920-timeline&gt;
     &lt;span slot="timeline-ruler"&gt;...time slider...&lt;/span&gt;
     &lt;span slot="timeline-controls"&gt;...zoom slider...&lt;/span&gt;
+    &lt;span slot="footer"&gt;...footer content...&lt;/span&gt;
     &lt;wa-button slot="custom-menu"&gt;Settings&lt;/wa-button&gt;
 &lt;/lgs1920-timeline&gt;</code></pre>
     </section>

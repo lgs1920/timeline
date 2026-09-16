@@ -392,7 +392,7 @@ The `timeline` object supports the following public configuration areas:
   `hostInteraction`, and `hostNoDragClass`;
 - zoom and layout: `zoomPercent`, legend width settings, and keyboard zoom;
 - overlays and controls: `showBuildingOverlay`, `showTimeSlider`,
-  `showZoomSlider`, and `showClipMenu`;
+  `showZoomSlider`, `noZoomControls`, and `showClipMenu`;
 - editing policies: `collisionPolicy`, `resizeCollisionPolicy`,
   `snapThresholdPixels`, `snapReleaseThresholdPixels`,
   `resizeExtendsDuration`, and `durationPolicy`;
