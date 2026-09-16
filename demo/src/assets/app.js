@@ -52,6 +52,7 @@ const modeClasses = ['wa-light', 'wa-dark']
 const brandClasses = ['wa-brand-blue', 'wa-brand-red', 'wa-brand-orange', 'wa-brand-green', 'wa-brand-cyan', 'wa-brand-purple', 'wa-brand-pink']
 
 const studioTimeline = document.querySelector('#studio-timeline')
+const studioShuffleButton = document.querySelector('#studio-shuffle')
 const studioPlaybackRateGroup = document.querySelector('#studio-playback-rate')
 const studioPlaybackRateButtons = [...studioPlaybackRateGroup.querySelectorAll('[data-playback-rate]')]
 const studioSeekBackwardButton = document.querySelector('#studio-seek-backward')
@@ -1109,6 +1110,54 @@ const seekStudioBy = (button, method, durationMillis) => {
         studioClock.seek(studioTimeline[method](durationMillis))
     })
 }
+
+const shuffleValues = values => {
+    const shuffled = [...values]
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+        const swapIndex = Math.floor(Math.random() * (index + 1))
+        const current = shuffled[index]
+        shuffled[index] = shuffled[swapIndex]
+        shuffled[swapIndex] = current
+    }
+    return shuffled
+}
+
+const shuffleStudioClips = () => {
+    const sourceTracks = studioTimeline.tracks ?? []
+    const tracks = sourceTracks.map(track => ({...track, clips: []}))
+    const clips = shuffleValues(sourceTracks.flatMap(track => (track.clips ?? []).map(clip => ({...clip}))))
+    const durationSeconds = (Number(studioTimeline.timeline?.durationMillis) || DEMO_DURATION_MILLIS) / 1000
+
+    clips
+        .sort((left, right) => (Number(right.end) - Number(right.start)) - (Number(left.end) - Number(left.start)))
+        .forEach(clip => {
+            const clipDuration = Math.max(0, Number(clip.end) - Number(clip.start))
+            const latestStart = Math.max(0, durationSeconds - clipDuration)
+            const candidates = []
+            shuffleValues(tracks).forEach(track => {
+                for (let attempt = 0; attempt < 40; attempt += 1) {
+                    const start = Number((Math.random() * latestStart).toFixed(2))
+                    const end = start + clipDuration
+                    const overlaps = track.clips.some(existing => start < Number(existing.end) && end > Number(existing.start))
+                    if (!overlaps) candidates.push({track, start, end})
+                }
+            })
+
+            const placement = candidates[0] ?? {track: tracks[Math.floor(Math.random() * tracks.length)], start: 0, end: clipDuration}
+            placement.track.clips.push({...clip, start: placement.start, end: placement.end})
+        })
+
+    tracks.forEach(track => track.clips.sort((left, right) => Number(left.start) - Number(right.start)))
+    studioTimeline.tracks = tracks
+    studioPacmanDemo.setTracks()
+    showStudioToast('Clips shuffled across the existing tracks', 'shuffle')
+}
+
+studioShuffleButton.addEventListener('pointerdown', event => event.stopPropagation())
+studioShuffleButton.addEventListener('click', event => {
+    event.stopPropagation()
+    shuffleStudioClips()
+})
 
 seekStudioBy(studioSeekBackwardButton, 'rewind', 10_000)
 seekStudioBy(studioSeekForwardButton, 'advance', 10_000)

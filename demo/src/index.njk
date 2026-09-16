@@ -80,6 +80,7 @@
             <p>The timeline is controlled by the host application. The component emits playback and seek requests, while the host clock writes the resulting position back through <code>currentTimeMillis</code>.</p>
             <ul>
                 <li>Use the top menu to move the playhead by ten seconds.</li>
+                <li>Use <strong>Shuffle</strong> in the top menu to redistribute every existing clip across the current tracks.</li>
                 <li>Drag the generated sources to create video, audio, text, or other clips.</li>
                 <li>Use the standard time and zoom controls rendered by the component.</li>
                 <li><strong class="demo-action-hint">Play the timeline to open the draggable Pac-Man view</strong>. Fully eaten clips disappear and increase the counter; clips interrupted by a lane change stay shortened and do not count.</li>
@@ -97,6 +98,10 @@
         </div>
         <lgs1920-timeline id="studio-timeline" class="demo-studio-timeline" aria-label="Studio style interactive timeline">
             <span slot="custom-menu" class="demo-skip-controls" aria-label="Playback controls">
+                <wa-button id="studio-shuffle" appearance="plain" variant="brand" size="s" aria-label="Shuffle clips">
+                    <wa-icon slot="start" name="shuffle" variant="solid" aria-hidden="true"></wa-icon>
+                    Shuffle
+                </wa-button>
                 <wa-button-group id="studio-playback-rate" label="Playback speed">
                     <wa-button data-playback-rate="1" appearance="filled" variant="brand" size="s" aria-pressed="true">x1</wa-button>
                     <wa-button data-playback-rate="2" appearance="filled" variant="neutral" size="s" aria-pressed="false">x2</wa-button>
@@ -155,10 +160,11 @@
         <div class="demo-explanation">
             <article>
                 <p class="eyebrow">What to observe</p>
-            <p>The host receives <code>seek</code> intent and writes <code>event.detail.timeMillis</code> back to the component. It also owns the playback clock: <code>play</code> starts it, <code>pause</code> stops it, each frame updates <code>currentTimeMillis</code>, and the selected rate changes elapsed time without moving the playhead. The standard time and zoom controls stay inside the component. The top menu slot contains the playback speed and 10-second seek controls. The clip sources are outside the custom element, so they can live in a toolbar, palette, or application menu. Four generated clip sources stay available for dragging, and each accepted drop replaces its source with a new one.</p>
+            <p>The host receives <code>seek</code> intent and writes <code>event.detail.timeMillis</code> back to the component. It also owns the playback clock: <code>play</code> starts it, <code>pause</code> stops it, each frame updates <code>currentTimeMillis</code>, and the selected rate changes elapsed time without moving the playhead. The standard time and zoom controls stay inside the component. The top menu slot contains shuffle, playback speed, and 10-second seek controls. Shuffle only redistributes the existing clips across the current tracks. The clip sources are outside the custom element, so they can live in a toolbar, palette, or application menu. Four generated clip sources stay available for dragging, and each accepted drop replaces its source with a new one.</p>
             </article>
             <pre class="demo-code"><code data-language="mixed">&lt;lgs1920-timeline&gt;
     &lt;span slot="custom-menu"&gt;
+        &lt;wa-button appearance="plain" variant="brand" size="s" aria-label="Shuffle clips"&gt;&lt;wa-icon slot="start" name="shuffle" variant="solid"&gt;&lt;/wa-icon&gt;Shuffle&lt;/wa-button&gt;
         &lt;wa-button-group label="Playback speed"&gt;
             &lt;wa-button data-playback-rate="1" appearance="filled" variant="brand" size="s" aria-pressed="true"&gt;x1&lt;/wa-button&gt;
             &lt;wa-button data-playback-rate="2" appearance="filled" variant="neutral" size="s" aria-pressed="false"&gt;x2&lt;/wa-button&gt;
