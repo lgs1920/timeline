@@ -2,8 +2,16 @@ import {mkdir} from 'node:fs/promises'
 import {parseReleaseTags, renderChangelogEntries} from './changelog.mjs'
 
 const packageJson = await Bun.file('./package.json').json()
-const readmeMarkdown = (await Bun.file('./README.md').text()).replaceAll('</script', '<\\/script')
-const componentReadmeMarkdown = (await Bun.file('./src/lgs1920-timeline/README.md').text()).replaceAll('</script', '<\\/script')
+const protectMarkdownScript = markdown => markdown.replaceAll('</script', '<\\/script')
+const readmeMarkdown = protectMarkdownScript((await Bun.file('./README.md').text())
+    .replaceAll('](docs/specifications.md)', '](./docs/specifications.html)'))
+const componentReadmeMarkdown = protectMarkdownScript((await Bun.file('./src/lgs1920-timeline/README.md').text())
+    .replaceAll('](../../README.md)', '](../readme.html)')
+    .replaceAll('](../../docs/specifications.md)', '](./specifications.html)')
+    .replaceAll('](../../LICENSE.md)', '](https://github.com/lgs1920/timeline/blob/main/LICENSE.md)'))
+const specificationsMarkdown = protectMarkdownScript((await Bun.file('./docs/specifications.md').text())
+    .replaceAll('](../README.md)', '](../readme.html)')
+    .replaceAll('](../src/lgs1920-timeline/README.md)', '](./)'))
 
 const readGitReleases = () => {
     const result = Bun.spawnSync([
@@ -96,13 +104,13 @@ const docsNavigation = `<p class="docs-navigation-title">Reference</p>
 <a href="#methods">Methods</a>
 <a href="#accessibility">Accessibility</a>
 <a href="#license">License</a>`
-const docsHtml = `<!doctype html>
+const docsPage = ({title, description, navigation, markdown, footer}) => `<!doctype html>
 <html lang="en" class="wa-theme-default wa-palette-default wa-brand-blue wa-dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Complete documentation for the @lgs1920/timeline package.">
-    <title>Documentation · LGS1920 Timeline</title>
+    <meta name="description" content="${description}">
+    <title>${title} · LGS1920 Timeline</title>
     <link rel="stylesheet" href="../assets/webawesome.css">
     <link rel="stylesheet" href="../assets/styles.css">
 </head>
@@ -123,19 +131,37 @@ const docsHtml = `<!doctype html>
         ${controls}
     </header>
     <nav slot="navigation" class="docs-navigation" aria-label="Documentation sections">
-        ${docsNavigation}
+        ${navigation}
     </nav>
     <main class="docs-main" id="main-content">
         <article class="docs-content">
-            <wa-markdown><script type="text/markdown">${componentReadmeMarkdown}</script></wa-markdown>
+            <wa-markdown><script type="text/markdown">${markdown}</script></wa-markdown>
         </article>
     </main>
-    <footer slot="footer" class="docs-footer">LGS1920 Timeline · Complete component reference</footer>
+    <footer slot="footer" class="docs-footer">${footer}</footer>
 </wa-page>
 <script type="module" src="../assets/docs.bundle.js"></script>
 ${themeScript}
 </body>
 </html>`
+
+const docsHtml = docsPage({
+    description: 'Complete documentation for the @lgs1920/timeline package.',
+    footer: 'LGS1920 Timeline · Complete component reference',
+    markdown: componentReadmeMarkdown,
+    navigation: docsNavigation,
+    title: 'Documentation',
+})
+const specificationsHtml = docsPage({
+    description: 'Functional, technical, and software specifications for the @lgs1920/timeline package.',
+    footer: 'LGS1920 Timeline · Functional, technical, and software specifications',
+    markdown: specificationsMarkdown,
+    navigation: `<p class="docs-navigation-title">Specifications</p>
+<a href="#functional-specifications">Functional specifications</a>
+<a href="#technical-specifications">Technical specifications</a>
+<a href="#software-specifications">Software specifications</a>`,
+    title: 'Specifications',
+})
 
 await mkdir('./demo/dist', {recursive: true})
 await mkdir('./demo/dist/docs', {recursive: true})
@@ -145,3 +171,4 @@ await Bun.write(demoPath, demoHtml)
 await Bun.write('./demo/dist/readme.html', shell('readme', 'Component reference', readmeHtml))
 await Bun.write('./demo/dist/changelog.html', shell('changelog', 'Changelog', changelogHtml))
 await Bun.write('./demo/dist/docs/index.html', docsHtml)
+await Bun.write('./demo/dist/docs/specifications.html', specificationsHtml)
