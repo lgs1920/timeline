@@ -75,20 +75,21 @@
             </div>
             <span id="studio-status" class="event-status" role="status" aria-live="polite">Ready</span>
         </div>
-        <p class="section-intro">The timeline stays controlled by its host. The standard time and zoom controls remain inside the component. The play button emits a playback intent, then the host clock advances <code>currentTimeMillis</code>. The host also controls playback speed at 1×, 2×, or 5× through the top menu slot.</p>
+        <p class="section-intro">The timeline stays controlled by its host. The standard time and zoom controls remain inside the component. The play button emits a playback intent, then the host clock advances <code>currentTimeMillis</code>. The host also controls playback speed at 1×, 2×, or 5× through the top menu slot. Play opens a draggable Three.js Pac-Man companion that eats the clips in chronological order.</p>
         <wa-details class="demo-details" summary="What this demo shows" appearance="filled-outlined">
             <p>The timeline is controlled by the host application. The component emits playback and seek requests, while the host clock writes the resulting position back through <code>currentTimeMillis</code>.</p>
             <ul>
                 <li>Use the top menu to move the playhead by ten seconds.</li>
                 <li>Drag the generated sources to create video, audio, text, or other clips.</li>
                 <li>Use the standard time and zoom controls rendered by the component.</li>
+                <li>Play the timeline to open the draggable Pac-Man view and watch clips disappear as they are consumed.</li>
             </ul>
         </wa-details>
         <div class="clip-source-panel" aria-label="External random clip source">
             <div class="clip-source-copy">
                 <p class="eyebrow">External clip source</p>
                 <strong>Drag a clip to the timeline</strong>
-                <span>Four generated clips are always ready below: video, audio, text, and other. Drop one into a compatible track to choose its position; a replacement of the same type appears immediately.</span>
+                <span>Four generated clips are always ready: video, audio, text, and other. Drop one into a compatible track to choose its position; a replacement of the same type appears immediately.</span>
             </div>
             <div class="clip-source-actions">
                 <div id="generated-clip-sources" class="generated-clip-sources" aria-label="Generated clips"></div>
@@ -114,6 +115,37 @@
             </span>
             <span slot="overlay-text">Preparing timeline...</span>
         </lgs1920-timeline>
+        <wa-popup id="studio-pacman-popup" anchor="studio-timeline" placement="top-end" distance="12" flip shift>
+            <div class="pacman-popup" role="dialog" aria-labelledby="studio-pacman-title" aria-describedby="studio-pacman-description">
+                <div class="pacman-popup-header" data-pacman-drag-handle>
+                    <div>
+                        <p class="eyebrow">Three.js playback companion</p>
+                        <h3 id="studio-pacman-title">Pac-Man eats the clips</h3>
+                    </div>
+                    <wa-button id="studio-pacman-close" appearance="plain" size="s" aria-label="Close Pac-Man demo">
+                        <wa-icon name="xmark" variant="solid" aria-hidden="true"></wa-icon>
+                    </wa-button>
+                </div>
+                <div class="pacman-audio-controls" aria-label="Pac-Man audio controls">
+                    <wa-button id="studio-pacman-sound" appearance="plain" size="s" aria-pressed="true">
+                        <wa-icon name="volume-high" variant="solid" aria-hidden="true"></wa-icon>
+                        <span id="studio-pacman-sound-label">Sound on</span>
+                    </wa-button>
+                    <wa-button id="studio-pacman-music" appearance="plain" size="s" aria-pressed="true">
+                        <wa-icon name="music" variant="solid" aria-hidden="true"></wa-icon>
+                        <span id="studio-pacman-music-label">Music on</span>
+                    </wa-button>
+                </div>
+                <div class="pacman-canvas-frame">
+                    <canvas id="studio-pacman-canvas" aria-label="Pac-Man animation following the timeline clips"></canvas>
+                </div>
+                <div class="pacman-popup-footer">
+                    <span id="studio-pacman-status">Ready for playback</span>
+                    <strong id="studio-pacman-progress">0 clips eaten</strong>
+                </div>
+                <p id="studio-pacman-description" class="pacman-popup-note">Press play in Demo 01. Pac-Man jumps to each clip start, eats it in place, then jumps to the next one. A clip may remain almost eaten when the next clip starts.</p>
+            </div>
+        </wa-popup>
         <div class="timeline-output">
             <span>Last event</span>
             <code id="studio-output">None</code>
@@ -178,6 +210,42 @@ replenishClipSources()
 </code></pre>
         </div>
         <p id="clip-drag-status" class="demo-note" role="status" aria-live="polite">Drag one of the four clip types onto the timeline. Each accepted drop creates a replacement of the same type.</p>
+        <wa-details class="demo-details" summary="Pac-Man companion code" appearance="filled-outlined">
+            <p>This simplified excerpt uses the same controlled clock as the timeline. Three.js renders the miniature ruler and clips, while the current time selects the clip to visit, moves Pac-Man from its start toward its end, and reduces the remaining clip width. Web Audio generates the chomp effect and an arcade-inspired fallback loop.</p>
+            <pre class="demo-code"><code data-language="html">&lt;wa-popup id="pacman-popup" anchor="studio-timeline" placement="top-end"&gt;
+    &lt;canvas id="pacman-canvas" aria-label="Pac-Man timeline companion"&gt;&lt;/canvas&gt;
+&lt;/wa-popup&gt;</code></pre>
+            <pre class="demo-code"><code data-language="javascript">import * as THREE from 'three'
+
+const clips = timeline.tracks
+    .flatMap(track =&gt; track.clips.map(clip =&gt; ({...clip, trackId: track.id})))
+    .sort((left, right) =&gt; left.start - right.start)
+
+const pacman = new THREE.Group()
+const pacmanBody = new THREE.Mesh(
+    new THREE.CircleGeometry(0.36, 40, 0.2, (Math.PI * 2) - 0.4),
+    new THREE.MeshBasicMaterial({
+        color: getComputedStyle(document.documentElement).getPropertyValue('--wa-color-brand-60').trim() || '#ffd23f',
+    }),
+)
+pacman.add(pacmanBody)
+
+const updatePacman = (timeMillis, playing) =&gt; {
+    const activeIndex = clips.findLastIndex(clip =&gt; clip.start * 1000 &lt;= timeMillis)
+    const clip = clips[activeIndex]
+    if (!clip) return
+
+    const progress = Math.min(1, Math.max(0,
+        (timeMillis - (clip.start * 1000)) / ((clip.end - clip.start) * 1000),
+    ))
+    pacman.position.copy(positionAtClip(clip, progress))
+    clipMeshes[activeIndex].scale.x = Math.max(0.04, 1 - progress)
+
+    if (playing) {
+        pacmanAudio.playChomp()
+    }
+}</code></pre>
+        </wa-details>
     </section>
 
     <section class="demo-panel playground" aria-labelledby="interactive-title">
@@ -217,12 +285,12 @@ timeline.addEventListener('lgs1920-timeline-seek', event =&gt; {
         <article class="demo-panel example-card">
             <p class="eyebrow">Demo 03 · Read only</p>
             <h2>Mirror an external player</h2>
-            <p>The timeline is a read-only projection: an external player owns the controls and sends its current time to the component. Use this pattern for a video player, a presentation preview, or a monitoring screen.</p>
+            <p>The timeline is a read-only projection: it keeps the standard playback controls while the host controls and sends the current time. Use this pattern for a video player, a presentation preview, or a monitoring screen.</p>
             <wa-details class="demo-details" summary="What this demo shows" appearance="filled-outlined">
-                <p>Read-only mode is useful when another component owns playback and editing. The host keeps sending the external player position to the timeline, while the timeline only renders the projection.</p>
+                <p>Readonly mode is useful when another component owns the timeline data and current position. The host keeps sending the external player position, while the timeline exposes playback controls, fixed start/end range handles, the draggable playhead grip, and its standard clip icons.</p>
                 <ul>
-                    <li>Set <code>interactive: false</code> to remove timeline editing and playback interactions.</li>
-                    <li>Keep the external player's slider and transport controls outside the timeline.</li>
+                    <li>Use the <code>readonly</code> attribute to keep the standard playback controls inside the timeline.</li>
+                    <li>Keep the external player's time slider outside the timeline.</li>
                     <li>Use this pattern for monitoring views, review screens, or compact sequence summaries.</li>
                 </ul>
             </wa-details>
@@ -231,11 +299,11 @@ timeline.addEventListener('lgs1920-timeline-seek', event =&gt; {
                 <wa-slider id="readonly-time-slider" label="External player time" size="s" variant="brand" min="0" max="30000" step="33.333" value="0"></wa-slider>
                 <wa-tooltip id="readonly-time-tooltip" for="readonly-time-slider" placement="top">00:00 / 00:30</wa-tooltip>
             </div>
-            <lgs1920-timeline id="readonly-timeline" aria-label="Read only timeline"></lgs1920-timeline>
+            <lgs1920-timeline id="readonly-timeline" readonly aria-label="Read only timeline"></lgs1920-timeline>
             <p id="readonly-status" class="demo-note" role="status" aria-live="polite">External player paused · 00:00</p>
+            <pre class="demo-code"><code data-language="html">&lt;lgs1920-timeline id="timeline" readonly&gt;&lt;/lgs1920-timeline&gt;</code></pre>
             <pre class="demo-code"><code data-language="javascript">timeline.timeline = {
-    interactive: false,
-    editable: false,
+    durationMillis: 30000,
 }
 
 player.addEventListener('timeupdate', event =&gt; {

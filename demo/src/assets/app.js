@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-15
+ * Last modified: 2026-09-16
  *
  *
  * Copyright © 2026 LGS1920
@@ -21,6 +21,7 @@ import '@awesome.me/webawesome/dist/components/button-group/button-group.js'
 import '@awesome.me/webawesome/dist/components/details/details.js'
 import '@awesome.me/webawesome/dist/components/icon/icon.js'
 import '@awesome.me/webawesome/dist/components/option/option.js'
+import '@awesome.me/webawesome/dist/components/popup/popup.js'
 import '@awesome.me/webawesome/dist/components/select/select.js'
 import '@awesome.me/webawesome/dist/components/slider/slider.js'
 import '@awesome.me/webawesome/dist/components/tooltip/tooltip.js'
@@ -30,6 +31,7 @@ import {CLIP_OPTION_DRAG_MIME, formatRulerTime} from '@lgs1920/timeline'
 import Prism from 'prismjs'
 import 'prismjs/components/prism-markup.js'
 import 'prismjs/components/prism-javascript.js'
+import * as THREE from 'three'
 
 const THEME_CONFIG = {
     default: {
@@ -57,6 +59,15 @@ const studioSeekForwardButton = document.querySelector('#studio-seek-forward')
 const studioStatus = document.querySelector('#studio-status')
 const studioOutput = document.querySelector('#studio-output')
 const studioToast = document.querySelector('#studio-toast')
+const studioPacmanPopup = document.querySelector('#studio-pacman-popup')
+const studioPacmanClose = document.querySelector('#studio-pacman-close')
+const studioPacmanSound = document.querySelector('#studio-pacman-sound')
+const studioPacmanMusic = document.querySelector('#studio-pacman-music')
+const studioPacmanSoundLabel = document.querySelector('#studio-pacman-sound-label')
+const studioPacmanMusicLabel = document.querySelector('#studio-pacman-music-label')
+const studioPacmanCanvas = document.querySelector('#studio-pacman-canvas')
+const studioPacmanStatus = document.querySelector('#studio-pacman-status')
+const studioPacmanProgress = document.querySelector('#studio-pacman-progress')
 
 const showStudioToast = (message, icon) => {
     studioToast?.create(message, {
@@ -104,7 +115,7 @@ const createRandomClipOption = (preferredType = null) => {
     generatedClipIndex += 1
     const type = preferredType ?? randomItem(randomClipTypes)
     const label = `${type.label} clip #${String(generatedClipIndex).padStart(3, '0')}`
-    const duration = Number((2 + (Math.random() * 10)).toFixed(1))
+    const duration = Number((3 + (Math.random() * 17)).toFixed(1))
 
     return {
         group: 'demo-random',
@@ -313,8 +324,6 @@ configureTimeline(interactiveTimeline, {
 })
 configureTimeline(readonlyTimeline, {
     durationMillis: SHORT_DEMO_DURATION_MILLIS,
-    interactive: false,
-    editable: false,
 })
 configureTimeline(rangeTimeline, {
     durationMillis: SHORT_DEMO_DURATION_MILLIS,
@@ -382,9 +391,9 @@ const createPlaybackClock = ({timeline, startMillis = 0, endMillis = DEMO_DURATI
         tick()
     }
 
-    const pause = () => {
+    const pause = (syncTimeline = true) => {
         stopClock()
-        sync(timeline.currentTimeMillis)
+        if (syncTimeline) sync(timeline.currentTimeMillis)
     }
 
     const stop = () => {
@@ -398,7 +407,15 @@ const createPlaybackClock = ({timeline, startMillis = 0, endMillis = DEMO_DURATI
         if (timeline.playing) start()
     }
 
-    const seek = value => {
+    const seek = (value, constrainToPlaybackRange = true) => {
+        if (!constrainToPlaybackRange) {
+            stopClock()
+            timeline.playing = false
+            const timeMillis = Math.max(0, Number(value) || 0)
+            timeline.currentTimeMillis = timeMillis
+            onTime(timeMillis)
+            return timeMillis
+        }
         const timeMillis = sync(value)
         if (timeline.playing) start()
         return timeMillis
@@ -417,8 +434,627 @@ const createPlaybackClock = ({timeline, startMillis = 0, endMillis = DEMO_DURATI
     return {start, pause, stop, restart, seek, getRate: () => rate, setRate, sync}
 }
 
+const seekFromTimelineEvent = (clock, event) => clock.seek(
+    event.detail.timeMillis,
+    event.detail.source !== 'manual-seek',
+)
+
+/**
+ * Render a small Three.js companion scene for the Studio demo.
+ *
+ * @param {Object} options Demo elements and controlled timeline.
+ * @returns {Object} Pac-Man demo controls.
+ */
+const createPacmanAudio = ({musicButton, musicLabel, soundButton, soundLabel}) => {
+    // Original arcade chase loop: short syncopated lead, alternating bass,
+    // and occasional harmony accents. Keep the pattern data-driven so the
+    // timing engine below can schedule it without accumulating setInterval drift.
+    const musicPattern = [
+        {lead: 659.25, bass: 164.81, harmony: 523.25, accent: true},
+        {lead: 783.99},
+        {lead: 880, bass: 220, harmony: 659.25},
+        {lead: 1046.5, accent: true},
+        {lead: 880, bass: 220},
+        {lead: 783.99, harmony: 587.33},
+        {lead: 659.25, bass: 164.81, accent: true},
+        {lead: 587.33},
+        {lead: 698.46, bass: 174.61, harmony: 523.25},
+        {lead: 830.61},
+        {lead: 987.77, bass: 246.94, harmony: 659.25, accent: true},
+        {lead: 1174.66},
+        {lead: 987.77, bass: 246.94},
+        {lead: 830.61, harmony: 622.25},
+        {lead: 698.46, bass: 174.61, accent: true},
+        {lead: 659.25},
+    ]
+    const MUSIC_STEP_SECONDS = 0.13
+    const MUSIC_LOOKAHEAD_SECONDS = 0.2
+    const MUSIC_SCHEDULER_INTERVAL = 40
+    let audioContext = null
+    let musicTimer = null
+    let musicIndex = 0
+    let musicNextTime = 0
+    let soundEnabled = true
+    let musicEnabled = true
+
+    const updateButton = (button, label, enabled, iconOn, iconOff) => {
+        button.setAttribute('aria-pressed', String(enabled))
+        label.textContent = enabled ? `${label === soundLabel ? 'Sound' : 'Music'} on` : `${label === soundLabel ? 'Sound' : 'Music'} off`
+        button.querySelector('wa-icon').name = enabled ? iconOn : iconOff
+    }
+
+    const ensureContext = () => {
+        if (!audioContext) {
+            const AudioContextConstructor = window.AudioContext ?? window.webkitAudioContext
+            if (!AudioContextConstructor) return null
+            try {
+                audioContext = new AudioContextConstructor()
+            } catch {
+                return null
+            }
+        }
+        if (audioContext.state === 'suspended') audioContext.resume()
+        return audioContext
+    }
+
+    const playTone = (frequency, duration, type = 'square', volume = 0.035, when = null) => {
+        if (!soundEnabled) return
+        const context = ensureContext()
+        if (!context) return
+        const start = Number.isFinite(Number(when)) ? Math.max(context.currentTime, Number(when)) : context.currentTime
+        const oscillator = context.createOscillator()
+        const gain = context.createGain()
+        oscillator.type = type
+        oscillator.frequency.setValueAtTime(frequency, start)
+        gain.gain.setValueAtTime(0.0001, start)
+        gain.gain.exponentialRampToValueAtTime(volume, start + 0.008)
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + duration)
+        oscillator.connect(gain)
+        gain.connect(context.destination)
+        oscillator.start(start)
+        oscillator.stop(start + duration + 0.02)
+    }
+
+    const stopMusic = () => {
+        if (musicTimer === null) return
+        window.clearInterval(musicTimer)
+        musicTimer = null
+        musicNextTime = 0
+    }
+
+    const startMusic = () => {
+        if (!soundEnabled || !musicEnabled || musicTimer !== null) return
+        const context = ensureContext()
+        if (!context) return
+        musicNextTime = context.currentTime + 0.03
+        const scheduleMusic = () => {
+            if (!soundEnabled || !musicEnabled || !audioContext) return
+            const horizon = audioContext.currentTime + MUSIC_LOOKAHEAD_SECONDS
+            while (musicNextTime < horizon) {
+                const step = musicPattern[musicIndex]
+                const leadDuration = MUSIC_STEP_SECONDS * (step.accent ? 0.82 : 0.68)
+                playTone(step.lead, leadDuration, 'square', step.accent ? 0.022 : 0.016, musicNextTime)
+                if (step.bass) playTone(step.bass, MUSIC_STEP_SECONDS * 1.35, 'triangle', 0.014, musicNextTime)
+                if (step.harmony) {
+                    playTone(step.harmony, MUSIC_STEP_SECONDS * 0.48, 'sine', 0.006, musicNextTime + (MUSIC_STEP_SECONDS * 0.5))
+                }
+                musicIndex = (musicIndex + 1) % musicPattern.length
+                musicNextTime += MUSIC_STEP_SECONDS
+            }
+        }
+        scheduleMusic()
+        musicTimer = window.setInterval(scheduleMusic, MUSIC_SCHEDULER_INTERVAL)
+    }
+
+    const start = () => {
+        ensureContext()
+        startMusic()
+    }
+
+    const toggleSound = () => {
+        soundEnabled = !soundEnabled
+        updateButton(soundButton, soundLabel, soundEnabled, 'volume-high', 'volume-xmark')
+        if (soundEnabled) startMusic()
+        else stopMusic()
+    }
+
+    const toggleMusic = () => {
+        musicEnabled = !musicEnabled
+        updateButton(musicButton, musicLabel, musicEnabled, 'music', 'music-slash')
+        if (musicEnabled) startMusic()
+        else stopMusic()
+    }
+
+    soundButton.addEventListener('click', toggleSound)
+    musicButton.addEventListener('click', toggleMusic)
+    updateButton(soundButton, soundLabel, soundEnabled, 'volume-high', 'volume-xmark')
+    updateButton(musicButton, musicLabel, musicEnabled, 'music', 'music-slash')
+
+    return {
+        chomp: () => {
+            const context = ensureContext()
+            if (!context) return
+            const start = context.currentTime
+            playTone(240, 0.04, 'square', 0.04, start)
+            playTone(125, 0.075, 'triangle', 0.022, start + 0.022)
+        },
+        pause: stopMusic,
+        start,
+        stop: () => {
+            stopMusic()
+            audioContext?.suspend?.()
+        },
+    }
+}
+
+const createPacmanDemo = ({canvas, popup, timeline, status, progress}) => {
+    const worldLeft = -4.4
+    const worldWidth = 9.6
+    const trackHeight = 0.66
+    const rulerY = 2.68
+    const colorByKind = {
+        video: 0x4f8cff,
+        audio: 0x42c98a,
+        text: 0xc084fc,
+        graphic: 0xf08bff,
+        other: 0xf4a340,
+        marker: 0xf4d35e,
+    }
+    const popupContent = popup.querySelector('.pacman-popup')
+    const dragHandle = popup.querySelector('[data-pacman-drag-handle]')
+    const audio = createPacmanAudio({
+        musicButton: studioPacmanMusic,
+        musicLabel: studioPacmanMusicLabel,
+        soundButton: studioPacmanSound,
+        soundLabel: studioPacmanSoundLabel,
+    })
+    let renderer = null
+    let scene = null
+    let camera = null
+    let pacman = null
+    let pacmanBody = null
+    let clipGroup = null
+    let laneGroup = null
+    let rulerGroup = null
+    let playhead = null
+    let clipEntries = []
+    let clipSignature = ''
+    let targetPosition = new THREE.Vector3(worldLeft, 0, 0.4)
+    let targetEntry = null
+    let lastActiveIndex = -2
+    let biteWasActive = false
+    let currentTimeMillis = 0
+    let playing = false
+    let chewing = false
+    let frameId = null
+    let resizeObserver = null
+    let popupOffset = {x: 0, y: 0}
+    let dragState = null
+
+    const setMessage = (message, count = 0, total = clipEntries.length) => {
+        status.textContent = message
+        progress.textContent = `${count} / ${total} clips eaten`
+    }
+
+    const resolveClipColor = clip => {
+        const palette = (clip.colorClasses ?? [])
+            .find(value => typeof value === 'string' && value.startsWith('wa-neutral-'))
+            ?.slice('wa-neutral-'.length)
+        const cssColor = palette
+            ? getComputedStyle(document.documentElement).getPropertyValue(`--wa-color-${palette}-50`).trim()
+            : ''
+        return cssColor || colorByKind[clip.kind] || 0x9ca3af
+    }
+
+    const createTextSprite = (value, {color = '#d7e5ff', maxWidth = 1.2, fontSize = 26} = {}) => {
+        const textCanvas = document.createElement('canvas')
+        const context = textCanvas.getContext('2d')
+        if (!context) return null
+        context.font = `600 ${fontSize}px system-ui, sans-serif`
+        const measuredWidth = Math.ceil(context.measureText(String(value)).width + 16)
+        textCanvas.width = measuredWidth
+        textCanvas.height = fontSize + 16
+        context.font = `600 ${fontSize}px system-ui, sans-serif`
+        context.fillStyle = color
+        context.textBaseline = 'middle'
+        context.fillText(String(value), 8, textCanvas.height / 2)
+        const texture = new THREE.CanvasTexture(textCanvas)
+        texture.colorSpace = THREE.SRGBColorSpace
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+            depthTest: false,
+            map: texture,
+            transparent: true,
+        }))
+        const scaleWidth = Math.min(maxWidth, Math.max(0.18, measuredWidth / 90))
+        sprite.scale.set(scaleWidth, scaleWidth * (textCanvas.height / textCanvas.width), 1)
+        return sprite
+    }
+
+    const laneY = (trackIndex, trackCount) => ((trackCount - 1) * trackHeight) / 2 - (trackIndex * trackHeight)
+
+    const clearGroup = group => {
+        group.children.forEach(object => disposeObject(object))
+        group.clear()
+    }
+
+    const rebuildStructure = () => {
+        if (!laneGroup || !rulerGroup) return
+        clearGroup(laneGroup)
+        clearGroup(rulerGroup)
+        const timelineTracks = timeline.tracks ?? []
+        const trackCount = Math.max(1, timelineTracks.length)
+        const laneMaterial = new THREE.MeshBasicMaterial({
+            color: 0x10233c,
+            opacity: 0.72,
+            transparent: true,
+        })
+        timelineTracks.forEach((track, trackIndex) => {
+            const y = laneY(trackIndex, trackCount)
+            const lane = new THREE.Mesh(new THREE.PlaneGeometry(worldWidth, 0.52), laneMaterial.clone())
+            lane.position.set(worldLeft + (worldWidth / 2), y, -0.35)
+            laneGroup.add(lane)
+            const label = createTextSprite(track.label ?? track.id, {color: '#c8d7ee', maxWidth: 1.18, fontSize: 22})
+            if (label) {
+                label.position.set(worldLeft - 0.67, y, 0.15)
+                laneGroup.add(label)
+            }
+        })
+        laneMaterial.dispose()
+
+        const rulerPoints = [
+            new THREE.Vector3(worldLeft, rulerY, -0.05),
+            new THREE.Vector3(worldLeft + worldWidth, rulerY, -0.05),
+        ]
+        rulerGroup.add(new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints(rulerPoints),
+            new THREE.LineBasicMaterial({color: 0x6682a8, transparent: true, opacity: 0.75}),
+        ))
+        const durationMillis = Number(timeline.timeline?.durationMillis) || DEMO_DURATION_MILLIS
+        for (let second = 0; second <= durationMillis / 1000; second += 10) {
+            const x = worldLeft + ((second * 1000) / durationMillis) * worldWidth
+            const tick = new THREE.Line(
+                new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(x, rulerY - 0.12, -0.04),
+                    new THREE.Vector3(x, rulerY + 0.1, -0.04),
+                ]),
+                new THREE.LineBasicMaterial({color: 0x9ab2d1, transparent: true, opacity: 0.85}),
+            )
+            rulerGroup.add(tick)
+            const label = createTextSprite(`${second}s`, {color: '#9ab2d1', maxWidth: 0.55, fontSize: 18})
+            if (label) {
+                label.position.set(x, rulerY + 0.22, 0.1)
+                rulerGroup.add(label)
+            }
+        }
+    }
+
+    const getEntries = () => {
+        const durationMillis = Number(timeline.timeline?.durationMillis) || DEMO_DURATION_MILLIS
+        const trackIds = (timeline.tracks ?? []).map(track => track.id)
+        const trackIndexById = new Map(trackIds.map((id, index) => [id, index]))
+        return (timeline.tracks ?? []).flatMap(track => (track.clips ?? []).map(clip => ({
+            clip,
+            trackId: track.id,
+            trackLabel: track.label,
+            trackIndex: trackIndexById.get(track.id) ?? 0,
+            startMillis: Math.max(0, Number(clip.start) * 1000),
+            endMillis: Math.max(0, Number(clip.end) * 1000),
+        })))
+            .filter(entry => entry.endMillis > entry.startMillis)
+            .sort((left, right) => left.startMillis - right.startMillis || left.trackIndex - right.trackIndex || left.endMillis - right.endMillis)
+            .map((entry, index, entries) => {
+                const trackCount = Math.max(1, trackIds.length)
+                const middle = ((entry.startMillis + entry.endMillis) / 2) / durationMillis
+                const width = Math.max(0.16, ((entry.endMillis - entry.startMillis) / durationMillis) * worldWidth)
+                const y = laneY(entry.trackIndex, trackCount)
+                return {
+                    ...entry,
+                    index,
+                    total: entries.length,
+                    startPosition: new THREE.Vector3(
+                        worldLeft + ((entry.startMillis / durationMillis) * worldWidth),
+                        y,
+                        0.4,
+                    ),
+                    position: new THREE.Vector3(
+                        worldLeft + (middle * worldWidth),
+                        y,
+                        0,
+                    ),
+                    endPosition: new THREE.Vector3(
+                        worldLeft + ((entry.endMillis / durationMillis) * worldWidth),
+                        y,
+                        0.4,
+                    ),
+                    width,
+                }
+            })
+    }
+
+    const disposeObject = object => {
+        object.traverse?.(child => {
+            child.geometry?.dispose()
+            if (Array.isArray(child.material)) child.material.forEach(material => {
+                material.map?.dispose()
+                material.dispose()
+            })
+            else {
+                child.material?.map?.dispose()
+                child.material?.dispose()
+            }
+        })
+    }
+
+    const updatePacmanGeometry = mouthSize => {
+        if (!pacmanBody) return
+        const brandColor = getComputedStyle(document.documentElement).getPropertyValue('--wa-color-brand-60').trim() || '#ffd23f'
+        pacmanBody.material.color.set(brandColor)
+        const geometry = new THREE.CircleGeometry(0.36, 40, mouthSize / 2, (Math.PI * 2) - mouthSize)
+        const previousGeometry = pacmanBody.geometry
+        pacmanBody.geometry = geometry
+        previousGeometry.dispose()
+    }
+
+    const rebuildClips = () => {
+        if (!clipGroup) return
+        clipGroup.children.forEach(disposeObject)
+        clipGroup.clear()
+        clipEntries = getEntries()
+        clipSignature = clipEntries.map(entry => `${entry.trackId}:${entry.trackLabel}:${entry.clip.id}:${entry.clip.start}:${entry.clip.end}:${entry.clip.label}:${(entry.clip.colorClasses ?? []).join(',')}`).join('|')
+        clipEntries.forEach(entry => {
+            const geometry = new THREE.BoxGeometry(entry.width, 0.26, 0.22)
+            const material = new THREE.MeshBasicMaterial({
+                color: resolveClipColor(entry.clip),
+                transparent: true,
+                opacity: 0.9,
+            })
+            const mesh = new THREE.Mesh(geometry, material)
+            mesh.position.copy(entry.position)
+            mesh.userData.label = entry.clip.label ?? entry.clip.id
+            const outline = new THREE.LineSegments(
+                new THREE.EdgesGeometry(geometry),
+                new THREE.LineBasicMaterial({color: 0xffffff, transparent: true, opacity: 0.24}),
+            )
+            outline.position.z = 0.12
+            mesh.add(outline)
+            if (entry.width > 0.55) {
+                const label = createTextSprite(entry.clip.label ?? entry.clip.id, {
+                    color: '#ffffff',
+                    fontSize: 15,
+                    maxWidth: Math.min(1.45, entry.width - 0.12),
+                })
+                if (label) {
+                    label.position.set(0, 0, 0.14)
+                    mesh.add(label)
+                }
+            }
+            entry.mesh = mesh
+            clipGroup.add(mesh)
+        })
+    }
+
+    const resize = () => {
+        if (!renderer || !canvas.parentElement) return
+        const bounds = canvas.parentElement.getBoundingClientRect()
+        const width = Math.max(1, Math.floor(bounds.width))
+        const height = Math.max(1, Math.floor(bounds.height))
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
+        renderer.setSize(width, height, false)
+    }
+
+    const ensureRenderer = () => {
+        if (renderer) return true
+        try {
+            renderer = new THREE.WebGLRenderer({canvas, antialias: true, alpha: true})
+        } catch {
+            setMessage('WebGL is unavailable in this browser')
+            return false
+        }
+        renderer.setClearColor(0x07111f, 0)
+        scene = new THREE.Scene()
+        camera = new THREE.OrthographicCamera(-5.7, 5.7, 3, -3, 0.1, 100)
+        camera.position.z = 10
+        clipGroup = new THREE.Group()
+        laneGroup = new THREE.Group()
+        rulerGroup = new THREE.Group()
+        scene.add(laneGroup, rulerGroup)
+        scene.add(clipGroup)
+
+        const stage = new THREE.Mesh(
+            new THREE.PlaneGeometry(11, 5.5),
+            new THREE.MeshBasicMaterial({color: 0x07111f, transparent: true, opacity: 0.9}),
+        )
+        stage.position.z = -0.5
+        scene.add(stage)
+        rebuildStructure()
+        playhead = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, -2.5, 0),
+                new THREE.Vector3(0, rulerY + 0.1, 0),
+            ]),
+            new THREE.LineBasicMaterial({color: 0x58b8ff, transparent: true, opacity: 0.95}),
+        )
+        playhead.position.set(worldLeft, 0, 0.32)
+        scene.add(playhead)
+
+        pacman = new THREE.Group()
+        pacmanBody = new THREE.Mesh(
+            new THREE.CircleGeometry(0.36, 40, 0.2, (Math.PI * 2) - 0.4),
+            new THREE.MeshBasicMaterial({color: getComputedStyle(document.documentElement).getPropertyValue('--wa-color-brand-60').trim() || '#ffd23f'}),
+        )
+        const eye = new THREE.Mesh(
+            new THREE.CircleGeometry(0.045, 16),
+            new THREE.MeshBasicMaterial({color: 0x101828}),
+        )
+        eye.position.set(0.12, 0.17, 0.34)
+        pacman.add(pacmanBody, eye)
+        pacman.position.copy(targetPosition)
+        scene.add(pacman)
+        rebuildClips()
+        resizeObserver = new ResizeObserver(resize)
+        resizeObserver.observe(canvas.parentElement)
+        resize()
+        return true
+    }
+
+    const syncScene = () => {
+        if (!renderer) return
+        const durationMillis = Number(timeline.timeline?.durationMillis) || DEMO_DURATION_MILLIS
+        if (playhead) playhead.position.x = worldLeft + (Math.max(0, Math.min(durationMillis, currentTimeMillis)) / durationMillis) * worldWidth
+        const nextEntries = getEntries()
+        const nextSignature = nextEntries.map(entry => `${entry.trackId}:${entry.trackLabel}:${entry.clip.id}:${entry.clip.start}:${entry.clip.end}:${entry.clip.label}:${(entry.clip.colorClasses ?? []).join(',')}`).join('|')
+        if (nextSignature !== clipSignature) {
+            rebuildStructure()
+            rebuildClips()
+        }
+
+        let activeIndex = -1
+        clipEntries.forEach((entry, index) => {
+            if (entry.startMillis <= currentTimeMillis) activeIndex = index
+        })
+        const currentEntry = activeIndex >= 0 ? clipEntries[activeIndex] : clipEntries[0]
+        clipEntries.forEach((entry, index) => {
+            entry.mesh.position.copy(entry.position)
+            const isPrevious = activeIndex >= 0 && index < activeIndex
+            const isActive = index === activeIndex
+            entry.mesh.visible = true
+            entry.mesh.material.opacity = isPrevious ? 0.42 : isActive ? 1 : 0.9
+            entry.mesh.scale.setScalar(1)
+            if (isPrevious || isActive) {
+                const clipProgress = isPrevious
+                    ? 1
+                    : Math.max(0, Math.min(1, (currentTimeMillis - entry.startMillis) / Math.max(1, entry.endMillis - entry.startMillis)))
+                const remaining = Math.max(0.04, 1 - clipProgress)
+                const clipLength = entry.endPosition.x - entry.startPosition.x
+                entry.mesh.scale.x = remaining
+                entry.mesh.position.x = entry.startPosition.x + ((clipProgress + (remaining / 2)) * clipLength)
+            }
+        })
+        if (currentEntry) {
+            targetEntry = currentEntry
+            const clipProgress = Math.max(0, Math.min(1, (currentTimeMillis - currentEntry.startMillis) / Math.max(1, currentEntry.endMillis - currentEntry.startMillis)))
+            targetPosition = currentEntry.startPosition.clone().lerp(currentEntry.endPosition, clipProgress)
+            chewing = playing
+                && activeIndex >= 0
+                && currentTimeMillis >= currentEntry.startMillis
+                && currentTimeMillis < currentEntry.endMillis
+            if (activeIndex !== lastActiveIndex && pacman) {
+                pacman.position.copy(targetPosition)
+            }
+            lastActiveIndex = activeIndex
+            setMessage(`Eating ${currentEntry.clip.label ?? currentEntry.clip.id}`, Math.max(0, activeIndex))
+        } else {
+            targetPosition = new THREE.Vector3(worldLeft, 0, 0.4)
+            targetEntry = null
+            chewing = false
+            lastActiveIndex = -1
+            setMessage('Waiting for the first clip', 0)
+        }
+    }
+
+    const renderFrame = timestamp => {
+        frameId = window.requestAnimationFrame(renderFrame)
+        if (pacman) {
+            const previousX = pacman.position.x
+            pacman.position.copy(targetPosition)
+            const direction = targetPosition.x >= previousX ? 1 : -1
+            pacman.scale.x = direction
+            const chomp = Math.abs(Math.sin(timestamp / (playing ? 78 : 180)))
+            updatePacmanGeometry(chewing ? chomp : 0)
+            const biteIsActive = chewing && Math.sin(timestamp / 78) > 0.92
+            if (biteIsActive && !biteWasActive) audio.chomp()
+            biteWasActive = biteIsActive
+            if (targetEntry?.mesh) targetEntry.mesh.scale.y = chewing ? 1 + (chomp * 0.16) : 1
+        }
+        renderer.render(scene, camera)
+    }
+
+    const startRendering = () => {
+        if (!ensureRenderer() || frameId !== null) return
+        syncScene()
+        frameId = window.requestAnimationFrame(renderFrame)
+    }
+
+    const stopRendering = () => {
+        if (frameId === null) return
+        window.cancelAnimationFrame(frameId)
+        frameId = null
+    }
+
+    const setOpen = open => {
+        popup.active = open
+        if (open) {
+            audio.start()
+            startRendering()
+            window.requestAnimationFrame(resize)
+        } else {
+            audio.stop()
+            stopRendering()
+        }
+    }
+
+    const updateTime = (timeMillis, isTimelinePlaying) => {
+        currentTimeMillis = Number(timeMillis) || 0
+        playing = Boolean(isTimelinePlaying)
+        if (playing && popup.active) audio.start()
+        if (!playing) {
+            audio.pause()
+            biteWasActive = false
+        }
+        if (renderer) syncScene()
+    }
+
+    const setTracks = () => {
+        if (renderer) syncScene()
+    }
+
+    const reset = () => updateTime(0, false)
+
+    const handlePointerMove = event => {
+        if (!dragState) return
+        popupOffset = {
+            x: dragState.offsetX + event.clientX - dragState.clientX,
+            y: dragState.offsetY + event.clientY - dragState.clientY,
+        }
+        popupContent.style.translate = `${popupOffset.x}px ${popupOffset.y}px`
+    }
+
+    const stopDragging = event => {
+        if (!dragState) return
+        dragHandle.releasePointerCapture?.(event.pointerId)
+        dragHandle.classList.remove('is-dragging')
+        dragState = null
+    }
+
+    dragHandle.addEventListener('pointerdown', event => {
+        if (event.button !== 0 || event.target.closest('wa-button')) return
+        dragState = {
+            clientX: event.clientX,
+            clientY: event.clientY,
+            offsetX: popupOffset.x,
+            offsetY: popupOffset.y,
+        }
+        dragHandle.setPointerCapture(event.pointerId)
+        dragHandle.classList.add('is-dragging')
+        event.preventDefault()
+    })
+    dragHandle.addEventListener('pointermove', handlePointerMove)
+    dragHandle.addEventListener('pointerup', stopDragging)
+    dragHandle.addEventListener('pointercancel', stopDragging)
+
+    return {
+        close: () => setOpen(false),
+        open: () => setOpen(true),
+        reset,
+        setTracks,
+        updateTime,
+    }
+}
+
 readonlyTimeSlider.valueFormatter = value => `${formatMillis(value)} / ${formatMillis(SHORT_DEMO_DURATION_MILLIS)}`
 rangeTimeSlider.valueFormatter = value => `${formatMillis(value)} / ${formatMillis(SHORT_DEMO_DURATION_MILLIS)}`
+
+let studioPacmanDemo
 
 const studioClock = createPlaybackClock({
     timeline: studioTimeline,
@@ -429,7 +1065,21 @@ const studioClock = createPlaybackClock({
             ? `Playing · ${studioClock.getRate()}× · ${formatMillis(timeMillis)}`
             : `Current time · ${formatMillis(timeMillis)}`
         studioOutput.textContent = `currentTimeMillis = ${timeMillis}`
+        studioPacmanDemo?.updateTime(timeMillis, studioTimeline.playing)
     },
+})
+
+studioPacmanDemo = createPacmanDemo({
+    canvas: studioPacmanCanvas,
+    popup: studioPacmanPopup,
+    progress: studioPacmanProgress,
+    status: studioPacmanStatus,
+    timeline: studioTimeline,
+})
+studioPacmanDemo.updateTime(studioTimeline.currentTimeMillis, studioTimeline.playing)
+studioPacmanClose.addEventListener('click', event => {
+    event.stopPropagation()
+    studioPacmanDemo.close()
 })
 
 const updateStudioPlaybackRateButtons = rate => {
@@ -464,10 +1114,11 @@ seekStudioBy(studioSeekBackwardButton, 'rewind', 10_000)
 seekStudioBy(studioSeekForwardButton, 'advance', 10_000)
 
 studioTimeline.addEventListener('lgs1920-timeline-seek', event => {
-    studioClock.seek(event.detail.timeMillis)
+    seekFromTimelineEvent(studioClock, event)
 })
 studioTimeline.addEventListener('lgs1920-timeline-play', () => {
     showStudioToast('Clip started', 'play')
+    studioPacmanDemo.open()
     studioTimeline.playing = true
     studioClock.start()
 })
@@ -481,6 +1132,8 @@ studioTimeline.addEventListener('lgs1920-timeline-stop', () => {
     studioClock.stop()
 })
 studioTimeline.addEventListener('lgs1920-timeline-restart', event => {
+    studioPacmanDemo.open()
+    studioPacmanDemo.reset()
     studioClock.seek(event.detail.timeMillis)
 })
 
@@ -639,6 +1292,7 @@ studioTimeline.addEventListener('lgs1920-timeline-add-clip', event => {
     }
     if (removeGeneratedClipSource(detail.option)) replenishGeneratedClipSources()
     studioTimeline.tracks = detail.tracks
+    studioPacmanDemo.setTracks()
     clipDragStatus.textContent = `Added ${clip.label} · ${Number(clip.end - clip.start).toFixed(1)}s · ${clip.kind}`
 })
 
@@ -679,7 +1333,9 @@ rangeTimeline.addEventListener('lgs1920-timeline-pause', () => {
 })
 rangeTimeline.addEventListener('lgs1920-timeline-stop', () => rangeClock.stop())
 rangeTimeline.addEventListener('lgs1920-timeline-restart', event => rangeClock.seek(event.detail.timeMillis))
-rangeTimeline.addEventListener('lgs1920-timeline-seek', event => rangeClock.seek(event.detail.timeMillis))
+rangeTimeline.addEventListener('lgs1920-timeline-seek', event => {
+    seekFromTimelineEvent(rangeClock, event)
+})
 rangeClock.sync(currentRangeStartMillis)
 
 const formatKeyboardKey = event => {
@@ -717,7 +1373,7 @@ const interactiveClock = createPlaybackClock({
 })
 
 interactiveTimeline.addEventListener('lgs1920-timeline-seek', event => {
-    interactiveClock.seek(event.detail.timeMillis)
+    seekFromTimelineEvent(interactiveClock, event)
 })
 interactiveTimeline.addEventListener('lgs1920-timeline-play', () => {
     interactiveTimeline.playing = true
@@ -769,6 +1425,17 @@ readonlyPlayButton.addEventListener('click', () => {
 })
 readonlyTimeSlider.addEventListener('input', event => readonlyClock.seek(event.currentTarget.value))
 readonlyTimeSlider.addEventListener('change', event => readonlyClock.seek(event.currentTarget.value))
+readonlyTimeline.addEventListener('lgs1920-timeline-play', () => {
+    readonlyTimeline.playing = true
+    readonlyClock.start()
+})
+readonlyTimeline.addEventListener('lgs1920-timeline-pause', () => {
+    readonlyTimeline.playing = false
+    readonlyClock.pause()
+})
+readonlyTimeline.addEventListener('lgs1920-timeline-stop', () => readonlyClock.stop())
+readonlyTimeline.addEventListener('lgs1920-timeline-restart', event => readonlyClock.seek(event.detail.timeMillis))
+readonlyTimeline.addEventListener('lgs1920-timeline-seek', event => seekFromTimelineEvent(readonlyClock, event))
 
 document.querySelector('#theme-control').addEventListener('change', event => applyTheme(event.currentTarget.value))
 document.querySelector('#mode-control').addEventListener('change', event => applyMode(event.currentTarget.value))

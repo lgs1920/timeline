@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-15
+ * Last modified: 2026-09-16
  *
  *
  * Copyright © 2026 LGS1920
@@ -446,6 +446,107 @@ h2 {
     --lgs-timeline-header-height: 56px;
 }
 
+#studio-pacman-popup::part(popup) {
+    position: fixed;
+    inset-block-start: 1rem !important;
+    inset-inline-end: 1rem !important;
+    inset-inline-start: auto !important;
+    inset-block-end: auto !important;
+    z-index: 10;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.pacman-popup {
+    inline-size: min(32rem, calc(100vw - 2rem));
+    overflow: hidden;
+    color: var(--demo-text);
+    border: 1px solid color-mix(in srgb, var(--wa-color-brand-60) 70%, var(--demo-panel-border));
+    border-radius: var(--wa-border-radius-l);
+    background: color-mix(in srgb, var(--demo-panel) 94%, var(--wa-color-brand-fill-quiet));
+    box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 35%);
+}
+
+.pacman-popup-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--wa-space-m);
+    padding: var(--wa-space-m) var(--wa-space-m) var(--wa-space-s);
+    cursor: grab;
+    user-select: none;
+}
+
+.pacman-popup-header.is-dragging {
+    cursor: grabbing;
+}
+
+.pacman-popup-header .eyebrow {
+    margin-block-end: 0.25rem;
+    font-size: 0.65rem;
+}
+
+.pacman-popup-header h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    letter-spacing: -0.02em;
+}
+
+.pacman-audio-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--wa-space-2xs);
+    padding: 0 var(--wa-space-m) var(--wa-space-s);
+}
+
+.pacman-audio-controls wa-button {
+    --wa-button-padding-inline: 0.55rem;
+    font-size: 0.75rem;
+}
+
+.pacman-canvas-frame {
+    block-size: clamp(12rem, 24vw, 16rem);
+    margin-inline: var(--wa-space-s);
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--wa-color-brand-60) 35%, var(--demo-panel-border));
+    border-radius: var(--wa-border-radius-m);
+    background:
+        radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--wa-color-brand-fill-quiet) 65%, transparent), transparent 65%),
+        #07111f;
+}
+
+#studio-pacman-canvas {
+    display: block;
+    inline-size: 100%;
+    block-size: 100%;
+}
+
+.pacman-popup-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--wa-space-m);
+    padding: var(--wa-space-s) var(--wa-space-m) 0;
+    color: var(--demo-muted);
+    font-size: 0.78rem;
+}
+
+.pacman-popup-footer strong {
+    color: var(--wa-color-brand-60);
+    font-weight: 700;
+}
+
+.pacman-popup-note {
+    margin: 0;
+    padding: var(--wa-space-2xs) var(--wa-space-m) var(--wa-space-m);
+    color: var(--demo-muted);
+    font-size: 0.75rem;
+    line-height: 1.45;
+}
+
 .demo-skip-controls {
     display: inline-flex;
     flex: 0 0 auto;
@@ -512,17 +613,18 @@ h2 {
 }
 
 .generated-clip-sources {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 9rem));
     justify-content: flex-end;
     gap: var(--wa-space-xs);
 }
 
 .demo-generated-clip {
     display: inline-flex;
-    flex: 0 1 auto;
+    box-sizing: border-box;
     align-items: center;
     gap: var(--wa-space-2xs, 0.25rem);
+    inline-size: 100%;
     min-block-size: 2rem;
     max-inline-size: 100%;
     padding: 0.35rem 0.65rem;
