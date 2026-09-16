@@ -154,7 +154,7 @@
         <div class="demo-explanation">
             <article>
                 <p class="eyebrow">What to observe</p>
-            <p>The host receives <code>seek</code> intent and writes <code>event.detail.timeMillis</code> back to the component. It also owns the playback clock: <code>play</code> starts it, <code>pause</code> stops it, each frame updates <code>currentTimeMillis</code>, and the selected rate changes elapsed time without moving the playhead. The standard time and zoom controls stay inside the component. The top menu slot contains the playback speed and 10-second seek controls. The clip sources are outside the custom element, so they can live in a toolbar, palette, or application menu. Two randomized clips are always available for dragging, and each accepted drop replaces its source with a new one.</p>
+            <p>The host receives <code>seek</code> intent and writes <code>event.detail.timeMillis</code> back to the component. It also owns the playback clock: <code>play</code> starts it, <code>pause</code> stops it, each frame updates <code>currentTimeMillis</code>, and the selected rate changes elapsed time without moving the playhead. The standard time and zoom controls stay inside the component. The top menu slot contains the playback speed and 10-second seek controls. The clip sources are outside the custom element, so they can live in a toolbar, palette, or application menu. Four generated clip sources stay available for dragging, and each accepted drop replaces its source with a new one.</p>
             </article>
             <pre class="demo-code"><code data-language="mixed">&lt;lgs1920-timeline&gt;
     &lt;span slot="custom-menu"&gt;
@@ -256,13 +256,14 @@ const updatePacman = (timeMillis, playing) =&gt; {
             </div>
             <span id="event-status" class="event-status" role="status" aria-live="polite">Ready</span>
         </div>
-        <p class="section-intro">Drag a clip, resize it, change a track label, or use the playback toolbar. The host advances the clock after a <code>play</code> event, so this demo shows the same integration pattern as the Studio example. Every interaction emits a namespaced event; this demo writes accepted track changes back to the element.</p>
+        <p class="section-intro">Drag or resize a clip, double-click a track label, or use the playback toolbar. Right-click a track to open its context menu. The host advances the clock after a <code>play</code> event, so this demo shows the same integration pattern as the Studio example. Every interaction emits a namespaced event; this demo writes accepted track changes back to the element.</p>
         <wa-details class="demo-details" summary="What this demo shows" appearance="filled-outlined">
-            <p>This example focuses on editing and event handling. Move or resize a clip, edit a track name, change visibility, and inspect the serialized event detail in the fixed-height event panel.</p>
+            <p>This example focuses on editing and event handling. Move or resize a clip, edit a track name, open the track context menu, change visibility, and inspect the serialized event detail in the fixed-height event panel.</p>
             <ul>
                 <li>Apply <code>event.detail.tracks</code> when a clip or track edit is accepted.</li>
                 <li>Use the before and after event lifecycle when an action needs validation or persistence.</li>
                 <li>The host playback clock continues to own <code>currentTimeMillis</code>.</li>
+                <li>Track actions are contextual: <code>Edit</code> applies to visible editable rows, while <code>Hide</code>/<code>Show</code> and <code>Remove</code> follow the track configuration.</li>
             </ul>
         </wa-details>
         <lgs1920-timeline id="interactive-timeline" aria-label="Interactive editing timeline"></lgs1920-timeline>
@@ -283,13 +284,14 @@ timeline.addEventListener('lgs1920-timeline-seek', event =&gt; {
 
     <section class="example-grid" aria-label="Timeline examples">
         <article class="demo-panel example-card">
-            <p class="eyebrow">Demo 03 · Read only</p>
+            <p class="eyebrow">Demo 03 · Readonly playback</p>
             <h2>Mirror an external player</h2>
-            <p>The timeline is a read-only projection: it keeps the standard playback controls while the host controls and sends the current time. Use this pattern for a video player, a presentation preview, or a monitoring screen.</p>
+            <p>The timeline is a readonly playback projection: it keeps the standard playback controls while the host controls and sends the current time. Inside the timeline, only the playhead grip can move. Use this pattern for a video player, a presentation preview, or a monitoring screen.</p>
             <wa-details class="demo-details" summary="What this demo shows" appearance="filled-outlined">
-                <p>Readonly mode is useful when another component owns the timeline data and current position. The host keeps sending the external player position, while the timeline exposes playback controls, fixed start/end range handles, the draggable playhead grip, and its standard clip icons.</p>
+                <p>Readonly mode is useful when another component owns the timeline data and current position. The host keeps sending the external player position, while the timeline exposes playback controls, fixed start/end range handles, the draggable playhead grip, and standard clip icons.</p>
                 <ul>
                     <li>Use the <code>readonly</code> attribute to keep the standard playback controls inside the timeline.</li>
+                    <li>Use <code>interactive: false</code> for a passive projection, or <code>editable: false</code> when playback and review navigation should remain available without editing.</li>
                     <li>Keep the external player's time slider outside the timeline.</li>
                     <li>Use this pattern for monitoring views, review screens, or compact sequence summaries.</li>
                 </ul>
@@ -299,15 +301,15 @@ timeline.addEventListener('lgs1920-timeline-seek', event =&gt; {
                 <wa-slider id="readonly-time-slider" label="External player time" size="s" variant="brand" min="0" max="30000" step="33.333" value="0"></wa-slider>
                 <wa-tooltip id="readonly-time-tooltip" for="readonly-time-slider" placement="top">00:00 / 00:30</wa-tooltip>
             </div>
-            <lgs1920-timeline id="readonly-timeline" readonly aria-label="Read only timeline"></lgs1920-timeline>
+            <lgs1920-timeline id="readonly-timeline" readonly aria-label="Readonly playback timeline"></lgs1920-timeline>
             <p id="readonly-status" class="demo-note" role="status" aria-live="polite">External player paused · 00:00</p>
             <pre class="demo-code"><code data-language="html">&lt;lgs1920-timeline id="timeline" readonly&gt;&lt;/lgs1920-timeline&gt;</code></pre>
             <pre class="demo-code"><code data-language="javascript">timeline.timeline = {
     durationMillis: 30000,
 }
 
-player.addEventListener('timeupdate', event =&gt; {
-    timeline.currentTimeMillis = event.detail.timeMillis
+player.addEventListener('timeupdate', () =&gt; {
+    timeline.currentTimeMillis = player.currentTime * 1000
 })
 </code></pre>
         </article>
