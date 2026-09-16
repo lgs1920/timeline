@@ -5159,6 +5159,7 @@ describe('lgs1920-timeline Web Component', () => {
             label: 'External snap',
             kind: 'video',
             duration: 2,
+            clip: {colorClasses: ['wa-neutral', 'wa-neutral-green']},
         }
         configureTimeline(timeline, {
             timeline: {collisionPolicy: 'prevent'},
@@ -5181,6 +5182,9 @@ describe('lgs1920-timeline Web Component', () => {
         expect(timeline.shadowRoot.querySelectorAll('[data-clip-id^="__lgs1920-clip-option-"]')).toHaveLength(1)
         expect(timeline.shadowRoot.querySelector('[data-clip-drag-ghost]')).toBeNull()
         expect(preview.style.left).toBe('60px')
+        expect(timeline.shadowRoot.querySelector('[data-clip-move-endpoint="start"]')
+            .style.getPropertyValue('--lgs-timeline-clip-edge-indicator-color'))
+            .toBe('var(--wa-color-green-60)')
         expect(timeline.hasAttribute('data-clip-drop-rejected')).toBe(false)
         const renderedTrack = timeline.shadowRoot.querySelector('[part="track"][data-row-id="target"]')
         expect(renderedTrack.classList.contains('lgs1920-wa-timeline__track--clip-drop-target')).toBe(true)

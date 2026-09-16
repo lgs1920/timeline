@@ -478,6 +478,8 @@ h2 {
     padding: var(--wa-space-m) var(--wa-space-m) var(--wa-space-s);
     cursor: grab;
     user-select: none;
+    color: var(--wa-color-brand-90, var(--demo-text));
+    background: var(--wa-color-brand-50, var(--demo-panel));
 }
 
 .pacman-popup-header.is-dragging {
@@ -493,6 +495,23 @@ h2 {
     margin: 0;
     font-size: 1.05rem;
     letter-spacing: -0.02em;
+}
+
+.pacman-drag-hint {
+    align-self: center;
+    color: var(--wa-color-brand-90, var(--demo-text));
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    opacity: 0;
+    text-transform: uppercase;
+    transition: opacity 120ms ease;
+    visibility: hidden;
+}
+
+.pacman-popup:hover .pacman-drag-hint {
+    opacity: 1;
+    visibility: visible;
 }
 
 .pacman-audio-controls {

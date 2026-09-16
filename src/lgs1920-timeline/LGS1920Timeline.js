@@ -7270,7 +7270,15 @@ export class LGS1920Timeline extends HTMLElement {
                 : dragState.previewClip ?? resizingClip
             : null
         const markerSource = clips.get(String(dragState?.clipId))
-        const markerColor = markerSource?.style.borderColor ?? ''
+        const markerPalette = (markerClip?.colorClasses ?? [])
+            .find(value => typeof value === 'string' && value.startsWith('wa-neutral-'))
+            ?.slice('wa-neutral-'.length)
+            ?? (typeof markerClip?.timelineColor === 'string' && markerClip.timelineColor.trim()
+                ? markerClip.timelineColor.trim()
+                : null)
+        const markerColor = markerPalette
+            ? `var(--wa-color-${markerPalette}-60)`
+            : markerSource?.style.borderColor ?? ''
         const markerElements = [clipEdgeIndicator, ...clipMoveEndpoints].filter(Boolean)
         markerElements.forEach(element => element.style.setProperty('--lgs-timeline-clip-edge-indicator-color', markerColor))
         if (clipEdgeIndicator) {
