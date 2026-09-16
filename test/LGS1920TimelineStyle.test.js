@@ -36,7 +36,7 @@ describe('lgs1920-timeline styles', () => {
         expect(styleSource).toContain('& .lgs1920-wa-timeline__surface-controls {')
         expect(styleSource).toContain('container-name: lgs1920-timeline-legend-ruler;')
         expect(styleSource).toContain('@container lgs1920-timeline-legend-ruler (max-width: 14rem) {')
-        expect(styleSource).toContain("wa-button[data-testid='lgs1920-wa-add-track']::part(label) {")
+        expect(styleSource).toContain("wa-button[data-testid='lgs1920-wa-add-track'] > slot[name='add-track-label'] {")
         expect(styleSource).toContain("wa-button[data-testid='lgs1920-wa-add-track']::part(base) {")
         expect(styleSource).toContain('display: none;')
         expect(styleSource).toContain('form.lgs1920-wa-timeline__track-content {')
