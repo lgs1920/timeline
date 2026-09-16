@@ -254,6 +254,7 @@ Each clip supports:
 | `kind` | `string` | Application-defined clip type, such as `video`, `audio`, or `marker`. |
 | `icon` | `string` | Font Awesome icon name. |
 | `colorClasses` | `string[]` | Web Awesome color classes. |
+| `timelineColor` | `string` | Optional CSS color selected with the clip color picker. |
 | `visible` | `boolean` | Clip visibility state. |
 | `enabled` | `boolean` | Whether the clip participates in timeline playback. Defaults to `true`. |
 | `editable` | `boolean` | Enables movement and resizing for this clip. Defaults to `true`. |
@@ -269,6 +270,10 @@ The controlled playhead position in milliseconds.
 
 The controlled playback state. The component emits `play` and `pause`; the
 host updates this property after applying the requested state.
+
+An accepted play request always starts at the active range start. The host
+playback clock must stop at the active range end, or restart at the range start
+when looping is enabled.
 
 The component does not advance the application clock. Connect the events to the
 host media player and write its clock back to `currentTimeMillis`:
@@ -308,6 +313,11 @@ the selected range end is still outside the viewport, the timeline scrolls
 under the stationary playhead. Once the range end is visible, the playhead
 moves again. Reverse playback mirrors this behavior at 25% of the viewport
 while the selected range start remains outside the viewport.
+
+While `playing` is `true`, track and clip editing is temporarily locked:
+track menus, title editing, clip menus, drag operations, range changes, and
+track or clip insertion are disabled. Playback controls and the built-in time
+and zoom sliders remain available. Pausing restores the editing surface.
 
 When enabled, the built-in time slider emits a `seek` event with
 `source: 'timeline-slider'`. The built-in zoom slider emits a `zoom-change`

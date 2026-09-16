@@ -101,6 +101,10 @@ The component does not advance the application clock. It emits playback
 requests, while the host starts or stops its own clock and writes the current
 position back through `currentTimeMillis`.
 
+An accepted play request always starts at the active range start. The host
+clock must stop at the active range end, or return to the range start when
+looping is enabled.
+
 The loop button emits a controlled `loop-change` request. Apply its
 `detail.looping` value to the host playback clock and to `timeline.looping`.
 Set `timeline.noLoopMode = true` to hide that button.
@@ -276,6 +280,10 @@ timeline.options = {
 The start and end handles remain visible as the viewport moves. During
 playback, the component follows the playhead when the active range extends
 beyond the visible surface.
+
+While playback is active, track and clip editing is locked: context menus,
+title editing, drag operations, range changes, and insertion are disabled.
+Playback controls and the built-in time and zoom sliders remain available.
 
 ## React adapter
 

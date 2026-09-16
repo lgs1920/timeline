@@ -168,6 +168,15 @@ intentions:
 - advance by a caller-provided duration;
 - rewind by a caller-provided duration.
 
+An accepted play request must position the playhead at the active range start
+before playback begins. The host playback clock must stop at the active range
+end; when looping is enabled, it must restart from the active range start.
+
+While `playing` is true, the editing surface must enter a temporary readonly
+state. Track and clip menus, title editing, drag operations, range changes,
+and insertion must be disabled, while playback controls and built-in time and
+zoom sliders remain usable. Pausing must restore editing.
+
 The playback controls must expose a loop toggle in the `transport` slot area.
 The toggle emits a `loop-change` event with a `looping` boolean;
 the host owns the clock and applies the accepted value. The `noloopmode` boolean
