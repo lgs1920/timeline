@@ -384,9 +384,7 @@ const createPlaybackClock = ({timeline, startMillis = 0, endMillis = DEMO_DURATI
     const start = () => {
         stopClock()
         const startMillisValue = Number(getStartMillis()) || 0
-        const endMillisValue = Number(getEndMillis()) || DEMO_DURATION_MILLIS
-        const current = Number(timeline.currentTimeMillis) || startMillisValue
-        clockStartMillis = Math.max(startMillisValue, Math.min(endMillisValue, current))
+        clockStartMillis = startMillisValue
         sync(clockStartMillis)
         clockStartedAt = performance.now()
         intervalId = window.setInterval(tick, 33)
@@ -395,7 +393,9 @@ const createPlaybackClock = ({timeline, startMillis = 0, endMillis = DEMO_DURATI
 
     const pause = (syncTimeline = true) => {
         stopClock()
+        timeline.playing = false
         if (syncTimeline) sync(timeline.currentTimeMillis)
+        else onTime(timeline.currentTimeMillis)
     }
 
     const stop = () => {
@@ -623,6 +623,8 @@ const createPacmanDemo = ({canvas, popup, timeline, status, progress, almostProg
     let playhead = null
     let clipEntries = []
     let clipSignature = ''
+    let trackSignature = ''
+    let rangeSignature = ''
     let targetPosition = new THREE.Vector3(worldLeft, 0, 0.4)
     let targetEntry = null
     let lastActiveIndex = -2
@@ -635,6 +637,27 @@ const createPacmanDemo = ({canvas, popup, timeline, status, progress, almostProg
     let popupOffset = {x: 0, y: 0}
     let dragState = null
 
+    const getPlaybackRange = () => {
+        const configuration = timeline.timeline ?? {}
+        const durationMillis = Math.max(1, Number(configuration.durationMillis) || DEMO_DURATION_MILLIS)
+        const startMillis = Math.max(0, Math.min(durationMillis, Number(configuration.rangeStartMillis) || 0))
+        const configuredEndMillis = Number(configuration.rangeEndMillis)
+        const endMillis = Math.max(startMillis, Math.min(durationMillis,
+            Number.isFinite(configuredEndMillis) ? configuredEndMillis : durationMillis))
+        return {durationMillis, startMillis, endMillis, playbackDurationMillis: Math.max(1, endMillis - startMillis)}
+    }
+
+    const timeToWorldX = timeMillis => {
+        const {startMillis, playbackDurationMillis} = getPlaybackRange()
+        const progress = Math.max(0, Math.min(1, (timeMillis - startMillis) / playbackDurationMillis))
+        return worldLeft + (progress * worldWidth)
+    }
+
+    const getPacmanTracks = () => (timeline.tracks ?? [])
+        .filter(track => track?.visible !== false
+            && track?.enabled !== false
+            && track?.disabled !== true)
+
     const setMessage = (message, eatenCount = 0, almostEatenCount = 0, total = clipEntries.length) => {
         status.textContent = message
         progress.textContent = `${eatenCount} / ${total} clips eaten`
@@ -644,8 +667,8 @@ const createPacmanDemo = ({canvas, popup, timeline, status, progress, almostProg
         const outcome = hasWon ? 'win' : hasLost ? 'lose' : 'pending'
         result.dataset.outcome = outcome
         result.textContent = hasWon ? 'Win' : hasLost ? 'Lose' : 'In progress'
-        const durationMillis = Number(timeline.options?.durationMillis) || DEMO_DURATION_MILLIS
-        const hasReachedDemoEnd = currentTimeMillis >= durationMillis
+        const {endMillis} = getPlaybackRange()
+        const hasReachedDemoEnd = currentTimeMillis >= endMillis
         updatePacmanExpression(hasLost ? 'lose' : 'win', hasReachedDemoEnd)
     }
 
@@ -653,9 +676,10 @@ const createPacmanDemo = ({canvas, popup, timeline, status, progress, almostProg
         const palette = (clip.colorClasses ?? [])
             .find(value => typeof value === 'string' && value.startsWith('wa-neutral-'))
             ?.slice('wa-neutral-'.length)
-        const cssColor = palette
+        const customColor = typeof clip.timelineColor === 'string' ? clip.timelineColor.trim() : ''
+        const cssColor = customColor || (palette
             ? getComputedStyle(document.documentElement).getPropertyValue(`--wa-color-${palette}-50`).trim()
-            : ''
+            : '')
         return cssColor || colorByKind[clip.kind] || 0x9ca3af
     }
 
@@ -694,7 +718,7 @@ const createPacmanDemo = ({canvas, popup, timeline, status, progress, almostProg
         if (!laneGroup || !rulerGroup) return
         clearGroup(laneGroup)
         clearGroup(rulerGroup)
-        const timelineTracks = timeline.tracks ?? []
+        const timelineTracks = getPacmanTracks()
         const trackCount = Math.max(1, timelineTracks.length)
         const laneMaterial = new THREE.MeshBasicMaterial({
             color: 0x10233c,
@@ -722,9 +746,14 @@ const createPacmanDemo = ({canvas, popup, timeline, status, progress, almostProg
             new THREE.BufferGeometry().setFromPoints(rulerPoints),
             new THREE.LineBasicMaterial({color: 0x6682a8, transparent: true, opacity: 0.75}),
         ))
-        const durationMillis = Number(timeline.options?.durationMillis) || DEMO_DURATION_MILLIS
-        for (let second = 0; second <= durationMillis / 1000; second += 10) {
-            const x = worldLeft + ((second * 1000) / durationMillis) * worldWidth
+        const {startMillis, endMillis} = getPlaybackRange()
+        const rulerTimes = [startMillis]
+        for (let tickMillis = Math.ceil(startMillis / 10_000) * 10_000; tickMillis < endMillis; tickMillis += 10_000) {
+            if (tickMillis > startMillis) rulerTimes.push(tickMillis)
+        }
+        if (endMillis > startMillis && rulerTimes.at(-1) !== endMillis) rulerTimes.push(endMillis)
+        rulerTimes.forEach(timeMillis => {
+            const x = timeToWorldX(timeMillis)
             const tick = new THREE.Line(
                 new THREE.BufferGeometry().setFromPoints([
                     new THREE.Vector3(x, rulerY - 0.12, -0.04),
@@ -733,39 +762,46 @@ const createPacmanDemo = ({canvas, popup, timeline, status, progress, almostProg
                 new THREE.LineBasicMaterial({color: 0x9ab2d1, transparent: true, opacity: 0.85}),
             )
             rulerGroup.add(tick)
-            const label = createTextSprite(`${second}s`, {color: '#9ab2d1', maxWidth: 0.55, fontSize: 18})
+            const label = createTextSprite(`${timeMillis / 1000}s`, {color: '#9ab2d1', maxWidth: 0.55, fontSize: 18})
             if (label) {
                 label.position.set(x, rulerY + 0.22, 0.1)
                 rulerGroup.add(label)
             }
-        }
+        })
     }
 
     const getEntries = () => {
-        const durationMillis = Number(timeline.options?.durationMillis) || DEMO_DURATION_MILLIS
-        const trackIds = (timeline.tracks ?? []).map(track => track.id)
+        const {startMillis, endMillis, playbackDurationMillis} = getPlaybackRange()
+        const timelineTracks = getPacmanTracks()
+        const trackIds = timelineTracks.map(track => track.id)
         const trackIndexById = new Map(trackIds.map((id, index) => [id, index]))
-        return (timeline.tracks ?? []).flatMap(track => (track.clips ?? []).map(clip => ({
+        return timelineTracks.flatMap(track => (track.clips ?? [])
+            .filter(clip => clip?.visible !== false
+                && clip?.enabled !== false
+                && clip?.disabled !== true)
+            .map(clip => ({
             clip,
             trackId: track.id,
             trackLabel: track.label,
             trackIndex: trackIndexById.get(track.id) ?? 0,
             startMillis: Math.max(0, Number(clip.start) * 1000),
             endMillis: Math.max(0, Number(clip.end) * 1000),
-        })))
-            .filter(entry => entry.endMillis > entry.startMillis)
+            })))
+            .filter(entry => entry.endMillis > entry.startMillis
+                && entry.startMillis >= startMillis
+                && entry.endMillis <= endMillis)
             .sort((left, right) => left.startMillis - right.startMillis || left.trackIndex - right.trackIndex || left.endMillis - right.endMillis)
             .map((entry, index, entries) => {
                 const trackCount = Math.max(1, trackIds.length)
-                const middle = ((entry.startMillis + entry.endMillis) / 2) / durationMillis
-                const width = Math.max(0.16, ((entry.endMillis - entry.startMillis) / durationMillis) * worldWidth)
+                const middle = ((entry.startMillis + entry.endMillis) / 2 - startMillis) / playbackDurationMillis
+                const width = Math.max(0.16, ((entry.endMillis - entry.startMillis) / playbackDurationMillis) * worldWidth)
                 const y = laneY(entry.trackIndex, trackCount)
                 return {
                     ...entry,
                     index,
                     total: entries.length,
                     startPosition: new THREE.Vector3(
-                        worldLeft + ((entry.startMillis / durationMillis) * worldWidth),
+                        timeToWorldX(entry.startMillis),
                         y,
                         0.4,
                     ),
@@ -775,7 +811,7 @@ const createPacmanDemo = ({canvas, popup, timeline, status, progress, almostProg
                         0,
                     ),
                     endPosition: new THREE.Vector3(
-                        worldLeft + ((entry.endMillis / durationMillis) * worldWidth),
+                        timeToWorldX(entry.endMillis),
                         y,
                         0.4,
                     ),
@@ -850,7 +886,7 @@ const createPacmanDemo = ({canvas, popup, timeline, status, progress, almostProg
         clipGroup.children.forEach(disposeObject)
         clipGroup.clear()
         clipEntries = getEntries()
-        clipSignature = clipEntries.map(entry => `${entry.trackId}:${entry.trackLabel}:${entry.clip.id}:${entry.clip.start}:${entry.clip.end}:${entry.clip.label}:${(entry.clip.colorClasses ?? []).join(',')}`).join('|')
+        clipSignature = clipEntries.map(entry => `${entry.trackId}:${entry.trackLabel}:${entry.clip.id}:${entry.clip.start}:${entry.clip.end}:${entry.clip.label}:${entry.clip.timelineColor ?? ''}:${(entry.clip.colorClasses ?? []).join(',')}`).join('|')
         clipEntries.forEach(entry => {
             const geometry = new THREE.BoxGeometry(entry.width, 0.26, 0.22)
             const material = new THREE.MeshBasicMaterial({
@@ -955,13 +991,18 @@ const createPacmanDemo = ({canvas, popup, timeline, status, progress, almostProg
 
     const syncScene = () => {
         if (!renderer) return
-        const durationMillis = Number(timeline.options?.durationMillis) || DEMO_DURATION_MILLIS
-        if (playhead) playhead.position.x = worldLeft + (Math.max(0, Math.min(durationMillis, currentTimeMillis)) / durationMillis) * worldWidth
+        const {startMillis, endMillis} = getPlaybackRange()
+        if (playhead) playhead.position.x = timeToWorldX(Math.max(startMillis, Math.min(endMillis, currentTimeMillis)))
+        const timelineTracks = getPacmanTracks()
         const nextEntries = getEntries()
-        const nextSignature = nextEntries.map(entry => `${entry.trackId}:${entry.trackLabel}:${entry.clip.id}:${entry.clip.start}:${entry.clip.end}:${entry.clip.label}:${(entry.clip.colorClasses ?? []).join(',')}`).join('|')
-        if (nextSignature !== clipSignature) {
+        const nextSignature = nextEntries.map(entry => `${entry.trackId}:${entry.trackLabel}:${entry.clip.id}:${entry.clip.start}:${entry.clip.end}:${entry.clip.label}:${entry.clip.timelineColor ?? ''}:${(entry.clip.colorClasses ?? []).join(',')}`).join('|')
+        const nextTrackSignature = timelineTracks.map(track => `${track.id}:${track.label}:${track.visible}:${track.enabled}:${track.disabled}`).join('|')
+        const nextRangeSignature = `${startMillis}:${endMillis}`
+        if (nextSignature !== clipSignature || nextTrackSignature !== trackSignature || nextRangeSignature !== rangeSignature) {
             rebuildStructure()
             rebuildClips()
+            trackSignature = nextTrackSignature
+            rangeSignature = nextRangeSignature
         }
 
         let activeIndex = -1
@@ -1064,7 +1105,7 @@ const createPacmanDemo = ({canvas, popup, timeline, status, progress, almostProg
         if (renderer) syncScene()
     }
 
-    const reset = () => updateTime(0, false)
+    const reset = () => updateTime(getPlaybackRange().startMillis, false)
 
     const handlePointerMove = event => {
         if (!dragState) return
@@ -1103,6 +1144,9 @@ const createPacmanDemo = ({canvas, popup, timeline, status, progress, almostProg
         open: () => setOpen(true),
         reset,
         setTracks,
+        setRange: () => {
+            if (renderer) syncScene()
+        },
         updateTime,
     }
 }
@@ -1113,9 +1157,13 @@ let studioPacmanDemo
 
 const studioClock = createPlaybackClock({
     timeline: studioTimeline,
+    startMillis: () => studioTimeline.timeline.rangeStartMillis,
+    endMillis: () => studioTimeline.timeline.rangeEndMillis,
     onTime: timeMillis => {
-        studioSeekBackwardButton.disabled = timeMillis <= 0
-        studioSeekForwardButton.disabled = timeMillis >= DEMO_DURATION_MILLIS
+        const rangeStartMillis = Number(studioTimeline.timeline.rangeStartMillis) || 0
+        const rangeEndMillis = Number(studioTimeline.timeline.rangeEndMillis) || DEMO_DURATION_MILLIS
+        studioSeekBackwardButton.disabled = timeMillis <= rangeStartMillis
+        studioSeekForwardButton.disabled = timeMillis >= rangeEndMillis
         studioStatus.textContent = studioTimeline.playing
             ? `Playing · ${studioClock.getRate()}× · ${formatMillis(timeMillis)}`
             : `Current time · ${formatMillis(timeMillis)}`
@@ -1230,6 +1278,9 @@ studioTimeline.addEventListener('lgs1920-timeline-seek', event => {
 studioTimeline.addEventListener('lgs1920-timeline-loop-change', event => {
     studioTimeline.looping = event.detail.looping
     showStudioToast(event.detail.looping ? 'Loop enabled' : 'Loop disabled', 'repeat')
+})
+studioTimeline.addEventListener('lgs1920-timeline-range-change', () => {
+    studioPacmanDemo.setRange()
 })
 studioTimeline.addEventListener('lgs1920-timeline-play', () => {
     showStudioToast('Clip started', 'play')
@@ -1525,24 +1576,25 @@ const readonlyClock = createPlaybackClock({
     onTime: updateReadonlyTime,
 })
 
-readonlyPlayButton.addEventListener('click', () => {
-    if (readonlyTimeline.playing) {
-        readonlyTimeline.playing = false
-        readonlyClock.pause()
+const setReadonlyPlayback = playing => {
+    if (playing) {
+        readonlyTimeline.playing = true
+        readonlyClock.start()
         return
     }
-    readonlyTimeline.playing = true
-    readonlyClock.start()
+    readonlyClock.pause()
+}
+
+readonlyPlayButton.addEventListener('click', () => {
+    setReadonlyPlayback(!readonlyTimeline.playing)
 })
 readonlyTimeSlider.addEventListener('input', event => readonlyClock.seek(event.currentTarget.value))
 readonlyTimeSlider.addEventListener('change', event => readonlyClock.seek(event.currentTarget.value))
 readonlyTimeline.addEventListener('lgs1920-timeline-play', () => {
-    readonlyTimeline.playing = true
-    readonlyClock.start()
+    setReadonlyPlayback(true)
 })
 readonlyTimeline.addEventListener('lgs1920-timeline-pause', () => {
-    readonlyTimeline.playing = false
-    readonlyClock.pause()
+    setReadonlyPlayback(false)
 })
 readonlyTimeline.addEventListener('lgs1920-timeline-stop', () => readonlyClock.stop())
 readonlyTimeline.addEventListener('lgs1920-timeline-restart', event => readonlyClock.seek(event.detail.timeMillis))
