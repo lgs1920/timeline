@@ -2055,16 +2055,25 @@ export class LGS1920Timeline extends HTMLElement {
             const editor = [...this.#root.querySelectorAll('[data-edit-row-id]')]
                 .find(element => element.getAttribute('data-edit-row-id') === String(row.id)) ?? input
             const nativeInput = editor?.shadowRoot?.querySelector?.('input')
-            const focusTarget = nativeInput ?? editor
-            focusTarget?.focus?.()
-            nativeInput?.select?.()
-            if (!nativeInput) editor?.select?.()
+            if (!nativeInput) return false
+            nativeInput.focus({preventScroll: true})
+            nativeInput.select()
+            return true
         }
-        focusEditor()
-        input?.updateComplete?.then(() => {
-            focusEditor()
-            window.requestAnimationFrame?.(focusEditor)
-        })
+        const scheduleFocus = () => {
+            let attempts = 0
+            const tryFocus = () => {
+                if (focusEditor() || attempts++ >= 12) return
+                if (typeof globalThis.requestAnimationFrame === 'function') {
+                    globalThis.requestAnimationFrame(tryFocus)
+                    return
+                }
+                globalThis.setTimeout?.(tryFocus, 0)
+            }
+            tryFocus()
+        }
+        scheduleFocus()
+        input?.updateComplete?.then(scheduleFocus)
     }
 
     /**

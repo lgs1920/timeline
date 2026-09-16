@@ -398,7 +398,6 @@ export const createTimelineRenderer = ({
                 value: getEditingLabelValue(),
                 'aria-label': `Edit ${label}`,
                 'data-edit-row-id': row.id,
-                autofocus: '',
                 name: 'label',
             })
             : contextualSlot(labelPrefix, row.id, ['name', 'track-label'], document.createTextNode(label))
