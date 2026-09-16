@@ -423,8 +423,7 @@
     }
 
     & .lgs1920-wa-timeline__split-panel[data-divider-active]::part(divider),
-    & .lgs1920-wa-timeline__split-panel::part(divider):focus,
-    & .lgs1920-wa-timeline__split-panel:focus-within::part(divider) {
+    & .lgs1920-wa-timeline__split-panel::part(divider):focus {
         background-color: var(--wa-color-brand-fill-loud, var(--wa-color-brand));
         border-inline-color: var(--wa-color-brand-border-normal, var(--wa-color-brand));
     }
@@ -436,7 +435,7 @@
         pointer-events: none;
     }
 
-    & .lgs1920-wa-timeline__split-panel:is(:focus-within, [data-divider-active]) > wa-icon[slot='divider'] {
+    & .lgs1920-wa-timeline__split-panel[data-divider-active] > wa-icon[slot='divider'] {
         color: var(--wa-color-brand-on-loud, var(--wa-color-text-normal));
     }
 
