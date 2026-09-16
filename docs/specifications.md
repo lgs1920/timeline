@@ -72,7 +72,7 @@ current edit operation coherent.
 The rendered surface consists of the following functional areas:
 
 - a header with playback, range, time, and zoom controls;
-- a fixed legend area containing track names and track actions;
+- a fixed legend area containing track names and contextual track actions;
 - a horizontally scrollable ruler and track area;
 - one row for each visible track;
 - clip elements positioned against the timeline time axis;
@@ -90,6 +90,26 @@ the interaction.
 The timeline must prevent accidental text selection across the interactive
 timeline surface while preserving text editing in editable track labels and
 other form controls.
+
+The component must expose these interaction modes:
+
+| Mode | Configuration | Contract |
+| --- | --- | --- |
+| Passive projection | `interactive: false` | Render controlled content without transport, scrubbing, selection, menus, editing, or drag targets. |
+| Interactive review | `interactive: true`, `editable: false` | Keep playback, surface scrubbing, clip selection, and keyboard navigation; disable editing, range-handle editing, insertion, reordering, add-track, and context menus. |
+| Editable timeline | `interactive: true`, `editable: true` | Allow playback, navigation, selection, and configured track and clip edits. Expose the track context menu according to row permissions. |
+| Readonly playback | `readonly` HTML attribute/property | Keep standard transport and the draggable playhead grip. Fix the range handles and disable ruler/surface scrubbing, range editing, view tools, selection, menus, editing, and drag targets. |
+
+The `readonly` contract is controlled by the element attribute or boolean
+property. It is not a member of the `timeline` configuration object. A track
+context menu must expose `Edit` only for a visible editable row, `Hide` or
+`Show` when `canHide` is enabled, and `Remove` only when the row has no clips.
+
+The legend and time surface must use the native Web Awesome split panel. Its
+divider must expose a `grip-vertical` icon, fine lateral borders, and a brand
+background while it has focus or is actively being dragged. The scrollable
+surface must keep a default lateral safety gutter of `0.5rem`, configurable
+through `--lgs-timeline-viewport-margin`.
 
 ### 1.4 Time ruler, range, and playhead
 
@@ -175,8 +195,10 @@ enabled and the relevant control is exposed:
 - accept or reject an operation through the before/main/after event lifecycle.
 
 Track labels must remain editable after pointer clicks, context-menu clicks,
-height changes, and menu selection. The label editor must receive focus and
-must not be replaced by an unrelated layout reset.
+height changes, and menu selection. In editable mode, the inline field must
+support native text selection, manual replacement, `Enter` to commit, and
+`Escape` to cancel. The label editor must receive focus and must not be replaced
+by an unrelated layout reset.
 
 The default presentation may include video, audio, text, marker, graphic, and
 other tracks. Clip kinds are data-driven; adding a new kind must not require a
@@ -379,6 +401,10 @@ The `timeline` object supports the following public configuration areas:
 - keyboard and track creation: `keyboardStepSeconds`, `addTrackLabel`, and
   `addTrackIcon`;
 - theming and actions: `swatches` and `clipActions`.
+
+The `readonly` attribute/property is a separate interaction setting and must be
+documented alongside the `timeline` configuration without being serialized as
+part of that configuration object.
 
 New configuration values must be added to the public reference before they are
 used by the demos. Internal layout state must not be exposed as a required

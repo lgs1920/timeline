@@ -21,6 +21,7 @@ API.
 - [Installation](#installation)
 - [Functional, technical, and software specifications](../../docs/specifications.md)
 - [Usage](#usage)
+- [Interaction modes](#interaction-modes)
 - [Public properties](#public-properties)
 - [React wrapper](#react-wrapper)
 - [Slots](#slots)
@@ -86,10 +87,19 @@ layout with an opaque themed overlay and a Web Awesome paintbrush using the
 overlay. When enabled, it is removed after the layout settles and is never
 shown again for updates or interactions.
 
-Set `timeline.interactive` to `false` for a display-only projection. The
-component then renders the controlled ruler, playhead, tracks, and clips
-without playback controls, menus, focusable scrubbing, editing handlers, or
-interaction events.
+## Interaction modes
+
+Choose the interaction contract with `timeline.interactive`,
+`timeline.editable`, and the `readonly` HTML attribute. The `readonly` value is
+also available as a boolean property on the element; it is separate from the
+`timeline` configuration object.
+
+| Mode | Configuration | Available behavior |
+| --- | --- | --- |
+| Passive projection | `interactive: false` | Renders the controlled ruler, playhead, tracks, and clips without transport, scrubbing, selection, menus, editing, or drag targets. |
+| Interactive review | `interactive: true`, `editable: false` | Keeps playback, surface scrubbing, clip selection, and keyboard navigation. Disables clip and track editing, range-handle editing, insertion, reordering, add-track, and context menus. |
+| Editable timeline | `interactive: true`, `editable: true` | Enables playback, navigation, selection, track and clip editing, insertion, reordering, and the track context menu according to each row and clip policy. |
+| Readonly playback | `readonly` | Keeps standard transport controls and the draggable playhead grip. Range handles are fixed; ruler and surface scrubbing, range editing, view tools, selection, menus, editing, and drag targets are disabled. |
 
 Use the `readonly` attribute for a playback-only projection:
 
@@ -238,8 +248,8 @@ The track context menu is available only when `interactive` and the timeline's
 `editable` option are enabled, the component is not `readonly`, and the track
 itself is editable. It exposes `Edit` when the track is visible, `Hide` or
 `Show` when `canHide` is enabled, and `Remove` when the track has no clips. A
-hidden track exposes `Show` so its title can be made editable again. The track
-list does not display persistent visibility or remove icons.
+hidden track exposes `Show`; `Edit` is available again after the track is
+shown. The track list does not display persistent visibility or remove icons.
 
 Each clip supports:
 
@@ -565,11 +575,12 @@ For the clip id `intro#001`, the targeted content slot is
 The video range handles can be customized with the global
 `timeline-start-handle` and `timeline-end-handle` slots.
 
-The start and end handles can be dragged along the ruler when `editable` is
-enabled. Double-clicking the start handle moves it to `0`; double-clicking the
-end handle moves it to `durationMillis`. The handles never cross and the
-playhead keeps its position while it remains between the handles and moves to
-the new boundary only when it would otherwise fall outside the selected range.
+The start and end handles can be dragged along the ruler when the timeline is
+interactive and editable and the component is not `readonly`. Double-clicking
+the start handle moves it to `0`; double-clicking the end handle moves it to
+`durationMillis`. The handles never cross and the playhead keeps its position
+while it remains between the handles and moves to the new boundary only when it
+would otherwise fall outside the selected range.
 
 The playhead grip can also be dragged within the selected range. When the
 playhead has keyboard focus, `ArrowLeft` and `ArrowRight` move it by
@@ -656,9 +667,11 @@ shortcuts while the custom element itself is selected.
 
 ## Track names and controlled editing
 
-When both the timeline and track `editable` flags are enabled, double-click a
-track name to open the inline Web Awesome input. Press `Enter` or leave the
-input to commit the name; press `Escape` to cancel.
+In editable mode (`interactive !== false`, no `readonly` attribute, and both
+the timeline and track `editable` flags enabled), double-click a track name to
+open the inline Web Awesome input. Native text selection remains available in
+the field. Press `Enter` or leave the input to commit the name; press `Escape`
+to cancel.
 
 Double-clicking a clip has no default editing behavior. Web Component users can
 listen for `lgs1920-timeline-dblclick` to trigger an application action such as
@@ -691,8 +704,9 @@ The timeline supports controlled clip editing. The component renders a start
 and end handle on every resizable clip, moves clips horizontally when their
 body is dragged, and accepts a clip on another compatible track while it is
 being dragged. A clip is selected by clicking it or starting its drag, and the
-selection stays inside the timeline. Read-only clips on locked tracks remain
-selectable, but their editing actions stay disabled. Clicking the selected clip without moving
+selection stays inside the timeline. Clips on noneditable tracks or clips can
+remain selectable, but their editing actions stay disabled. HTML `readonly`
+mode disables clip selection. Clicking the selected clip without moving
 deselects it, while dragging keeps it selected. The selected clip receives a
 normal 2px dashed border in the clip text color and keyboard focus. Clip options from the insertion menu can also be
 dragged onto a track. The target track is highlighted during the gesture. The
@@ -978,6 +992,11 @@ lgs1920-timeline::part(clip) {
 }
 ```
 
+The track legend and timeline surface are separated by a Web Awesome split
+panel. Its `grip-vertical` divider uses fine lateral borders and switches to
+the brand background while focused or actively dragged. The grip icon keeps a
+small lateral margin so the resize target remains easy to see.
+
 | Custom property | Purpose |
 | --- | --- |
 | `--lgs-timeline-background` | Outer timeline background. |
@@ -1004,6 +1023,7 @@ lgs1920-timeline::part(clip) {
 | `--lgs-timeline-scrollbar-thumb-color` | LGS scrollbar thumb color. |
 | `--lgs-timeline-resizer-width` | Web Awesome split-panel divider width. |
 | `--lgs-timeline-resizer-hit-area` | Web Awesome split-panel divider hit area. |
+| `--lgs-timeline-viewport-margin` | Lateral safety gutter at the edges of the scrollable surface. Defaults to `0.5rem`. |
 | `--lgs-timeline-row-height` | Minimum track row height. |
 | `--lgs-timeline-scale-width` | Ruler pixels per major unit. |
 | `--lgs-timeline-min-visible-duration` | Minimum duration represented by the initial timeline viewport. |

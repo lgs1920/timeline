@@ -148,17 +148,22 @@ timeline.tracks = [
 ]
 ```
 
-Set `interactive: false` for a display-only projection. Set `editable: false` to
-keep the interactive surface while disabling editing operations.
+The component exposes four interaction contracts:
 
-In the interactive editable mode, right-click a track to open its context menu.
-It contains `Edit`, plus `Hide`/`Show` and `Remove` when the track configuration
-allows those actions. The track list itself has no persistent action icons.
+- `interactive: false`: passive projection with no transport, scrubbing,
+  selection, menus, editing, or drag targets.
+- `interactive: true` with `editable: false`: playback, scrubbing, selection,
+  and keyboard navigation remain available while editing and context menus are
+  disabled.
+- `interactive: true` with `editable: true`: playback and the configured track
+  and clip editing operations are available. Right-click a track to open its
+  `Edit`, `Hide`/`Show`, or `Remove` actions when the data allows them.
+- `readonly` HTML attribute: playback controls and the playhead grip remain
+  available; range handles are fixed and editing, scrubbing, selection, menus,
+  and drag targets are disabled.
 
-Use the `readonly` HTML attribute for a playback-only projection. It keeps the
-standard playback controls, fixed start/end range handles, and draggable
-playhead grip. It disables ruler and surface scrubbing, range editing, view
-tools, editing, menus, drag targets, and clip selection:
+`readonly` is also available as a boolean element property. It is separate from
+the `timeline` configuration object.
 
 ```html
 <lgs1920-timeline readonly></lgs1920-timeline>
