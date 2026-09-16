@@ -46,7 +46,8 @@ accepts it and writes the resulting state back to the component.
 
 ### 1.2 Initial state and controlled updates
 
-The host supplies the `timeline`, `tracks`, `currentTimeMillis`, `playing`, and
+The host supplies grouped `options`, separate `tracks`, and controlled
+`currentTimeMillis`, `playing`, and `looping` playback values, together with
 optional `clipOptions` properties. The component must render the latest values
 provided by the host and must not treat an internal gesture result as durable
 application state by itself.
@@ -56,9 +57,9 @@ When an interaction produces a new value, the component must:
 1. calculate the proposed value from the pointer, keyboard, or control input;
 2. apply the configured constraints, snapping, collision policy, and range
    limits;
-3. emit the appropriate cancelable `before-*` event;
-4. stop the operation when the event is canceled;
-5. emit the main event and the corresponding `after-*` event;
+3. invoke the optional cancelable `before` hook for the operation;
+4. stop the operation when the hook cancels its event;
+5. emit the one canonical main event and invoke the optional `after` hook;
 6. allow the host to accept, reject, transform, or persist the result by
    applying a controlled update.
 
@@ -167,6 +168,14 @@ intentions:
 - advance by a caller-provided duration;
 - rewind by a caller-provided duration.
 
+The playback controls must expose a loop toggle in the `transport` slot area.
+The toggle emits a `loop-change` event with a `looping` boolean;
+the host owns the clock and applies the accepted value. The `noloopmode` boolean
+attribute must remove the loop toggle while preserving the other transport
+controls. The playback time row must expose the `time-slider` slot on the left
+and `playback-total` without a `playback-separator` slot. The `noTimeSlider`
+option must hide the built-in slider and defaults to `false`.
+
 The public `advance(durationMillis)` and `rewind(durationMillis)` methods must
 move the controlled current time by the requested duration while clamping to
 the valid timeline limits. They are suitable for external controls such as
@@ -192,7 +201,7 @@ enabled and the relevant control is exposed:
 - change track visibility;
 - edit a track label;
 - reorder tracks by drag and drop;
-- accept or reject an operation through the before/main/after event lifecycle.
+- accept or reject an operation through the `before` hook and main event.
 
 Track labels must remain editable after pointer clicks, context-menu clicks,
 height changes, and menu selection. In editable mode, the inline field must
@@ -262,7 +271,8 @@ set of sources.
 Clip options must be draggable from the source area into a compatible track.
 The component must serialize the option with the public MIME type
 `application/x-lgs1920-timeline-clip`. A drop must calculate the target track
-and time, create the proposed clip, and go through the add-clip event lifecycle.
+and time, create the proposed clip, and go through the `add-clip` event
+contract.
 
 The reference demo must include distinct video, audio, text, and other clip
 sources. These examples must use different icons and colors so that the type
@@ -271,7 +281,8 @@ of a source remains understandable without relying on its label alone.
 ### 1.10 Slots and visual customization
 
 The component must support the documented slots for application-provided
-content, including playback controls, menu content, additional content, ruler
+content, including the `time-slider` and `transport` playback areas, playback
+time labels, menu content, additional content, ruler
 content, track content, and clip content. Slot content must be rendered in the
 correct layout region and must not break the fixed legend or scrolling ruler.
 
@@ -304,12 +315,13 @@ provide equivalent information where color is used.
 
 ### 1.12 Event behavior
 
-Events must be namespaced with `lgs1920-timeline-`. Operations that can be
-rejected must expose a cancelable `before-*` event. The main event communicates
-the requested or intermediate action, while the `after-*` event communicates
-completion and, where relevant, whether the operation was committed.
+Events must be namespaced with `lgs1920-timeline-`. Each operation exposes one
+canonical main event. The Web Component `on(name, main, {before, after})` API
+provides optional lifecycle hooks without multiplying public event names. The
+`before` hook receives a cancelable event and can call `preventDefault()`;
+the main event and `after` hook run only when the operation is accepted.
 
-The event model must cover playback, zoom and range changes, track add/remove,
+The event model must cover playback, loop mode, zoom and range changes, track add/remove,
 track visibility and label changes, track reorder, clip add/remove/select,
 clip enablement, configured clip actions, drag, clip changes, and double-click
 host intents.
@@ -368,7 +380,7 @@ does not duplicate timeline behavior.
 
 ### 2.2 Public state model
 
-The public state is divided into four controlled values:
+The public state is divided into five controlled values:
 
 | Value | Responsibility | Units or shape |
 | --- | --- | --- |
@@ -376,6 +388,7 @@ The public state is divided into four controlled values:
 | `tracks` | Ordered track and clip data | Array of serializable objects |
 | `currentTimeMillis` | Current playhead position | Milliseconds |
 | `playing` | Playback state shown by the component | Boolean |
+| `looping` | Controlled repeat state for the selected playback range | Boolean |
 
 `clipOptions` supplies add-clip sources and may be null, undefined, empty, or
 populated according to the menu contract. The component must preserve unknown
@@ -391,8 +404,9 @@ The `timeline` object supports the following public configuration areas:
 - visibility and interaction: `visible`, `editable`, `interactive`,
   `hostInteraction`, and `hostNoDragClass`;
 - zoom and layout: `zoomPercent`, legend width settings, and keyboard zoom;
-- overlays and controls: `showBuildingOverlay`, `showTimeSlider`,
-  `showZoomSlider`, `noZoomControls`, and `showClipMenu`;
+- overlays and controls: `showBuildingOverlay`, `noTimeSlider`,
+  `showTimeSlider` compatibility, `showZoomSlider`, `noZoomControls`, and
+  `showClipMenu`;
 - editing policies: `collisionPolicy`, `resizeCollisionPolicy`,
   `snapThresholdPixels`, `snapReleaseThresholdPixels`,
   `resizeExtendsDuration`, and `durationPolicy`;
@@ -405,6 +419,10 @@ The `timeline` object supports the following public configuration areas:
 The `readonly` attribute/property is a separate interaction setting and must be
 documented alongside the `timeline` configuration without being serialized as
 part of that configuration object.
+
+The `noLoopMode` boolean property and its `noloopmode` HTML attribute are a
+separate presentation setting. They hide the loop control without disabling
+the rest of playback navigation.
 
 New configuration values must be added to the public reference before they are
 used by the demos. Internal layout state must not be exposed as a required
@@ -466,9 +484,10 @@ component reference. Common fields include:
 - `committed`, `accepted`, or `canceled` where an operation has a final
   outcome.
 
-The React adapter maps the public event suffixes to callback props such as
-`onPlay`, `onBeforePlay`, `onClipChange`, and `onAfterClipChange`. The adapter
-must forward the same detail without changing units or semantics.
+The React adapter accepts `events` descriptors such as
+`{seek: {before, on, after}}` and forwards callbacks as `(detail, event)`
+without changing units or semantics. Raw `addEventListener` subscriptions
+receive the main event only.
 
 ### 2.5 Rendering and layout model
 
@@ -670,7 +689,7 @@ position, and configuration. The algorithm must:
 4. apply minimum duration and timeline bounds;
 5. evaluate the move or resize collision policy;
 6. construct a serializable proposed result;
-7. expose the result through the correct event lifecycle;
+7. expose the result through the canonical event and optional hooks;
 8. commit only after the operation is accepted.
 
 Preview calculations may run for every pointer move, but they must not mutate

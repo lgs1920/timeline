@@ -75,6 +75,7 @@ The component has a compact controlled model:
 - `tracks` describes the tracks and their clips.
 - `currentTimeMillis` controls the playhead.
 - `playing` controls the playback state.
+- `looping` controls whether the host playback clock repeats the selected range.
 - `timeline.fps`, `timeline.frameCount`, and `timeline.currentFrameIndex`
   describe the canonical frame clock used by frame navigation.
 - `clipOptions` supplies entries for the clip menu. Leave it null to expose the
@@ -89,22 +90,37 @@ shown again for updates or interactions.
 
 ## Interaction modes
 
-Choose the interaction contract with `timeline.interactive`,
-`timeline.editable`, and the `readonly` HTML attribute. The `readonly` value is
-also available as a boolean property on the element; it is separate from the
-`timeline` configuration object.
+Choose the interaction contract with `options.mode`. The accepted values are
+`passive`, `review`, `edit`, and `readonly`. The `readonly` HTML attribute and
+property remain available when a host needs to toggle that mode directly.
 
 | Mode | Configuration | Available behavior |
 | --- | --- | --- |
-| Passive projection | `interactive: false` | Renders the controlled ruler, playhead, tracks, and clips without transport, scrubbing, selection, menus, editing, or drag targets. |
-| Interactive review | `interactive: true`, `editable: false` | Keeps playback, surface scrubbing, clip selection, and keyboard navigation. Disables clip and track editing, range-handle editing, insertion, reordering, add-track, and context menus. |
-| Editable timeline | `interactive: true`, `editable: true` | Enables playback, navigation, selection, track and clip editing, insertion, reordering, and the track context menu according to each row and clip policy. |
-| Readonly playback | `readonly` | Keeps standard transport controls and the draggable playhead grip. Range handles are fixed; ruler and surface scrubbing, range editing, view tools, selection, menus, editing, and drag targets are disabled. |
+| Passive projection | `mode: 'passive'` | Renders the controlled ruler, playhead, tracks, and clips without transport, scrubbing, selection, menus, editing, or drag targets. |
+| Interactive review | `mode: 'review'` | Keeps playback, surface scrubbing, clip selection, and keyboard navigation. Disables clip and track editing, range-handle editing, insertion, reordering, add-track, and context menus. |
+| Editable timeline | `mode: 'edit'` | Enables playback, navigation, selection, track and clip editing, insertion, reordering, and the track context menu according to each row and clip policy. |
+| Readonly playback | `mode: 'readonly'` or `readonly` | Keeps standard transport controls and the draggable playhead grip. Range handles are fixed; ruler and surface scrubbing, range editing, view tools, selection, menus, editing, and drag targets are disabled. |
 
 Use the `readonly` attribute for a playback-only projection:
 
 ```html
 <lgs1920-timeline id="timeline" readonly></lgs1920-timeline>
+```
+
+The loop button is shown with the standard playback transport by default. The
+host owns the playback clock and should apply the requested state from the
+`loop-change` event. Set `playback.loop` to `'hidden'` to hide the loop button:
+
+```js
+timeline.addEventListener('lgs1920-timeline-loop-change', event => {
+    timeline.looping = event.detail.looping
+    player.loop = event.detail.looping
+})
+
+timeline.options = {
+    ...timeline.options,
+    playback: {...timeline.options.playback, loop: 'hidden'},
+}
 ```
 
 Readonly mode keeps the standard playback controls, the fixed start/end range
@@ -120,7 +136,8 @@ and clip selection. The host continues to control `currentTimeMillis` and
 ```js
 const timeline = document.getElementById('timeline')
 
-timeline.timeline = {
+timeline.options = {
+    mode: 'edit',
     durationMillis: 60_000,
     fps: 30,
     frameCount: 1_801,
@@ -131,18 +148,15 @@ timeline.timeline = {
     legendMinWidth: 50,
     legendWidth: 150,
     legendMaxWidth: 250,
-    rangeStartMillis: 0,
-    rangeEndMillis: 60_000,
-    editable: true,
-    showBuildingOverlay: true,
-    showClipMenu: true,
-    showTimeSlider: true,
-    showZoomSlider: true,
-    noZoomControls: false,
-    collisionPolicy: 'prevent',
-    resizeCollisionPolicy: 'prevent',
-    resizeExtendsDuration: true,
-    durationPolicy: 'extend',
+    range: {startMillis: 0, endMillis: 60_000},
+    playback: {loop: 'toggle', timeSlider: 'visible'},
+    view: {visible: true, zoomSlider: true, buildingOverlay: true},
+    editing: {
+        clipMenu: true,
+        collisionPolicy: 'prevent',
+        resizeCollisionPolicy: 'prevent',
+        durationPolicy: 'extend',
+    },
 }
 
 timeline.tracks = [
@@ -180,7 +194,26 @@ clock integration.
 
 ## Public properties
 
-### `timeline`
+### `options`
+
+The grouped configuration is the primary API. `tracks` and playback state stay
+separate controlled properties so applications can update them independently.
+
+| Group | Properties | Description |
+| --- | --- | --- |
+| Root | `durationMillis`, `fps`, `frameCount`, `zoomPercent`, editing thresholds | Timeline geometry and frame settings. |
+| `mode` | `'passive' \| 'review' \| 'edit' \| 'readonly'` | Selects the interaction contract. |
+| `playback` | `loop: 'toggle' \| 'hidden'`, `timeSlider: 'visible' \| 'hidden'` | Controls playback toolbar features. |
+| `view` | `visible`, `zoomSlider`, `zoomControls`, `buildingOverlay`, `initialRangeStartVisible` | Controls visible timeline tools and the initial overlay. |
+| `range` | `startMillis`, `endMillis` | Sets the active playback range. |
+| `layout.legend` | `minWidth`, `width`, `maxWidth` | Sets the track legend width bounds. |
+| `editing` | `clipMenu`, `collisionPolicy`, `resizeCollisionPolicy`, `durationPolicy` | Controls editing features and collision behavior. |
+
+The `options` getter returns the same grouped shape. The older flat
+`timeline` property remains available as a migration alias, but new code should
+use `options`.
+
+### `timeline` (migration alias)
 
 | Property | Type | Description |
 | --- | --- | --- |
@@ -200,8 +233,11 @@ clock integration.
 | `editable` | `boolean` | Enables all timeline editing actions: track dragging, title editing, clip insertion and movement, and track removal. When `false`, those actions are unavailable. Defaults to `true`. |
 | `interactive` | `boolean` | Enables playback, scrubbing, editing, menus, and emitted interaction events. Defaults to `true`. |
 | `readonly` attribute | `boolean` | Keeps the standard playback controls, fixed start/end range handles, and draggable playhead grip. Disables ruler/surface scrubbing, range editing, view tools, clip editing, menus, drag targets, and clip selection. |
+| `looping` property | `boolean` | Controlled loop playback state reflected by the loop button. The host must apply this state to its playback clock. Defaults to `false`. |
+| `noLoopMode` property / `noloopmode` attribute | `boolean` | Hides the loop button. Defaults to `false`. |
 | `showBuildingOverlay` | `boolean` | Shows the construction overlay during the initial mount. Defaults to `true`. |
-| `showTimeSlider` | `boolean` | Displays the branded time slider above the ruler. Defaults to `false`. |
+| `noTimeSlider` | `boolean` | Hides the branded time slider in the playback row. Defaults to `false`. `showTimeSlider: false` remains supported as a compatibility setting. |
+| `showTimeSlider` | `boolean` | Compatibility setting for the built-in time slider. `false` hides it; when omitted, the slider is shown unless `noTimeSlider` is `true`. |
 | `showZoomSlider` | `boolean` | Displays the branded horizontal zoom slider in the timeline footer. Defaults to `false`. |
 | `noZoomControls` property / `nozoomcontrols` attribute | `boolean` | Hides the built-in horizontal and vertical zoom controls, including the optional zoom slider. Defaults to `false`. |
 | `collisionPolicy` | `'allow' \| 'prevent' \| 'ripple'` | Default clip collision policy for tracks. Defaults to `prevent`. |
@@ -306,6 +342,12 @@ media.addEventListener('timeupdate', () => {
 })
 ```
 
+### `looping`
+
+The controlled loop state. Clicking the built-in loop button emits one
+`loop-change` event with a `looping` boolean. The component does not restart
+the host clock by itself.
+
 While `playing` is `true`, the component keeps the playhead visible without
 letting it disappear at the edge of a long timeline. During forward playback,
 the playhead can move normally until it reaches 75% of the visible surface. If
@@ -314,11 +356,13 @@ under the stationary playhead. Once the range end is visible, the playhead
 moves again. Reverse playback mirrors this behavior at 25% of the viewport
 while the selected range start remains outside the viewport.
 
-When enabled, the built-in time slider emits the normal `seek` lifecycle with
-`source: 'timeline-slider'`. The built-in zoom slider emits the `zoom-change`
-lifecycle with `source: 'timeline-zoom-slider'` and a `zoomPercent` value.
-The time slider uses the Studio-compatible `label-at-start` and `width-auto`
-layout attributes so its label and track stay aligned in compact timelines.
+When enabled, the built-in time slider emits a `seek` event with
+`source: 'timeline-slider'`. The built-in zoom slider emits a `zoom-change`
+event with `source: 'timeline-zoom-slider'` and a `zoomPercent` value.
+The built-in time slider is the fallback content of the `time-slider` slot in
+the left side of the playback row. It uses the Studio-compatible
+`label-at-start` and `width-auto` layout attributes so its label and track stay
+aligned in compact timelines.
 
 The icon transport controls are, in order, go to start, previous frame,
 play/pause, stop, next frame, and go to end. The start and end buttons update the
@@ -361,43 +405,6 @@ the pointer. The
 component always assigns an unused clip identifier when an insertion option
 reuses an existing identifier.
 
-## React wrapper
-
-`LGS1920TimelineReact` exposes the Web Component properties as React props and
-maps component events to callback props. The wrapper keeps the timeline
-controlled by the parent component.
-
-```jsx
-import {LGS1920TimelineReact} from './LGS1920TimelineReact'
-
-const VideoTimeline = ({timeline, tracks, onTracksChange, currentTimeMillis, playing}) => (
-    <LGS1920TimelineReact
-        timeline={timeline}
-        tracks={tracks}
-        currentTimeMillis={currentTimeMillis}
-        playing={playing}
-        clipOptions={[
-            {group: 'media', key: 'video', label: 'Video clip', icon: 'film'},
-        ]}
-        onSeek={detail => console.log(detail.timeMillis)}
-        onPlay={() => console.log('play requested')}
-        onDblClick={detail => console.log(detail.clip)}
-        onTrackLabelChange={detail => {
-            onTracksChange(currentTracks => currentTracks.map(track => track.id === detail.trackId
-                ? {...track, label: detail.label}
-                : track))
-        }}
-    >
-        <h2 slot="header">Video sequence</h2>
-    </LGS1920TimelineReact>
-)
-```
-
-The wrapper forwards `children` to the custom element. Web Component slots can
-therefore be used directly in JSX with the standard `slot` attribute.
-Callbacks receive `(detail, event)`, where `detail` is the event payload and
-`event` is the original `CustomEvent`.
-
 ## Slots
 
 Slots customize labels, icons, controls, track actions, and clip content. A
@@ -416,9 +423,10 @@ slotted actions can sit beside them without an extra frame.
 | `custom-menu` | Application-owned menu displayed in the center of the header. |
 | `header-actions` | Application actions such as settings, help, or host controls. |
 | `timeline-actions` | Application actions such as recording or exporting video. |
+| `transport` | Application transport content placed in the right playback control group. The standard transport controls and the built-in loop button are displayed in this area; the loop button is on the right unless `noloopmode` is enabled. |
+| `time-slider` | Replacement content for the built-in temporal slider in the left playback area. The fallback is hidden by `noTimeSlider` or `showTimeSlider: false`. |
 | `playback-start` | Content before the current time. |
 | `playback-current` | Current-time label. |
-| `playback-separator` | Separator between current and total time. |
 | `playback-total` | Total-time label. |
 | `playback-end` | Content after the total time. |
 | `timeline-toolbar` | Toolbar content beside the clip menu. |
@@ -438,7 +446,7 @@ slotted actions can sit beside them without an extra frame.
     <h2 slot="header">Sequence</h2>
     <span slot="overlay-text">Preparing timeline...</span>
     <wa-button slot="custom-menu" variant="brand" appearance="plain" data-additional-content-toggle>Video settings</wa-button>
-    <span slot="playback-separator"> of </span>
+    <span slot="transport">Playback</span>
     <wa-button slot="header-actions" appearance="plain">Settings</wa-button>
     <wa-button slot="timeline-actions" variant="brand">Record video</wa-button>
     <wa-button slot="timeline-toolbar" appearance="plain">Markers</wa-button>
@@ -677,14 +685,14 @@ to cancel.
 
 Double-clicking a clip has no default editing behavior. Web Component users can
 listen for `lgs1920-timeline-dblclick` to trigger an application action such as
-opening clip editing. The `before-dblclick` and `after-dblclick` lifecycle events
-remain available for cancelable and completion handling.
+opening clip editing. Use `timeline.on('dblclick', {before, on, after})` when
+the action needs validation or completion handling.
 
 The component emits the new name and a serializable public snapshot. The host
 stores the updated track definition and passes the new `tracks` array back.
 
 ```js
-timeline.addEventListener('lgs1920-timeline-after-track-label-change', event => {
+timeline.addEventListener('lgs1920-timeline-track-label-change', event => {
     const {trackId, label} = event.detail
     tracks = tracks.map(track => track.id === trackId ? {...track, label} : track)
     timeline.tracks = tracks
@@ -767,14 +775,14 @@ actions configured through `timeline.clipActions`. A disabled clip remains
 visible in the editor so it can be identified and re-enabled. `Space` toggles
 local playback when the time surface has focus, while `Home` and `End` move the
 local playhead to the selected range boundaries. These keyboard actions update
-the component projection and emit their normal lifecycle events; an embedding
+the component projection and emit their normal events; an embedding
 application decides whether to connect those events to playback or persistence.
 
 Custom context actions use the following shape:
 
 ```js
-timeline.timeline = {
-    ...timeline.timeline,
+timeline.options = {
+    ...timeline.options,
     clipActions: [
         {key: 'split', label: 'Split', icon: 'scissors'},
         {key: 'open-editor', label: 'Open editor', icon: 'pen-to-square'},
@@ -786,13 +794,10 @@ timeline.addEventListener('lgs1920-timeline-clip-action', event => {
 })
 ```
 
-The component first emits the cancelable `before-remove-clip` event. Calling
-`event.preventDefault()` from an external listener keeps the clip in place,
-which allows an application to display an asynchronous confirmation dialog.
-After confirmation, the application can apply `event.detail.tracks` to the
-controlled `tracks` property. If the request is not cancelled, the component
-removes the clip and emits `remove-clip`, followed by `after-remove-clip`, with
-the removed clip and the updated track snapshot.
+Use `timeline.on('remove-clip', {before, on, after})` when removal needs
+validation or completion handling. Calling `event.preventDefault()` in the
+`before` callback keeps the clip in place. The `on` callback receives the
+removed clip and updated track snapshot after the action is accepted.
 
 Track collision behavior for movement and insertion is selected with
 `collisionPolicy`; resize behavior is selected independently with
@@ -851,11 +856,12 @@ Track drags scroll vertically near the viewport edges and resolve insertion
 positions in scrolled content coordinates. Horizontal time scrolling is disabled
 for track reordering.
 
-The component emits `before-drag`, `drag`, and `after-drag` for tracks and
-clips while `editable` is enabled. Each detail contains a `context` with the requested public shape:
+The component emits `drag` for tracks and clips while `editable` is enabled.
+Use `timeline.on('drag', {before, on, after})` when the gesture needs lifecycle
+hooks. Each detail contains a `context` with the requested public shape:
 `{type: 'track', trackId}` for a track and
 `{type: 'clip', trackId, clipId}` for a clip. The detail also contains the
-triggering event and the current serializable `data` snapshot. `after-drag`
+triggering event and the current serializable `data` snapshot. The final detail
 adds `committed`, which is `false` for a cancelled or rejected clip move or
 track reorder.
 
@@ -864,7 +870,7 @@ for live previews, and `clip-change` when the pointer or keyboard edit is
 committed. Clip drag events include `oldTimeline`, `newTimeline`,
 `dragStart`, `drag`, `resizeEdge`, and the complete `tracks` snapshot. The
 host applies the resulting `tracks` value to keep the model controlled. The
-`after-clip-change` event includes `committed: false` when the gesture is
+final `clip-change` detail includes `committed: false` when the gesture is
 cancelled or rejected.
 
 Controlled track updates preserve the local ruler zoom. A new explicit
@@ -876,104 +882,116 @@ group is dissolved and that entry is displayed as a standalone track again.
 
 ## Events
 
-The component emits composed, bubbling custom events using the
-`lgs1920-timeline-` namespace. The event suffix follows Web Awesome-style
-lowercase kebab-case names. Every completed user action follows the same
-three-step lifecycle: a cancelable `before-*` event, the historical action
-event, then an `after-*` completion event. Calling `preventDefault()` on a
-`before-*` event cancels the action. The `*-changing` and `drag` events remain
-live progress notifications between the lifecycle start and completion. The
-React wrapper maps every suffix to the corresponding `on...` callback.
+The component exposes one canonical event for each action. DOM events are
+composed, bubbling `CustomEvent` instances named with the
+`lgs1920-timeline-` prefix. Use `addEventListener` when the main event is
+enough:
 
-| Event suffix | DOM event | React callback | Detail |
-| --- | --- | --- | --- |
-| `before-play` | `lgs1920-timeline-before-play` | `onBeforePlay` | Cancelable `{source, timeMillis, event}` |
-| `play` | `lgs1920-timeline-play` | `onPlay` | `{source, timeMillis, event}` |
-| `after-play` | `lgs1920-timeline-after-play` | `onAfterPlay` | `{source, timeMillis, event}` |
-| `before-pause` | `lgs1920-timeline-before-pause` | `onBeforePause` | Cancelable `{source, timeMillis, event}` |
-| `pause` | `lgs1920-timeline-pause` | `onPause` | `{source, timeMillis, event}` |
-| `after-pause` | `lgs1920-timeline-after-pause` | `onAfterPause` | `{source, timeMillis, event}` |
-| `before-stop` | `lgs1920-timeline-before-stop` | `onBeforeStop` | Cancelable `{timeMillis, source, event}` |
-| `stop` | `lgs1920-timeline-stop` | `onStop` | `{timeMillis, source, event}` |
-| `after-stop` | `lgs1920-timeline-after-stop` | `onAfterStop` | `{timeMillis, source, event}` |
-| `before-restart` | `lgs1920-timeline-before-restart` | `onBeforeRestart` | Cancelable `{timeMillis, progress, settled, source, event}` |
-| `restart` | `lgs1920-timeline-restart` | `onRestart` | `{timeMillis, progress, settled, source, event}` |
-| `after-restart` | `lgs1920-timeline-after-restart` | `onAfterRestart` | `{timeMillis, progress, settled, source, event}` |
-| `before-seek` | `lgs1920-timeline-before-seek` | `onBeforeSeek` | Cancelable `{timeMillis, progress, settled, source, event, ...}` |
-| `seek` | `lgs1920-timeline-seek` | `onSeek` | `{timeMillis, progress, settled, source, event, ...}` |
-| `after-seek` | `lgs1920-timeline-after-seek` | `onAfterSeek` | `{timeMillis, progress, settled, source, event, ...}` |
-| `before-zoom-change` | `lgs1920-timeline-before-zoom-change` | `onBeforeZoomChange` | Cancelable `{zoomPercent, settled, source, event}` |
-| `zoom-change` | `lgs1920-timeline-zoom-change` | `onZoomChange` | `{zoomPercent, settled, source, event}` |
-| `after-zoom-change` | `lgs1920-timeline-after-zoom-change` | `onAfterZoomChange` | `{zoomPercent, settled, source, event}` |
-| `before-track-visibility-change` | `lgs1920-timeline-before-track-visibility-change` | `onBeforeTrackVisibilityChange` | Cancelable `{trackId, visible, track, tracks, previousTracks, event, data}` |
-| `track-visibility-change` | `lgs1920-timeline-track-visibility-change` | `onTrackVisibilityChange` | `{trackId, visible, track, event, data}` |
-| `after-track-visibility-change` | `lgs1920-timeline-after-track-visibility-change` | `onAfterTrackVisibilityChange` | `{trackId, visible, track, tracks, previousTracks, event, data}` |
-| `before-track-label-change` | `lgs1920-timeline-before-track-label-change` | `onBeforeTrackLabelChange` | Cancelable `{trackId, label, previousLabel, tracks, previousTracks, event, data}` |
-| `track-label-change` | `lgs1920-timeline-track-label-change` | `onTrackLabelChange` | `{trackId, label, previousLabel, tracks, data}` |
-| `after-track-label-change` | `lgs1920-timeline-after-track-label-change` | `onAfterTrackLabelChange` | `{trackId, label, previousLabel, tracks, previousTracks, event, data}` |
-| `before-dblclick` | `lgs1920-timeline-before-dblclick` | `onBeforeDblClick` | Cancelable `{clip, context, event}` |
-| `dblclick` | `lgs1920-timeline-dblclick` | `onDblClick` | `{clip, context, event}` |
-| `after-dblclick` | `lgs1920-timeline-after-dblclick` | `onAfterDblClick` | `{clip, context, event}` |
-| `before-add-clip` | `lgs1920-timeline-before-add-clip` | `onBeforeAddClip` | Cancelable `{group, key, option, clip, trackId, durationMillis, tracks, previousTracks, event, data}` |
-| `add-clip` | `lgs1920-timeline-add-clip` | `onAddClip` | `{group, key, option, clip, trackId, durationMillis, tracks}` |
-| `after-add-clip` | `lgs1920-timeline-after-add-clip` | `onAfterAddClip` | `{group, key, option, clip, trackId, durationMillis, tracks, previousTracks, event, data}` |
-| `before-add-track` | `lgs1920-timeline-before-add-track` | `onBeforeAddTrack` | Cancelable `{track, trackId, tracks, previousTracks, event, data}` |
-| `add-track` | `lgs1920-timeline-add-track` | `onAddTrack` | `{group, key, option, track, trackId, tracks, data}` |
-| `after-add-track` | `lgs1920-timeline-after-add-track` | `onAfterAddTrack` | `{track, trackId, tracks, previousTracks, event, data}` |
-| `before-remove-track` | `lgs1920-timeline-before-remove-track` | `onBeforeRemoveTrack` | Cancelable `{trackId, track, tracks, previousTracks, event, data}` |
-| `remove-track` | `lgs1920-timeline-remove-track` | `onRemoveTrack` | `{trackId, track, tracks, event, data}` |
-| `after-remove-track` | `lgs1920-timeline-after-remove-track` | `onAfterRemoveTrack` | `{trackId, track, tracks, previousTracks, event, data}` |
-| `before-remove-clip` | `lgs1920-timeline-before-remove-clip` | `onBeforeRemoveClip` | Cancelable `{clipId, trackId, clip, tracks, previousTracks, event, data}` |
-| `remove-clip` | `lgs1920-timeline-remove-clip` | `onRemoveClip` | `{clipId, trackId, clip, tracks, previousTracks, event, data}` |
-| `after-remove-clip` | `lgs1920-timeline-after-remove-clip` | `onAfterRemoveClip` | `{clipId, trackId, clip, tracks, previousTracks, event, data}` |
-| `before-clip-enabled-change` | `lgs1920-timeline-before-clip-enabled-change` | `onBeforeClipEnabledChange` | Cancelable `{clipId, trackId, enabled, clip, tracks, previousTracks, event, data}` |
-| `clip-enabled-change` | `lgs1920-timeline-clip-enabled-change` | `onClipEnabledChange` | `{clipId, trackId, enabled, clip, tracks, previousTracks, event, data}` |
-| `after-clip-enabled-change` | `lgs1920-timeline-after-clip-enabled-change` | `onAfterClipEnabledChange` | `{clipId, trackId, enabled, clip, tracks, previousTracks, event, data}` |
-| `clip-select` | `lgs1920-timeline-clip-select` | `onClipSelect` | `{selected, clipId, trackId, clip, event, data}` |
-| `before-clip-action` | `lgs1920-timeline-before-clip-action` | `onBeforeClipAction` | Cancelable `{action, key, clipId, trackId, clip, tracks, previousTracks, event, data}` |
-| `clip-action` | `lgs1920-timeline-clip-action` | `onClipAction` | `{action, key, clipId, trackId, clip, tracks, previousTracks, event, data}` |
-| `after-clip-action` | `lgs1920-timeline-after-clip-action` | `onAfterClipAction` | `{action, key, clipId, trackId, clip, tracks, previousTracks, event, data}` |
-| `before-reorder` | `lgs1920-timeline-before-reorder` | `onBeforeReorder` | Cancelable `{trackIds, tracks, previousTracks, dropIndex, event, data}` |
-| `reorder` | `lgs1920-timeline-reorder` | `onReorder` | `{trackIds, tracks, previousTracks, dropIndex, event, data}` |
-| `after-reorder` | `lgs1920-timeline-after-reorder` | `onAfterReorder` | `{trackIds, tracks, previousTracks, dropIndex, committed, event, data}` |
-| `before-clip-change` | `lgs1920-timeline-before-clip-change` | `onBeforeClipChange` | Cancelable clip edit detail |
-| `clip-change-start` | `lgs1920-timeline-clip-change-start` | `onClipChangeStart` | `{type, edge, resizeEdge, clipId, oldTimeline, newTimeline, dragStart, drag, durationMillis, tracks}` |
-| `clip-changing` | `lgs1920-timeline-clip-changing` | `onClipChanging` | `{type, edge, resizeEdge, clipId, oldTimeline, newTimeline, dragStart, drag, durationMillis, tracks}` |
-| `clip-change` | `lgs1920-timeline-clip-change` | `onClipChange` | `{type, edge, resizeEdge, clipId, oldTimeline, newTimeline, dragStart, drag, durationMillis, tracks}` |
-| `after-clip-change` | `lgs1920-timeline-after-clip-change` | `onAfterClipChange` | Clip edit detail with `committed` |
-| `before-drag` | `lgs1920-timeline-before-drag` | `onBeforeDrag` | Cancelable `{context, type, edge, oldTimeline, newTimeline, dragStart, drag, event, data}` |
-| `drag` | `lgs1920-timeline-drag` | `onDrag` | `{context, type, edge, oldTimeline, newTimeline, dragStart, drag, accepted, event, data}` |
-| `after-drag` | `lgs1920-timeline-after-drag` | `onAfterDrag` | `{context, type, edge, oldTimeline, newTimeline, dragStart, drag, committed, event, data}` |
-| `before-range-change` | `lgs1920-timeline-before-range-change` | `onBeforeRangeChange` | Cancelable `{rangeStartMillis, rangeEndMillis, durationMillis, event}` |
-| `range-change-start` | `lgs1920-timeline-range-change-start` | `onRangeChangeStart` | `{rangeStartMillis, rangeEndMillis, durationMillis, event}` |
-| `range-changing` | `lgs1920-timeline-range-changing` | `onRangeChanging` | `{rangeStartMillis, rangeEndMillis, durationMillis, event}` |
-| `range-change` | `lgs1920-timeline-range-change` | `onRangeChange` | `{rangeStartMillis, rangeEndMillis, durationMillis, event}` |
-| `after-range-change` | `lgs1920-timeline-after-range-change` | `onAfterRangeChange` | `{rangeStartMillis, rangeEndMillis, durationMillis, event}` |
-
-```js
+~~~js
 timeline.addEventListener('lgs1920-timeline-seek', event => {
     timeline.currentTimeMillis = event.detail.timeMillis
 })
+~~~
 
-timeline.addEventListener('lgs1920-timeline-dblclick', event => {
-    console.log(event.detail.clip)
+Use on() when an action needs validation before it runs or work after it
+finishes:
+
+~~~js
+const unsubscribe = timeline.on('seek',
+    event => {
+        console.log('accepted seek', event.detail)
+    },
+    {
+        before: event => {
+            if (event.detail.timeMillis < 0) event.preventDefault()
+        },
+        after: event => {
+            console.log('seek completed', event.detail)
+        },
+    },
+)
+
+unsubscribe()
+~~~
+
+The `before` callback receives a cancelable event. Calling `preventDefault()`
+cancels the action, so the main handler and after callback do not run. The main
+handler receives the canonical DOM event. The after callback runs after the
+accepted action. on() also accepts one descriptor:
+
+~~~js
+timeline.on('clip-change', {
+    before: event => validateClipEdit(event.detail),
+    on: event => tracks = event.detail.tracks,
+    after: event => persistTracks(event.detail.tracks),
 })
-```
+~~~
 
-The React wrapper keeps `onDblClick` for the lifecycle event and also exposes
-`onClipDoubleClick` as the direct clip callback:
+`addEventListener` receives the main event only. The former `before-*` and `after-*`
+DOM event names and React callback props have been removed. Continuous
+interactions keep their progress events: clip-change-start, clip-changing,
+range-change-start, range-changing, and drag.
 
-```jsx
+| Event suffix | DOM event | Typical detail |
+| --- | --- | --- |
+| play, pause, stop, restart | lgs1920-timeline-<suffix> | Playback request with source, timeMillis, and event. |
+| loop-change | lgs1920-timeline-loop-change | Loop request with looping, source, and event. |
+| seek | lgs1920-timeline-seek | Position request with timeMillis, progress, settled, source, and event. |
+| zoom-change | lgs1920-timeline-zoom-change | Zoom request with zoomPercent, settled, source, and event. |
+| range-change-start, range-changing, range-change | lgs1920-timeline-<suffix> | Range values and the originating event. |
+| track-label-change, track-visibility-change | lgs1920-timeline-<suffix> | Track identifiers, changed values, and controlled tracks. |
+| add-track, remove-track, reorder | lgs1920-timeline-<suffix> | Track changes, snapshots, and reorder information. |
+| add-clip, remove-clip, clip-change | lgs1920-timeline-<suffix> | Clip changes and controlled tracks. |
+| clip-change-start, clip-changing | lgs1920-timeline-<suffix> | Live clip edit preview. |
+| clip-select, clip-enabled-change, clip-visibility-change, clip-color-change | lgs1920-timeline-<suffix> | Clip selection or changed clip state. |
+| clip-action, clip-extend, dblclick, drag | lgs1920-timeline-<suffix> | Application action, extension, host intent, or live drag result. |
+| vertical-scroll | lgs1920-timeline-vertical-scroll | Synchronized vertical scroll position. |
+
+For actions that support validation, before and after callbacks use the same
+suffix as the main event:
+
+~~~js
+timeline.on('remove-clip', {
+    before: event => {
+        if (!canRemove(event.detail.clip)) event.preventDefault()
+    },
+    on: event => {
+        timeline.tracks = event.detail.tracks
+    },
+})
+~~~
+
+## React wrapper
+
+The React adapter uses the same grouped options and event suffixes:
+
+~~~jsx
 <LGS1920TimelineReact
-    timeline={timelineConfig}
+    options={{
+        mode: 'edit',
+        durationMillis: 60_000,
+        playback: {loop: 'toggle', timeSlider: 'visible'},
+        view: {zoomSlider: true},
+    }}
     tracks={tracks}
     currentTimeMillis={currentTimeMillis}
-    onSeek={detail => setCurrentTimeMillis(detail.timeMillis)}
-    onClipDoubleClick={detail => console.log(detail.clip)}
-    onAfterClipChange={detail => onTracksChange(detail.tracks)}
-    onAfterTrackLabelChange={handleTrackLabelChange}
+    events={{
+        seek: {
+            before: (detail, event) => validateSeek(detail, event),
+            on: (detail, event) => setCurrentTimeMillis(detail.timeMillis),
+            after: (detail, event) => logSeek(detail, event),
+        },
+        'clip-change': (detail, event) => {
+            onTracksChange(detail.tracks)
+        },
+    }}
 />
-```
+~~~
+
+React callbacks receive `(detail, event)`. A `before` callback can cancel by
+calling `event.preventDefault()`. Use `options`, `tracks`, and controlled playback
+props directly; the old onPlay, onBeforePlay, and onAfterClipChange prop
+mapping has been removed.
 
 ## CSS customization
 

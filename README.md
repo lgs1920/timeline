@@ -26,7 +26,7 @@ The current release is `0.1.3`.
 | Timeline editing | Host integration |
 | --- | --- |
 | Multiple tracks with video, audio, marker, or custom clip kinds | Controlled timeline, tracks, playhead, and playback state |
-| Move, resize, snap, reorder, extend, mask, and duplicate clips | Namespaced events with cancelable before and after lifecycles |
+| Move, resize, snap, reorder, extend, mask, and duplicate clips | Namespaced events with optional cancelable `before` and `after` hooks |
 | Range handles, frame stepping, keyboard shortcuts, and zoom | Web Component slots, external controls, and a React adapter |
 | Read-only projections for compact sequence summaries | Collision policies and application-defined clip actions |
 
@@ -59,9 +59,10 @@ required by the timeline and registers `<lgs1920-timeline>`.
 ```js
 const timeline = document.querySelector('#timeline')
 
-timeline.timeline = {
+timeline.options = {
+    mode: 'edit',
     durationMillis: 60_000,
-    visible: true,
+    view: {visible: true},
 }
 
 timeline.tracks = [
@@ -76,9 +77,16 @@ timeline.tracks = [
 
 timeline.currentTimeMillis = 0
 timeline.playing = false
+timeline.looping = false
 
 timeline.addEventListener('lgs1920-timeline-seek', event => {
     timeline.currentTimeMillis = event.detail.timeMillis
+})
+
+timeline.on('clip-change', {
+    before: event => validateClipEdit(event.detail),
+    on: event => timeline.tracks = event.detail.tracks,
+    after: event => console.log('clip edit completed', event.detail),
 })
 ```
 
@@ -92,6 +100,10 @@ player.
 The component does not advance the application clock. It emits playback
 requests, while the host starts or stops its own clock and writes the current
 position back through `currentTimeMillis`.
+
+The loop button emits a controlled `loop-change` request. Apply its
+`detail.looping` value to the host playback clock and to `timeline.looping`.
+Set `timeline.noLoopMode = true` to hide that button.
 
 ```js
 timeline.addEventListener('lgs1920-timeline-play', () => {
@@ -118,6 +130,38 @@ media.addEventListener('timeupdate', () => {
 The same loop applies to `stop`, `restart`, and frame navigation. For direct
 host-controlled movement without emitting a seek event, use `setTime()`,
 `advance(durationMillis)`, or `rewind(durationMillis)`.
+
+## Public configuration and events
+
+Use grouped `options` for configuration:
+
+```js
+timeline.options = {
+    mode: 'edit',
+    durationMillis: 60_000,
+    playback: {loop: 'toggle', timeSlider: 'visible'},
+    view: {visible: true, zoomSlider: true},
+    range: {startMillis: 0, endMillis: 60_000},
+    layout: {legend: {width: 150}},
+    editing: {clipMenu: true, collisionPolicy: 'prevent'},
+}
+```
+
+`tracks`, `currentTimeMillis`, `playing`, and `looping` remain separate
+controlled properties. Subscribe to one canonical event with `on()` when the
+action needs lifecycle hooks:
+
+```js
+timeline.on('seek', event => console.log(event.detail), {
+    before: event => event.detail.timeMillis < 0 && event.preventDefault(),
+    after: event => console.log('seek completed', event.detail),
+})
+```
+
+The DOM event `lgs1920-timeline-seek` is dispatched for the main action.
+`before-*` and `after-*` DOM events and the old React callback props are no
+longer part of the API. The React adapter uses `events={{seek: {before, on,
+after}}}` and callbacks receive `(detail, event)`.
 
 ## Tracks and clips
 
@@ -212,7 +256,7 @@ user to choose another track or drop position.
 
 ## Range playback and built-in controls
 
-Set `rangeStartMillis` and `rangeEndMillis` to limit the active playback range.
+Set `range.startMillis` and `range.endMillis` to limit the active playback range.
 The built-in time slider is displayed by default in the left playback area.
 Set `noTimeSlider: true` to hide it. `showTimeSlider: false` remains supported
 for compatibility. Set `showZoomSlider` to display the component's built-in
@@ -222,13 +266,11 @@ External controls can use the `timeline-ruler`, `timeline-controls`, and
 `footer` slots when the host needs a different layout.
 
 ```js
-timeline.timeline = {
+timeline.options = {
     durationMillis: 60_000,
-    rangeStartMillis: 6_000,
-    rangeEndMillis: 24_000,
-    showTimeSlider: true,
-    showZoomSlider: true,
-    noZoomControls: false,
+    range: {startMillis: 6_000, endMillis: 24_000},
+    playback: {timeSlider: 'visible'},
+    view: {zoomSlider: true, zoomControls: 'visible'},
 }
 ```
 
