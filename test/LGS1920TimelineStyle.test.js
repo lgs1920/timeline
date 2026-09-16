@@ -43,6 +43,7 @@ describe('lgs1920-timeline styles', () => {
         expect(styleSource).toContain('& .lgs1920-wa-timeline__surface {')
         expect(styleSource).toContain('& .lgs1920-wa-timeline__scroll-shell--surface {')
         expect(styleSource).toContain('border-inline: 1px solid var(--lgs-timeline-border-color);')
+        expect(styleSource).toContain('--lgs-timeline-resizer-width: 10px;')
         expect(styleSource).toContain('--lgs-timeline-viewport-margin: 0.5rem;')
         expect(styleSource).not.toContain('padding-inline: var(--lgs-timeline-viewport-margin);')
         expect(styleSource).toContain('& .lgs1920-wa-timeline__surface-edge-gutters {')

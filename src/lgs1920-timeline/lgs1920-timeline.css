@@ -83,7 +83,7 @@
     /* Timeline custom scrollbar thumb color. */
     --lgs-timeline-scrollbar-thumb-color: var(--lgs-scrollbar-thumb-color, color-mix(in oklab, var(--lgs-timeline-text-color) 68%, transparent));
     /* Timeline legend resizer width. */
-    --lgs-timeline-resizer-width: 6px;
+    --lgs-timeline-resizer-width: 10px;
     /* Timeline legend resizer hit area. */
     --lgs-timeline-resizer-hit-area: 12px;
     /* Timeline row height. */
