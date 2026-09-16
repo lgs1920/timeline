@@ -1175,6 +1175,22 @@ describe('lgs1920-timeline Web Component', () => {
         expect(renderedLayout.style.getPropertyValue('--lgs-timeline-row-height')).toBe('64px')
     })
 
+    it('preserves the current vertical scale when controlled tracks are replaced', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline)
+        document.body.append(timeline)
+        const layout = timeline.shadowRoot.querySelector('[part="layout"]')
+        vi.spyOn(layout, 'getBoundingClientRect').mockReturnValue({height: 300})
+
+        timeline.handleResize()
+        expect(layout.style.getPropertyValue('--lgs-timeline-row-height')).toBe('64px')
+
+        timeline.tracks = timeline.tracks.map(track => ({...track}))
+
+        expect(timeline.shadowRoot.querySelector('[part="layout"]')
+            .style.getPropertyValue('--lgs-timeline-row-height')).toBe('64px')
+    })
+
     it('keeps plain wheel scrolling native and maps modified wheel to timeline zoom', () => {
         const timeline = new LGS1920Timeline()
         configureTimeline(timeline)

@@ -1152,6 +1152,15 @@ export class LGS1920Timeline extends HTMLElement {
             this.#editingRowId = null
             this.#editingLabelValue = ''
         }
+        // Keep the current vertical scale when controlled track data is replaced.
+        // A rerender can briefly expose a smaller layout and otherwise make the
+        // natural row-height calculation shrink on every replacement.
+        if (this.isConnected
+            && this.#verticalZoomRowHeight === null
+            && this.#root.querySelector('[data-layout]')
+            && Number.isFinite(this.#rowHeight)) {
+            this.#verticalZoomRowHeight = this.#rowHeight
+        }
         this.#requestControlledSync()
     }
 

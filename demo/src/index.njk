@@ -99,10 +99,10 @@
         </div>
         <lgs1920-timeline id="studio-timeline" class="demo-studio-timeline" aria-label="Studio style interactive timeline">
             <span slot="custom-menu" class="demo-skip-controls" aria-label="Playback controls">
-                <wa-button id="studio-shuffle" appearance="plain" variant="brand" size="s" aria-label="Shuffle clips">
+                <wa-button id="studio-shuffle" appearance="plain" variant="brand" size="s" aria-label="Shuffle tracks and clips">
                     <wa-icon slot="start" name="shuffle" variant="solid" aria-hidden="true"></wa-icon>
-                    <span>Shuffle</span>
                 </wa-button>
+                <wa-tooltip for="studio-shuffle" placement="bottom">Shuffle tracks and clips</wa-tooltip>
                 <wa-button-group id="studio-playback-rate" label="Playback speed">
                     <wa-button data-playback-rate="1" appearance="filled" variant="brand" size="s" aria-pressed="true">x1</wa-button>
                     <wa-button data-playback-rate="2" appearance="filled" variant="neutral" size="s" aria-pressed="false">x2</wa-button>
@@ -167,7 +167,8 @@
             </article>
             <pre class="demo-code"><code data-language="mixed">&lt;lgs1920-timeline&gt;
     &lt;span slot="custom-menu"&gt;
-        &lt;wa-button appearance="plain" variant="brand" size="s" aria-label="Shuffle clips"&gt;&lt;wa-icon slot="start" name="shuffle" variant="solid"&gt;&lt;/wa-icon&gt;Shuffle&lt;/wa-button&gt;
+        &lt;wa-button id="studio-shuffle" appearance="plain" variant="brand" size="s" aria-label="Shuffle tracks and clips"&gt;&lt;wa-icon slot="start" name="shuffle" variant="solid"&gt;&lt;/wa-icon&gt;&lt;/wa-button&gt;
+        &lt;wa-tooltip for="studio-shuffle" placement="bottom"&gt;Shuffle tracks and clips&lt;/wa-tooltip&gt;
         &lt;wa-button-group label="Playback speed"&gt;
             &lt;wa-button data-playback-rate="1" appearance="filled" variant="brand" size="s" aria-pressed="true"&gt;x1&lt;/wa-button&gt;
             &lt;wa-button data-playback-rate="2" appearance="filled" variant="neutral" size="s" aria-pressed="false"&gt;x2&lt;/wa-button&gt;
