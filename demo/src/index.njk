@@ -80,7 +80,7 @@
             <p>The timeline is controlled by the host application. The component emits playback and seek requests, while the host clock writes the resulting position back through <code>currentTimeMillis</code>.</p>
             <ul>
                 <li>Use the top menu to move the playhead by ten seconds.</li>
-                <li>Use <strong>Shuffle</strong> in the top menu to redistribute every existing clip across the current tracks.</li>
+                <li>Use <strong>Shuffle</strong> in the top menu to redistribute the clips and reorder the current tracks.</li>
                 <li>Use the loop button in the transport area to repeat the selected range.</li>
                 <li>Drag the generated sources to create video, audio, text, or other clips.</li>
                 <li>Use the standard time and zoom controls rendered by the component.</li>
@@ -163,7 +163,7 @@
         <div class="demo-explanation">
             <article>
                 <p class="eyebrow">What to observe</p>
-            <p>The host receives <code>seek</code> intent and writes <code>event.detail.timeMillis</code> back to the component. It also owns the playback clock: <code>play</code> starts it, <code>pause</code> stops it, each frame updates <code>currentTimeMillis</code>, and the selected rate changes elapsed time without moving the playhead. The standard time and zoom controls stay inside the component. The top menu slot contains shuffle, playback speed, and 10-second seek controls. Shuffle only redistributes the existing clips across the current tracks. The clip sources are outside the custom element, so they can live in a toolbar, palette, or application menu. Four generated clip sources stay available for dragging, and each accepted drop replaces its source with a new one.</p>
+            <p>The host receives <code>seek</code> intent and writes <code>event.detail.timeMillis</code> back to the component. It also owns the playback clock: <code>play</code> starts it, <code>pause</code> stops it, each frame updates <code>currentTimeMillis</code>, and the selected rate changes elapsed time without moving the playhead. The standard time and zoom controls stay inside the component. The top menu slot contains shuffle, playback speed, and 10-second seek controls. Shuffle redistributes the existing clips and reorders the current tracks without creating new ones. The clip sources are outside the custom element, so they can live in a toolbar, palette, or application menu. Four generated clip sources stay available for dragging, and each accepted drop replaces its source with a new one.</p>
             </article>
             <pre class="demo-code"><code data-language="mixed">&lt;lgs1920-timeline&gt;
     &lt;span slot="custom-menu"&gt;

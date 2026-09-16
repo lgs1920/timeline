@@ -1210,9 +1210,9 @@ const shuffleStudioClips = () => {
         })
 
     tracks.forEach(track => track.clips.sort((left, right) => Number(left.start) - Number(right.start)))
-    studioTimeline.tracks = tracks
+    studioTimeline.tracks = shuffleValues(tracks)
     studioPacmanDemo.setTracks()
-    showStudioToast('Clips shuffled across the existing tracks', 'shuffle')
+    showStudioToast('Tracks and clips shuffled', 'shuffle')
 }
 
 studioShuffleButton.addEventListener('pointerdown', event => event.stopPropagation())
