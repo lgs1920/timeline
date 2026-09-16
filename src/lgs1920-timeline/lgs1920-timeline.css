@@ -977,11 +977,24 @@
         flex: 1 1 auto;
         width: auto;
         min-width: 0;
+        min-height: 1.5rem;
         /* Compact the zoom slider track inside the control band. */
         --track-size: 0.25rem;
         --thumb-width: 0.75rem;
         --thumb-height: 0.75rem;
         pointer-events: auto;
+    }
+
+    & .lgs1920-wa-timeline__zoom-slider::part(slider),
+    & .lgs1920-wa-timeline__time-slider::part(slider) {
+        display: flex;
+        align-items: center;
+        min-height: 1.5rem;
+    }
+
+    & .lgs1920-wa-timeline__zoom-slider::part(track),
+    & .lgs1920-wa-timeline__time-slider::part(track) {
+        flex: 1 1 auto;
     }
 
     & .lgs1920-wa-timeline__zoom-slider::part(thumb) {
@@ -1048,6 +1061,25 @@
     & .lgs1920-wa-timeline__surface--read-only .lgs1920-wa-timeline__range-handle {
         cursor: default;
         pointer-events: none;
+    }
+
+    & .lgs1920-wa-timeline__surface--read-only .lgs1920-wa-timeline__clip {
+        cursor: default;
+        pointer-events: none;
+    }
+
+    & .lgs1920-wa-timeline__surface--read-only .lgs1920-wa-timeline__clip-handle {
+        display: none;
+        pointer-events: none;
+    }
+
+    :host([data-playback-active]) .lgs1920-wa-timeline__legend-row--movable {
+        cursor: default;
+    }
+
+    :host([data-playback-active]) [data-testid='lgs1920-wa-add-track'],
+    :host([data-playback-active]) [data-testid='lgs1920-wa-add-clip'] {
+        display: none;
     }
 
     & .lgs1920-wa-timeline__timeline-scrubber {

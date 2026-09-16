@@ -325,9 +325,7 @@ export class LGS1920Timeline extends HTMLElement {
     #clipWorkspaceWidth = 0
     #renderer
     #stateSignatures = createTimelineStateSignatures()
-    #isReadonlyMode = () => this.readonly
-        || this.#timelineConfig.readonly === true
-        || this.#timelineConfig.mode === 'readonly'
+    #isReadonlyMode = () => this.readonly || this.#playing
 
     static get observedAttributes() {
         return ['readonly', 'noloopmode', 'nozoomcontrols']
@@ -516,7 +514,7 @@ export class LGS1920Timeline extends HTMLElement {
         this.#root.append(style, this.#buildingOverlay())
         this.#clipEditor = createTimelineClipEditor({
             getRows: () => this.#rows,
-            getTimelineConfig: () => this.#timelineConfig,
+            getTimelineConfig: () => ({...this.#timelineConfig, readonly: this.#isReadonlyMode()}),
             getProjectionDurationMillis: () => this.#dragState?.initialDurationMillis ?? this.#durationMillis(),
             getMajorRulerUnit: () => {
                 const {majorSeconds, scaleSplitCount} = this.#resolveScale()
@@ -592,7 +590,7 @@ export class LGS1920Timeline extends HTMLElement {
             resolveClipLabel,
             resolveClipIcon,
             numericToken: (name, fallback) => this.#numericToken(name, fallback),
-            getTimelineConfig: () => this.#timelineConfig,
+            getTimelineConfig: () => ({...this.#timelineConfig, readonly: this.#isReadonlyMode()}),
             allowsHostInteraction: () => allowsHostInteraction(this.#timelineConfig),
             getRows: () => this.#rows,
             getDragState: () => this.#dragState,
@@ -1224,12 +1222,24 @@ export class LGS1920Timeline extends HTMLElement {
         const wasPlaying = this.#playing
         this.#playing = value === true
         this.toggleAttribute('data-playback-active', this.#playing)
-        this.#updatePlaybackButton()
+        if (this.#playing && !wasPlaying) {
+            this.#removePointerListeners()
+            this.#closeClipContextMenu()
+            this.#closeTrackContextMenu()
+            this.#menuOpen = false
+            this.#editingRowId = null
+            this.#editingLabelValue = ''
+        }
         if (!wasPlaying && this.#playing) {
             const previousTimeMillis = this.#currentTimeMillis
-            this.#currentTimeMillis = this.#normalizeTime(this.#currentTimeMillis)
+            this.#currentTimeMillis = this.#rangeStartMillis
             if (this.#currentTimeMillis !== previousTimeMillis) this.#updateDynamicState()
             this.#followPlaybackViewport(previousTimeMillis)
+        }
+        if (this.isConnected && wasPlaying && !this.#playing && !this.readonly) this.#render()
+        else {
+            this.#updatePlaybackButton()
+            this.#updatePlaybackEditingPresentation()
         }
     }
 
@@ -1567,10 +1577,27 @@ export class LGS1920Timeline extends HTMLElement {
             )
         const nextRows = preserveLocalRows ? this.#rows : incomingRows
         const previousTimeMillis = this.#currentTimeMillis
-        const patchInPlace = state.forceRender !== true && this.#canPatchControlledState(nextProjection, nextRows, state)
+        const nextPlaying = state.playing === true
+        const playingChanged = Object.prototype.hasOwnProperty.call(state, 'playing')
+            && nextPlaying !== this.#playing
+        const playbackResumed = playingChanged && !nextPlaying
+        const patchInPlace = !playbackResumed
+            && state.forceRender !== true
+            && this.#canPatchControlledState(nextProjection, nextRows, state)
         this.#projection = nextProjection
         this.#rows = nextRows
-        this.#playing = state.playing === true
+        const wasPlaying = this.#playing
+        this.#playing = nextPlaying
+        this.toggleAttribute('data-playback-active', this.#playing)
+        const playbackStarted = !wasPlaying && this.#playing
+        if (playbackStarted) {
+            this.#removePointerListeners()
+            this.#closeClipContextMenu()
+            this.#closeTrackContextMenu()
+            this.#menuOpen = false
+            this.#editingRowId = null
+            this.#editingLabelValue = ''
+        }
         this.#visible = state.visible !== false
         this.#clipOptions = state.clipOptions === null || state.clipOptions === undefined
             ? null
@@ -1596,7 +1623,10 @@ export class LGS1920Timeline extends HTMLElement {
         } else {
             this.#rangeEndMillis = durationMillis
         }
-        this.#currentTimeMillis = this.#normalizeTime(state.currentTimeMillis ?? 0, false)
+        this.#currentTimeMillis = this.#normalizeTime(
+            playbackStarted ? this.#rangeStartMillis : (state.currentTimeMillis ?? 0),
+            false,
+        )
         if (!patchInPlace) {
             this.#render({replaceRoot: true})
             this.#followPlaybackViewport(previousTimeMillis)
@@ -1606,6 +1636,7 @@ export class LGS1920Timeline extends HTMLElement {
         if (rowsPresentationChanged) this.#updateClipInteractionPresentation()
         else this.#updateDynamicState()
         this.#updatePlaybackButton()
+        this.#updatePlaybackEditingPresentation()
         this.#followPlaybackViewport(previousTimeMillis)
     }
 
@@ -2021,11 +2052,19 @@ export class LGS1920Timeline extends HTMLElement {
             .find(element => element.getAttribute('data-edit-row-id') === String(row.id))
         const focusEditor = () => {
             if (this.#editingRowId !== row.id) return
-            input?.focus?.()
-            input?.select?.()
+            const editor = [...this.#root.querySelectorAll('[data-edit-row-id]')]
+                .find(element => element.getAttribute('data-edit-row-id') === String(row.id)) ?? input
+            const nativeInput = editor?.shadowRoot?.querySelector?.('input')
+            const focusTarget = nativeInput ?? editor
+            focusTarget?.focus?.()
+            nativeInput?.select?.()
+            if (!nativeInput) editor?.select?.()
         }
         focusEditor()
-        input?.updateComplete?.then(focusEditor)
+        input?.updateComplete?.then(() => {
+            focusEditor()
+            window.requestAnimationFrame?.(focusEditor)
+        })
     }
 
     /**
@@ -3006,7 +3045,7 @@ export class LGS1920Timeline extends HTMLElement {
         play.id = 'lgs1920-timeline-transport-play'
         play.addEventListener('click', event => {
             const playing = !this.#playing
-            const timeMillis = playing ? this.#normalizeTime(this.#currentTimeMillis) : this.#currentTimeMillis
+            const timeMillis = playing ? this.#rangeStartMillis : this.#currentTimeMillis
             const detail = {
                 source: playing ? 'timeline-play' : 'timeline-pause',
                 timeMillis,
@@ -3157,7 +3196,7 @@ export class LGS1920Timeline extends HTMLElement {
      * @returns {HTMLElement} Timeline view controls.
      */
     #timelineTools = () => {
-        if (this.#isReadonlyMode() || this.#timelineConfig.noZoomControls === true) return null
+        if (this.readonly || this.#timelineConfig.noZoomControls === true) return null
         const tools = createElement('span', `lgs1920-wa-timeline__timeline-tools${this.#hostNoDragClasses()}`, {
             part: 'timeline-tools',
             'aria-label': 'Timeline view tools',
@@ -3214,7 +3253,7 @@ export class LGS1920Timeline extends HTMLElement {
      * @returns {HTMLElement|null} Time scrubber, or null when disabled.
      */
     #timelineScrubber = () => {
-        if (this.#isReadonlyMode() || this.#timelineConfig.interactive === false || this.#isTimeSliderDisabled()) return null
+        if (this.readonly || this.#timelineConfig.interactive === false || this.#isTimeSliderDisabled()) return null
         const scrubber = createElement('div', `lgs1920-wa-timeline__timeline-scrubber${this.#hostNoDragClasses()}`, {
             part: 'timeline-scrubber',
             'data-timeline-ruler-fixed': '',
@@ -3273,7 +3312,7 @@ export class LGS1920Timeline extends HTMLElement {
      * @returns {HTMLElement|null} Zoom control, or null when disabled.
      */
     #timelineZoomControl = () => {
-        if (this.#isReadonlyMode()
+        if (this.readonly
             || this.#timelineConfig.interactive === false
             || this.#timelineConfig.noZoomControls === true
             || this.#timelineConfig.showZoomSlider !== true) return null
@@ -3377,10 +3416,10 @@ export class LGS1920Timeline extends HTMLElement {
         this.#horizontalFitActive = false
         this.#zoom = zoomPercent
         this.#emit('zoom-change', detail)
-        // Refresh the ruler while preserving the existing Web Awesome slider
-        // instance in #reuseSplitPanel, so the thumb and timeline move together.
-        this.#render()
-        if (settled) this.#emitAfter('zoom-change', detail)
+        if (settled) {
+            this.#render()
+            this.#emitAfter('zoom-change', detail)
+        }
     }
 
     /**
@@ -3783,11 +3822,11 @@ export class LGS1920Timeline extends HTMLElement {
             size: 's',
             label: 'Color',
             'without-format-toggle': '',
-            value: resolveTimelineColorValue(entry.clip.colorClasses, colorSwatches) ?? colorSwatches[0].color,
+            value: resolveTimelineColorValue(entry.clip.colorClasses, colorSwatches, entry.clip.timelineColor) ?? colorSwatches[0].color,
             'data-testid': 'lgs1920-timeline-clip-menu-color',
         })
         colorPicker.swatches = colorSwatches
-        colorPicker.value = resolveTimelineColorValue(entry.clip.colorClasses, colorSwatches) ?? colorSwatches[0].color
+        colorPicker.value = resolveTimelineColorValue(entry.clip.colorClasses, colorSwatches, entry.clip.timelineColor) ?? colorSwatches[0].color
 
         const colorItem = this.#button({
             iconName: 'palette',
@@ -4556,8 +4595,9 @@ export class LGS1920Timeline extends HTMLElement {
      *
      * @param {string} clipId - Clip identifier.
      * @param {Array} colorClasses - Web Awesome color classes.
+     * @param {string} [timelineColor] - Optional custom CSS color.
      */
-    #updateClipColorPresentation = (clipId, colorClasses) => {
+    #updateClipColorPresentation = (clipId, colorClasses, timelineColor = null) => {
         const element = [...this.#root.querySelectorAll('[data-clip-id]')]
             .find(value => String(value.getAttribute('data-clip-id')) === String(clipId))
         if (!element) return
@@ -4565,7 +4605,7 @@ export class LGS1920Timeline extends HTMLElement {
             .filter(value => value === 'wa-neutral' || value.startsWith('wa-neutral-'))
         element.classList.remove(...paletteClasses)
         element.classList.add(...colorClasses)
-        applyTimelinePaletteStyles(element, colorClasses)
+        applyTimelinePaletteStyles(element, colorClasses, timelineColor)
     }
 
     /**
@@ -4582,12 +4622,17 @@ export class LGS1920Timeline extends HTMLElement {
         const colorSwatches = normalizeTimelineColorSwatches(this.#timelineConfig.swatches)
         const normalizedValue = String(value ?? '').trim().toLowerCase()
         const selectedSwatch = colorSwatches.find(swatch => swatch.color === normalizedValue || swatch.palette === normalizedValue)
-        if (!selectedSwatch) return false
-        const selectedValue = selectedSwatch.color
-        const timelineColor = selectedSwatch.palette ?? resolveTimelinePaletteFromValue(selectedValue, colorSwatches)
-        const colorClasses = Array.isArray(selectedSwatch.colorClasses)
+        if (!selectedSwatch && !normalizedValue) return false
+        const selectedValue = selectedSwatch?.color ?? normalizedValue
+        const palette = selectedSwatch?.palette ?? resolveTimelinePaletteFromValue(selectedValue, colorSwatches)
+        const timelineColor = selectedSwatch
+            ? null
+            : (palette ?? selectedValue)
+        const colorClasses = Array.isArray(selectedSwatch?.colorClasses)
             ? selectedSwatch.colorClasses
-            : ['wa-neutral', `wa-neutral-${timelineColor}`]
+            : selectedSwatch
+                ? ['wa-neutral', `wa-neutral-${selectedSwatch.palette}`]
+                : (entry.clip.colorClasses ?? ['wa-neutral', 'wa-neutral-blue'])
         const clip = {...entry.clip, colorClasses, timelineColor, trackId: entry.row.id}
         const nextRows = this.#rows.map(row => row.id === entry.row.id
             ? {...row, actions: (row.actions ?? row.clips ?? []).map(item => item.id === clipId ? {...item, colorClasses, timelineColor} : item)}
@@ -4608,7 +4653,7 @@ export class LGS1920Timeline extends HTMLElement {
         this.#rows = nextRows
         this.#localRowsDirty = true
         this.#emit('clip-color-change', {...detail, tracks: this.tracks, data: this.#publicSnapshot()})
-        this.#updateClipColorPresentation(clipId, colorClasses)
+        this.#updateClipColorPresentation(clipId, colorClasses, timelineColor)
         this.#emitAfter('clip-color-change', {...detail, tracks: this.tracks, data: this.#publicSnapshot()})
         return true
     }
@@ -6214,6 +6259,32 @@ export class LGS1920Timeline extends HTMLElement {
     }
 
     /**
+     * Snap a dragged playhead to the active range handles without showing a
+     * clip alignment guide.
+     *
+     * @param {number} timeMillis - Proposed playhead time.
+     * @param {number} majorSeconds - Current ruler unit in seconds.
+     * @param {number} scaleWidth - Current ruler unit width in pixels.
+     * @returns {number} Snapped or unchanged time.
+     */
+    #snapPlayheadToRangeBoundary = (timeMillis, majorSeconds, scaleWidth) => {
+        if (this.#dragState?.type !== 'playhead' || this.#timelineConfig.snap === false) return timeMillis
+        const configuredThreshold = Number(this.#timelineConfig.snapThresholdPixels)
+        const thresholdPixels = Number.isFinite(configuredThreshold) && configuredThreshold >= 0
+            ? configuredThreshold
+            : 8
+        const pixelsPerSecond = Number(scaleWidth) / Math.max(Number.EPSILON, Number(majorSeconds))
+        const thresholdMillis = (thresholdPixels / Math.max(Number.EPSILON, pixelsPerSecond)) * 1000
+        const boundaries = [this.#rangeStartMillis, this.#rangeEndMillis]
+        const nearest = boundaries
+            .map(boundary => ({boundary, distance: Math.abs(boundary - timeMillis)}))
+            .sort((left, right) => left.distance - right.distance)[0]
+        return nearest && nearest.distance <= thresholdMillis + 1e-9
+            ? nearest.boundary
+            : timeMillis
+    }
+
+    /**
      * Build a public detail payload for a video range edit.
      *
      * @param {Event} event - Triggering event.
@@ -6241,7 +6312,8 @@ export class LGS1920Timeline extends HTMLElement {
         const scaleWidth = this.#scaleWidth()
         const scaleOffset = this.#numericToken('scale-offset', START_LEFT)
         const x = clamp(clientX - rect.left + (this.#surface?.scrollLeft ?? 0), scaleOffset, this.#contentWidth)
-        const timeMillis = this.#normalizeTime(((x - scaleOffset) / scaleWidth) * majorSeconds * 1000, false)
+        const proposedTimeMillis = this.#normalizeTime(((x - scaleOffset) / scaleWidth) * majorSeconds * 1000, false)
+        const timeMillis = this.#snapPlayheadToRangeBoundary(proposedTimeMillis, majorSeconds, scaleWidth)
         const detail = {
             timeMillis,
             progress: duration > 0 ? timeMillis / duration : 0,
@@ -7217,7 +7289,7 @@ export class LGS1920Timeline extends HTMLElement {
         event.stopPropagation()
         const playing = !this.#playing
         const action = playing ? 'play' : 'pause'
-        const timeMillis = playing ? this.#normalizeTime(this.#currentTimeMillis) : this.#currentTimeMillis
+        const timeMillis = playing ? this.#rangeStartMillis : this.#currentTimeMillis
         const detail = {
             source: playing ? 'timeline-keyboard-play' : 'timeline-keyboard-pause',
             timeMillis,
@@ -7225,8 +7297,7 @@ export class LGS1920Timeline extends HTMLElement {
         }
         if (!this.#emitAction(action, detail)) return true
         if (playing) this.setTime(timeMillis)
-        this.#playing = playing
-        this.#updatePlaybackButton()
+        this.playing = playing
         return true
     }
 
@@ -7612,10 +7683,13 @@ export class LGS1920Timeline extends HTMLElement {
         const markerPalette = (markerClip?.colorClasses ?? [])
             .find(value => typeof value === 'string' && value.startsWith('wa-neutral-'))
             ?.slice('wa-neutral-'.length)
-            ?? (typeof markerClip?.timelineColor === 'string' && markerClip.timelineColor.trim()
-                ? markerClip.timelineColor.trim()
-                : null)
-        const markerColor = markerPalette
+        const markerTimelineColor = typeof markerClip?.timelineColor === 'string'
+            ? markerClip.timelineColor.trim()
+            : ''
+        const markerUsesCustomColor = markerTimelineColor && markerTimelineColor !== markerPalette
+        const markerColor = markerUsesCustomColor
+            ? markerTimelineColor
+            : markerPalette
             ? `var(--wa-color-${markerPalette}-60)`
             : markerSource?.style.borderColor ?? ''
         const markerElements = [clipEdgeIndicator, ...clipMoveEndpoints].filter(Boolean)
@@ -7794,6 +7868,26 @@ export class LGS1920Timeline extends HTMLElement {
         }
         this.#updateDynamicState()
         this.#updateClipCopyPresentation()
+    }
+
+    /**
+     * Update the editing surface while playback is active without rebuilding it.
+     */
+    #updatePlaybackEditingPresentation = () => {
+        const surface = this.#surface ?? this.#root.querySelector('[data-surface]')
+        if (surface) {
+            surface.classList.toggle('lgs1920-wa-timeline__surface--read-only', this.#isReadonlyMode())
+            surface.setAttribute('aria-readonly', String(this.#isReadonlyMode()))
+        }
+        const playbackLock = this.#playing && !this.readonly
+        const actionButtons = [
+            this.#root.querySelector('[data-testid="lgs1920-wa-add-track"]'),
+            this.#root.querySelector('[data-testid="lgs1920-wa-add-clip"]'),
+        ].filter(Boolean)
+        actionButtons.forEach(element => {
+            element.hidden = playbackLock
+            element.setAttribute('aria-disabled', String(playbackLock))
+        })
     }
 
     /**

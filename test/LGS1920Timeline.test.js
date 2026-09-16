@@ -685,9 +685,11 @@ describe('lgs1920-timeline Web Component', () => {
         expect(typeof zoomSlider.valueFormatter).toBe('function')
 
         const zoomSliderDuringInput = zoomSlider
+        const replaceChildren = vi.spyOn(timeline.shadowRoot, 'replaceChildren')
         zoomSlider.value = 75
         zoomSlider.dispatchEvent(new Event('input', {bubbles: true}))
         expect(timeline.shadowRoot.querySelector('[data-timeline-zoom-slider]')).toBe(zoomSliderDuringInput)
+        expect(replaceChildren).not.toHaveBeenCalled()
 
         timeSlider.value = 5_000
         timeSlider.dispatchEvent(new Event('input', {bubbles: true}))
@@ -1489,6 +1491,7 @@ describe('lgs1920-timeline Web Component', () => {
         events.forEach(name => timeline.addEventListener(name, listeners[name]))
 
         timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-timeline-play"]').click()
+        timeline.currentTimeMillis = 1_000
         timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-timeline-restart"]').click()
         const surface = timeline.shadowRoot.querySelector('[data-surface]')
         vi.spyOn(surface, 'getBoundingClientRect').mockReturnValue({left: 0, width: 1_000})
@@ -1611,9 +1614,9 @@ describe('lgs1920-timeline Web Component', () => {
         expect(pause).not.toHaveBeenCalled()
         expect(stop.mock.calls[0][0].detail).toMatchObject({
             source: 'timeline-stop',
-            timeMillis: 10_000,
+            timeMillis: 0,
         })
-        expect(timeline.currentTimeMillis).toBe(10_000)
+        expect(timeline.currentTimeMillis).toBe(0)
 
         expect(timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-timeline-restart"] wa-icon').getAttribute('name'))
             .toBe('backward-step')
@@ -2517,6 +2520,32 @@ describe('lgs1920-timeline Web Component', () => {
         expect(timeline.shadowRoot.querySelector('[data-current-time]').textContent).toBe('0:02')
     })
 
+    it('locks track and clip editing while playback is active', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline, {timeline: {showZoomSlider: true}})
+        document.body.append(timeline)
+
+        const addTrack = timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-add-track"]')
+        expect(addTrack).not.toBeNull()
+        expect(timeline.shadowRoot.querySelector('[data-clip-id="clip-one"]').getAttribute('role')).toBe('button')
+
+        timeline.playing = true
+
+        const playingClip = timeline.shadowRoot.querySelector('[data-clip-id="clip-one"]')
+        expect(timeline.shadowRoot.querySelector('[data-surface]').classList.contains('lgs1920-wa-timeline__surface--read-only')).toBe(true)
+        expect(timeline.shadowRoot.querySelector('[data-surface]').getAttribute('aria-readonly')).toBe('true')
+        expect(addTrack.hidden).toBe(true)
+        expect(playingClip.querySelector('[data-clip-handle="start"]')).not.toBeNull()
+        expect(timeline.shadowRoot.querySelector('[data-timeline-time-slider]')).not.toBeNull()
+        expect(timeline.shadowRoot.querySelector('[data-timeline-zoom-slider]')).not.toBeNull()
+
+        timeline.playing = false
+
+        expect(timeline.shadowRoot.querySelector('[data-surface]').classList.contains('lgs1920-wa-timeline__surface--read-only')).toBe(false)
+        expect(timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-add-track"]')).not.toBeNull()
+        expect(timeline.shadowRoot.querySelector('[data-clip-id="clip-one"]').getAttribute('role')).toBe('button')
+    })
+
     it('scrolls the surface to keep the current playhead visible', () => {
         const timeline = new LGS1920Timeline()
         configureTimeline(timeline, {
@@ -2688,6 +2717,8 @@ describe('lgs1920-timeline Web Component', () => {
         })
 
         timeline.playing = true
+        timeline.currentTimeMillis = 50_000
+        surface.scrollLeft = 2_000
         timeline.currentTimeMillis = 48_000
 
         let playheadX = Number.parseFloat(timeline.shadowRoot.querySelector('[data-playhead]').style.getPropertyValue('--lgs-timeline-playhead-offset'))

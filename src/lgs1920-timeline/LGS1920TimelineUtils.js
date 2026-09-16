@@ -269,11 +269,16 @@ export const resolveTimelinePaletteFromValue = (value, swatches = []) => {
  *
  * @param {Array} colorClasses - Web Awesome color classes.
  * @param {Array} swatches - Application-owned color swatches.
+ * @param {string|null} timelineColor - Optional free-form CSS color.
  * @returns {string|null} Color-picker value.
  */
-export const resolveTimelineColorValue = (colorClasses, swatches = []) => {
+export const resolveTimelineColorValue = (colorClasses, swatches = [], timelineColor = null) => {
     const normalizedSwatches = normalizeTimelineColorSwatches(swatches)
     const palette = resolveTimelinePaletteColor(colorClasses, normalizedSwatches)
+    const customColor = String(timelineColor ?? '').trim()
+    if (customColor && customColor !== palette && !normalizedSwatches.some(swatch => swatch.palette === customColor)) {
+        return customColor
+    }
     return normalizedSwatches.find(swatch => swatch.palette === palette)?.color ?? null
 }
 
@@ -286,8 +291,20 @@ export const resolveTimelineColorValue = (colorClasses, swatches = []) => {
  * @param {HTMLElement} element - Timeline element receiving the color.
  * @param {Array} colorClasses - Web Awesome color classes.
  */
-export const applyTimelinePaletteStyles = (element, colorClasses) => {
-    const color = colorClasses?.find?.(value => typeof value === 'string' && value.startsWith('wa-neutral-'))?.slice('wa-neutral-'.length) ?? 'blue'
+export const applyTimelinePaletteStyles = (element, colorClasses, timelineColor = null) => {
+    const palette = colorClasses?.find?.(value => typeof value === 'string' && value.startsWith('wa-neutral-'))?.slice('wa-neutral-'.length)
+    const customColor = String(timelineColor ?? '').trim()
+    if (customColor && customColor !== palette) {
+        element.style.backgroundColor = customColor
+        element.style.borderColor = `color-mix(in srgb, ${customColor} 72%, black)`
+        element.style.color = 'var(--wa-color-neutral-0, #fff)'
+        element.style.setProperty('--wa-color-fill-loud', customColor)
+        element.style.setProperty('--wa-color-border-loud', `color-mix(in srgb, ${customColor} 72%, black)`)
+        element.style.setProperty('--wa-color-on-loud', 'var(--wa-color-neutral-0, #fff)')
+        element.style.setProperty('--lgs-timeline-clip-handle-color', 'var(--wa-color-neutral-0, #fff)')
+        return
+    }
+    const color = palette ?? 'blue'
     element.style.backgroundColor = `var(--wa-color-${color}-50)`
     element.style.borderColor = `var(--wa-color-${color}-60)`
     element.style.color = `var(--wa-color-${color}-on)`

@@ -130,7 +130,7 @@ export const createTimelineRenderer = ({
             'aria-disabled': value.enabled === false ? 'true' : null,
             'aria-selected': selected ? 'true' : 'false',
         })
-        applyTimelinePaletteStyles(element, value.colorClasses)
+        applyTimelinePaletteStyles(element, value.colorClasses, value.timelineColor)
         const timeline = getTimelineConfig()
         const readonly = timeline.readonly === true
         const interactive = timeline.interactive !== false && !readonly
@@ -398,6 +398,7 @@ export const createTimelineRenderer = ({
                 value: getEditingLabelValue(),
                 'aria-label': `Edit ${label}`,
                 'data-edit-row-id': row.id,
+                autofocus: '',
                 name: 'label',
             })
             : contextualSlot(labelPrefix, row.id, ['name', 'track-label'], document.createTextNode(label))
