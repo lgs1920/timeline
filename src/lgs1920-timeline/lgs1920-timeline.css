@@ -1836,7 +1836,7 @@
     }
 }
 
-@container lgs1920-timeline-legend-ruler (max-width: 14rem) {
+@container lgs1920-timeline-legend-ruler (max-width: 8rem) {
     :host .lgs1920-wa-timeline__legend-ruler > wa-button[data-testid='lgs1920-wa-add-track'] > slot[name='add-track-label'] {
         display: none;
     }
