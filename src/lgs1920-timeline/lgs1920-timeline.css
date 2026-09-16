@@ -852,15 +852,17 @@
         box-sizing: border-box;
         width: var(--lgs-timeline-viewport-margin);
         background: var(--lgs-timeline-surface-color);
-        border: 1px solid var(--lgs-timeline-quiet-border-color);
+        border: 0;
     }
 
     & .lgs1920-wa-timeline__surface-edge-gutter--start {
         left: 0;
+        border-inline-end: 1px solid var(--lgs-timeline-quiet-border-color);
     }
 
     & .lgs1920-wa-timeline__surface-edge-gutter--end {
         right: 0;
+        border-inline-start: 1px solid var(--lgs-timeline-quiet-border-color);
     }
 
     & .lgs1920-wa-timeline__surface::part(body) {
