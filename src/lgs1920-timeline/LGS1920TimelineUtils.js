@@ -7,8 +7,8 @@
  * Author : LGS1920 Team
  * email: studio@lgs1920.fr
  *
- * Created on: 2026-09-13
- * Last modified: 2026-09-13
+ * Created on: 2026-09-14
+ * Last modified: 2026-09-16
  *
  *
  * Copyright © 2026 LGS1920
@@ -295,7 +295,6 @@ export const applyTimelinePaletteStyles = (element, colorClasses) => {
     element.style.setProperty('--wa-color-border-loud', `var(--wa-color-${color}-60)`)
     element.style.setProperty('--wa-color-on-loud', `var(--wa-color-${color}-on)`)
     element.style.setProperty('--lgs-timeline-clip-handle-color', `var(--wa-color-${color}-on)`)
-    element.style.setProperty('--lgs-timeline-clip-handle-hover-color', `var(--wa-color-${color}-on)`)
 }
 
 /**

@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-15
+ * Last modified: 2026-09-16
  *
  *
  * Copyright © 2026 LGS1920
@@ -50,19 +50,17 @@ export const createTimelineRenderer = ({
     contextualSlot,
     hasContextualSlot,
     globalSlotContent,
-    button,
-    removeTrack,
     removeClip,
     duplicateClip,
     toggleClipEnabled,
     toggleClipVisibility,
     selectClip,
     openClipContextMenu,
+    openTrackContextMenu,
     beginTrackLabelEdit,
     commitTrackLabelEdit,
     cancelTrackLabelEdit,
     startRowDrag,
-    toggleTrackVisibility,
     handleClipDragOver,
     handleClipDragLeave,
     handleClipDrop,
@@ -135,9 +133,10 @@ export const createTimelineRenderer = ({
         })
         applyTimelinePaletteStyles(element, value.colorClasses)
         const timeline = getTimelineConfig()
-        const interactive = timeline.interactive !== false
+        const readonly = timeline.readonly === true
+        const interactive = timeline.interactive !== false && !readonly
         const selectable = interactive && value.selectable !== false
-        const editable = timeline.editable !== false && value.editable !== false
+        const editable = !readonly && timeline.editable !== false && value.editable !== false
         const movable = selectable && editable && trackEditable !== false
         const resizable = selectable && editable && value.resizable !== false
             && (trackEditable !== false || trackClipResizable === true)
@@ -306,7 +305,9 @@ export const createTimelineRenderer = ({
             'aria-valuenow': isStart ? startMillis : endMillis,
             'aria-keyshortcuts': enabled ? 'ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight' : null,
         })
-        handle.append(contextualSlot(`clip-${edge}-handle`, value.id, `clip-${edge}-handle`, createIcon('grip-lines-vertical', 'solid')))
+        if (getTimelineConfig().readonly !== true) {
+            handle.append(contextualSlot(`clip-${edge}-handle`, value.id, `clip-${edge}-handle`, createIcon('grip-lines-vertical', 'solid')))
+        }
         if (enabled) {
             handle.addEventListener('pointerdown', event => {
                 if (event.button !== 0) return
@@ -327,21 +328,24 @@ export const createTimelineRenderer = ({
     const rangeHandle = edge => {
         const isStart = edge === 'start'
         const timeMillis = isStart ? getRangeStartMillis() : getRangeEndMillis()
-        const interactive = getTimelineConfig().interactive !== false
+        const timeline = getTimelineConfig()
+        const interactive = timeline.interactive !== false && timeline.readonly !== true
+        const enabled = interactive && timeline.editable !== false
         const handle = createElement('div', `lgs1920-wa-timeline__range-handle lgs1920-wa-timeline__range-handle--${edge}`, {
             part: `timeline-${edge}-handle`,
             'data-range-handle': edge,
             role: 'slider',
-            tabindex: interactive && getTimelineConfig().editable !== false ? 0 : -1,
+            tabindex: enabled ? 0 : -1,
+            'aria-disabled': enabled ? null : 'true',
             'aria-label': `${isStart ? 'Video start' : 'Video end'} position`,
             'aria-valuemin': 0,
             'aria-valuemax': getDurationMillis(),
             'aria-valuenow': timeMillis,
         })
         const grip = createElement('span', 'lgs1920-wa-timeline__range-grip', {part: `timeline-${edge}-grip`})
-        if (interactive) grip.append(...globalSlotContent(`timeline-${edge}-handle`, createIcon('grip-dots-vertical', 'solid')))
+        if (enabled) grip.append(...globalSlotContent(`timeline-${edge}-handle`, createIcon('grip-dots-vertical', 'solid')))
         handle.append(grip)
-        if (interactive) {
+        if (enabled) {
             handle.addEventListener('pointerdown', event => {
                 if (event.button !== 0) return
                 startRangeInteraction(event, edge)
@@ -360,11 +364,12 @@ export const createTimelineRenderer = ({
      */
     const legendRow = row => {
         const timeline = getTimelineConfig()
-        const interactive = timeline.interactive !== false
+        const readonly = timeline.readonly === true
+        const interactive = timeline.interactive !== false && !readonly
         const editable = interactive && timeline.editable !== false && row.editable !== false
         const titleDisabled = row.visible === false || !editable
         const titleEditable = editable && row.visible !== false
-        const readOnly = row.editable === false
+        const readOnly = !readonly && row.editable === false
         const label = resolveRowLabel(row)
         const dragState = getDragState()
         const isClipDropRejected = dragState?.type === 'clip'
@@ -394,17 +399,38 @@ export const createTimelineRenderer = ({
                 value: getEditingLabelValue(),
                 'aria-label': `Edit ${label}`,
                 'data-edit-row-id': row.id,
+                name: 'label',
             })
             : contextualSlot(labelPrefix, row.id, ['name', 'track-label'], document.createTextNode(label))
+        const trackContent = createElement(editing ? 'form' : 'span', `lgs1920-wa-timeline__track-content${titleDisabled ? ' lgs1920-wa-timeline__track-content--title-disabled' : ''}`, {
+            part: 'legend-content',
+            'aria-disabled': titleDisabled ? 'true' : null,
+            'data-track-label-form': editing ? row.id : null,
+            novalidate: editing,
+        })
         if (editing) {
-            const readEditorValue = event => event.currentTarget?.value ?? event.target?.value ?? ''
-            const updateEditorValue = event => setEditingLabelValue(readEditorValue(event))
+            const readEditorValue = source => {
+                const editor = source?.getAttribute?.('data-edit-row-id') !== null ? source : labelElement
+                return editor?.shadowRoot?.querySelector?.('input')?.value ?? editor?.value ?? ''
+            }
+            const updateEditorValue = event => setEditingLabelValue(String(readEditorValue(event?.currentTarget ?? event?.target)))
+            const commitEditor = event => {
+                event.preventDefault()
+                event.stopPropagation()
+                updateEditorValue(event)
+                commitTrackLabelEdit(event)
+            }
+            const requestEditorSubmit = event => {
+                event.preventDefault()
+                event.stopPropagation()
+                updateEditorValue(event)
+                if (typeof trackContent.requestSubmit === 'function') trackContent.requestSubmit()
+                else commitEditor(event)
+            }
             const handleEditorKeyDown = event => {
                 if (event.key === 'Enter') {
-                    event.preventDefault()
-                    event.stopPropagation()
-                    updateEditorValue(event)
-                    commitTrackLabelEdit(event)
+                    requestEditorSubmit(event)
+                    return
                 }
                 if (event.key === 'Escape') {
                     event.preventDefault()
@@ -412,38 +438,26 @@ export const createTimelineRenderer = ({
                     cancelTrackLabelEdit()
                 }
             }
+            trackContent.addEventListener('submit', commitEditor)
             labelElement.addEventListener('input', updateEditorValue)
-            labelElement.addEventListener('change', event => {
-                updateEditorValue(event)
-                commitTrackLabelEdit(event)
-            })
-            labelElement.addEventListener('blur', event => {
-                updateEditorValue(event)
-                commitTrackLabelEdit(event)
-            })
+            labelElement.addEventListener('change', commitEditor)
+            labelElement.addEventListener('blur', commitEditor)
             labelElement.addEventListener('keydown', handleEditorKeyDown)
             labelElement.updateComplete?.then(() => {
                 const nativeInput = labelElement.shadowRoot?.querySelector('input')
                 if (!nativeInput) return
                 nativeInput.addEventListener('input', updateEditorValue)
                 nativeInput.addEventListener('keydown', handleEditorKeyDown)
-                nativeInput.addEventListener('change', event => {
-                    updateEditorValue(event)
-                    commitTrackLabelEdit(event)
-                })
-                nativeInput.addEventListener('blur', event => {
-                    updateEditorValue(event)
-                    commitTrackLabelEdit(event)
-                })
+                nativeInput.addEventListener('change', commitEditor)
+                nativeInput.addEventListener('blur', commitEditor)
             })
         }
-        const trackContent = createElement('span', `lgs1920-wa-timeline__track-content${titleDisabled ? ' lgs1920-wa-timeline__track-content--title-disabled' : ''}`, {
-            part: 'legend-content',
-            'aria-disabled': titleDisabled ? 'true' : null,
-        })
         trackContent.append(labelElement)
         if (titleEditable) {
             trackContent.addEventListener('dblclick', event => {
+                // Once the editor is open, let the native input handle double-click
+                // word selection instead of restarting the edit and preventing it.
+                if (editing && (event.target?.closest?.('wa-input') || event.composedPath?.().includes(labelElement))) return
                 event.preventDefault()
                 event.stopPropagation()
                 beginTrackLabelEdit(row)
@@ -456,48 +470,17 @@ export const createTimelineRenderer = ({
                 startRowDrag(event, row.id)
             })
         }
-        const actions = createElement('span', 'lgs1920-wa-timeline__track-actions', {part: 'track-actions'})
-        const hasClips = (row.actions ?? row.clips ?? []).length > 0
-        if (interactive) actions.addEventListener('pointerdown', event => event.stopPropagation())
-        if (editable && row.canHide) {
-            const visibility = button({
-                iconName: row.visible === false ? 'eye' : 'eye-slash',
-                label: row.visible === false ? `Show ${label}` : `Hide ${label}`,
-                testId: 'visibility',
-                iconSlotElement: contextualSlot('visibility', row.id, 'visibility', createIcon(row.visible === false ? 'eye' : 'eye-slash', 'solid')),
-            })
-            visibility.addEventListener('click', event => {
+        if (editable) {
+            element.addEventListener('contextmenu', event => {
+                if (event.target?.closest?.('wa-input')) return
+                event.preventDefault()
                 event.stopPropagation()
-                toggleTrackVisibility(row, event)
+                openTrackContextMenu(row, event)
             })
-            actions.append(visibility)
-        } else {
-            actions.append(createElement('span', 'lgs1920-wa-timeline__action-placeholder', {
-                part: 'visibility-placeholder',
-                'aria-hidden': 'true',
-            }))
         }
-        if (editable && !hasClips) {
-            const remove = button({
-                iconName: 'trash-can',
-                label: `Remove ${label}`,
-                testId: 'remove-track',
-                variant: 'danger',
-                iconSlotElement: contextualSlot('remove', row.id, 'remove', createIcon('trash-can', 'regular')),
-            })
-            remove.addEventListener('click', event => {
-                event.stopPropagation()
-                removeTrack(row, event)
-            })
-            actions.append(remove)
-        } else {
-            actions.append(createElement('span', 'lgs1920-wa-timeline__action-placeholder', {
-                part: 'remove-placeholder',
-                'aria-hidden': 'true',
-            }))
-        }
-        if (editable) actions.append(contextualSlot('actions', row.id, 'actions', null))
-        element.append(actions, trackContent)
+        // Track actions are exposed from the context menu. Keep the legend row
+        // focused on its label.
+        element.append(trackContent)
         return element
     }
 
@@ -510,8 +493,11 @@ export const createTimelineRenderer = ({
      * @returns {HTMLElement} Timeline surface.
      */
     const surfaceElement = (scaleCount, majorSeconds, scaleSplitCount) => {
-        const interactive = getTimelineConfig().interactive !== false
-        const hostNoDragClass = String(getTimelineConfig().hostNoDragClass ?? '').trim()
+        const timeline = getTimelineConfig()
+        const readonly = timeline.readonly === true
+        const interactive = timeline.interactive !== false && !readonly
+        const playheadInteractive = timeline.interactive !== false
+        const hostNoDragClass = String(timeline.hostNoDragClass ?? '').trim()
         const hostNoDragClasses = hostNoDragClass ? ` ${hostNoDragClass}` : ''
         const surface = createElement('wa-card', `lgs1920-wa-timeline__surface${interactive ? '' : ' lgs1920-wa-timeline__surface--read-only'}${hostNoDragClasses}`, {
             part: 'surface',
@@ -569,9 +555,10 @@ export const createTimelineRenderer = ({
             const isRejectedRow = dragState?.type === 'row'
                 && dragState.rowId === row.id
                 && dragState.dropRejected === true
-            const track = createElement('div', `lgs1920-wa-timeline__track${row.editable === false ? ' lgs1920-wa-timeline__track--read-only' : ''}${row.visible === false ? ' lgs1920-wa-timeline__track--hidden' : ''}${dragState?.type === 'row' && dragState.rowId === row.id ? ' lgs1920-wa-timeline__track--dragging' : ''}${isRejectedRow ? ' lgs1920-wa-timeline__track--drop-rejected' : ''}${isClipDropTarget ? ' lgs1920-wa-timeline__track--clip-drop-target' : ''}${isClipDropRejected ? ' lgs1920-wa-timeline__track--clip-drop-rejected' : ''}`, {part: 'track', 'data-row-id': row.id})
+            const trackReadOnly = !readonly && row.editable === false
+            const track = createElement('div', `lgs1920-wa-timeline__track${trackReadOnly ? ' lgs1920-wa-timeline__track--read-only' : ''}${row.visible === false ? ' lgs1920-wa-timeline__track--hidden' : ''}${dragState?.type === 'row' && dragState.rowId === row.id ? ' lgs1920-wa-timeline__track--dragging' : ''}${isRejectedRow ? ' lgs1920-wa-timeline__track--drop-rejected' : ''}${isClipDropTarget ? ' lgs1920-wa-timeline__track--clip-drop-target' : ''}${isClipDropRejected ? ' lgs1920-wa-timeline__track--clip-drop-rejected' : ''}`, {part: 'track', 'data-row-id': row.id})
             track.style.height = 'var(--lgs-timeline-row-height)'
-            const trackBackground = createElement('div', `lgs1920-wa-timeline__track-background${row.editable === false ? ' lgs1920-wa-timeline__track-background--read-only' : ''}${row.visible === false ? ' lgs1920-wa-timeline__track-background--hidden' : ''}${isClipDropRejected ? ' lgs1920-wa-timeline__track-background--clip-drop-rejected' : ''}`, {
+            const trackBackground = createElement('div', `lgs1920-wa-timeline__track-background${trackReadOnly ? ' lgs1920-wa-timeline__track-background--read-only' : ''}${row.visible === false ? ' lgs1920-wa-timeline__track-background--hidden' : ''}${isClipDropRejected ? ' lgs1920-wa-timeline__track-background--clip-drop-rejected' : ''}`, {
                 part: 'track-background',
                 'data-row-id': row.id,
                 'aria-hidden': 'true',
@@ -580,9 +567,18 @@ export const createTimelineRenderer = ({
             for (const value of row.actions ?? []) {
                 track.append(clip(Object.assign({}, value, {trackId: row.id}), majorSeconds, row.visible !== false, row.editable !== false, row.clipResizable === true))
             }
-            track.addEventListener('dragover', event => handleClipDragOver(event, row.id, track))
-            track.addEventListener('dragleave', event => handleClipDragLeave(event, track))
-            track.addEventListener('drop', event => handleClipDrop(event, row.id, track))
+            if (interactive) {
+                track.addEventListener('dragover', event => handleClipDragOver(event, row.id, track))
+                track.addEventListener('dragleave', event => handleClipDragLeave(event, track))
+                track.addEventListener('drop', event => handleClipDrop(event, row.id, track))
+            }
+            if (interactive && timeline.editable !== false && row.editable !== false) {
+                track.addEventListener('contextmenu', event => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    openTrackContextMenu(row, event)
+                })
+            }
             tracks.append(track)
         })
         const tracksViewport = createElement('div', 'lgs1920-wa-timeline__tracks-viewport', {
@@ -595,16 +591,17 @@ export const createTimelineRenderer = ({
             part: 'playhead',
             'data-playhead': '',
             role: 'slider',
-            tabindex: interactive ? 0 : -1,
+            tabindex: playheadInteractive ? 0 : -1,
+            'aria-disabled': playheadInteractive ? null : 'true',
             'aria-label': 'Current timeline position',
             'aria-valuemin': getRangeStartMillis(),
             'aria-valuemax': getRangeEndMillis(),
             'aria-valuenow': getCurrentTimeMillis(),
         })
         const playheadGrip = createElement('span', 'lgs1920-wa-timeline__playhead-grip', {part: 'playhead-grip'})
-        if (interactive) playheadGrip.append(createIcon('grip-dots-vertical', 'solid'))
+        if (playheadInteractive) playheadGrip.append(createIcon('grip-dots-vertical', 'solid'))
         playhead.append(playheadGrip)
-        if (interactive) {
+        if (playheadInteractive) {
             playheadGrip.addEventListener('pointerdown', event => startPlayheadInteraction(event))
             playhead.addEventListener('keydown', event => movePlayheadByKeyboard(event))
         }

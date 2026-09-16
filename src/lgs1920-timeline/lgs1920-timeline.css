@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-15
+ * Last modified: 2026-09-16
  *
  *
  * Copyright © 2026 LGS1920
@@ -144,8 +144,6 @@
     --lgs-timeline-clip-handle-width: 10px;
     /* Timeline clip edge handle color. */
     --lgs-timeline-clip-handle-color: var(--wa-color-on-loud, white);
-    /* Timeline clip edge handle hover color. */
-    --lgs-timeline-clip-handle-hover-color: var(--wa-color-on-loud, white);
     /* Timeline clip resize grab zone color. */
     --lgs-timeline-clip-resize-grab-color: color-mix(in srgb, white 34%, transparent);
     /* Timeline clip edge handle focus ring. */
@@ -153,7 +151,7 @@
     /* Horizontal padding for the compact track-title editor. */
     --lgs-timeline-label-editor-padding-inline: var(--lgs-gutter-xs, 0.5rem);
     /* Vertical padding for the compact track-title editor. */
-    --lgs-timeline-label-editor-padding-block: 0.125rem;
+    --lgs-timeline-label-editor-padding-block: 0.25rem;
     /* Flat branded tint applied to read-only tracks and their title rows. */
     --lgs-timeline-read-only-background: color-mix(in srgb, var(--wa-color-danger-fill-loud, var(--wa-color-red-60, #d33)) 14%, var(--lgs-timeline-surface-color));
     /* Flat disabled tint applied to hidden tracks and their title rows. */
@@ -421,6 +419,25 @@
         width: var(--lgs-timeline-resizer-width);
         min-width: var(--lgs-timeline-resizer-width);
         background-color: var(--lgs-timeline-background);
+        border-inline: 1px solid var(--lgs-timeline-border-color);
+    }
+
+    & .lgs1920-wa-timeline__split-panel[data-divider-active]::part(divider),
+    & .lgs1920-wa-timeline__split-panel::part(divider):focus,
+    & .lgs1920-wa-timeline__split-panel:focus-within::part(divider) {
+        background-color: var(--wa-color-brand-fill-loud, var(--wa-color-brand));
+        border-inline-color: var(--wa-color-brand-border-normal, var(--wa-color-brand));
+    }
+
+    & .lgs1920-wa-timeline__split-panel > wa-icon[slot='divider'] {
+        color: var(--lgs-timeline-quiet-text-color);
+        font-size: 0.75rem;
+        margin: 2px;
+        pointer-events: none;
+    }
+
+    & .lgs1920-wa-timeline__split-panel:is(:focus-within, [data-divider-active]) > wa-icon[slot='divider'] {
+        color: var(--wa-color-brand-on-loud, var(--wa-color-text-normal));
     }
 
     & .lgs1920-wa-timeline__legend {
@@ -490,6 +507,11 @@
         min-width: 0;
         min-height: 0;
         overflow: hidden;
+    }
+
+    & .lgs1920-wa-timeline__scroll-shell--surface {
+        /* Keep the edge protection fixed while the timeline surface scrolls. */
+        --lgs-timeline-viewport-margin: 0.5rem;
     }
 
     & .lgs1920-wa-timeline__scroll-shell--legend {
@@ -721,6 +743,12 @@
         height: 100%;
         flex: 1 1 auto;
         overflow: hidden;
+        padding-inline-start: 4px;
+    }
+
+    & form.lgs1920-wa-timeline__track-content {
+        margin: 0;
+        border: 0;
     }
 
     & .lgs1920-wa-timeline__track-content > slot {
@@ -741,55 +769,6 @@
         white-space: nowrap;
     }
 
-    & .lgs1920-wa-timeline__track-actions {
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        gap: 0;
-        align-self: stretch;
-        flex: 0 0 auto;
-        min-width: calc(1.25rem * 2);
-        margin-inline-end: -3px;
-    }
-
-    & .lgs1920-wa-timeline__track-actions > slot {
-        display: inline-flex;
-        flex: 0 0 1.25rem;
-        align-items: center;
-        justify-content: center;
-        width: 1.25rem;
-        min-width: 1.25rem;
-        min-height: 1.25rem;
-    }
-
-    & .lgs1920-wa-timeline__track-actions > wa-button {
-        flex: 0 0 1.25rem;
-        width: 1.25rem;
-        height: 1.25rem;
-        min-height: 1.25rem;
-        margin: 0;
-        padding: 0;
-    }
-
-    & .lgs1920-wa-timeline__track-actions > wa-button::part(button) {
-        box-sizing: border-box;
-        width: 1.25rem;
-        height: 1.25rem;
-        min-height: 1.25rem;
-        margin: 0;
-        padding: 0;
-    }
-
-    & .lgs1920-wa-timeline__action-placeholder {
-        display: inline-flex;
-        flex: 0 0 1.25rem;
-        width: 1.25rem;
-        min-width: 1.25rem;
-        min-height: 1.25rem;
-        pointer-events: none;
-        visibility: hidden;
-    }
-
     & .lgs1920-wa-timeline__label-editor {
         display: block;
         align-self: center;
@@ -802,11 +781,13 @@
         margin-inline: 2px;
         padding-block: 0;
         padding-inline: 0;
+        user-select: text;
+        -webkit-user-select: text;
         /* Keep the Web Awesome control compact without coupling it to row height. */
         --wa-form-control-height: auto;
-        --wa-form-control-padding-block: 0;
-        --wa-form-control-padding-inline: 0;
-        --wa-form-control-value-line-height: 1;
+        --wa-form-control-padding-block: var(--lgs-timeline-label-editor-padding-block);
+        --wa-form-control-padding-inline: var(--lgs-timeline-label-editor-padding-inline);
+        --wa-form-control-value-line-height: normal;
     }
 
     & .lgs1920-wa-timeline__label-editor::part(form-control-label) {
@@ -818,7 +799,8 @@
         height: auto;
         min-height: 0;
         margin: 0;
-        padding: 0;
+        padding-block: var(--lgs-timeline-label-editor-padding-block);
+        padding-inline: var(--lgs-timeline-label-editor-padding-inline);
     }
 
     & .lgs1920-wa-timeline__label-editor::part(input) {
@@ -828,14 +810,14 @@
         margin: 0;
         padding-block: 0;
         padding-inline: 0;
-        line-height: 1;
+        line-height: normal;
+        user-select: text;
+        -webkit-user-select: text;
     }
 
     & .lgs1920-wa-timeline__surface {
         /* Keep the surface card body flush with the existing timeline layout. */
         --spacing: 0;
-        /* Keep a small gutter around the currently visible horizontal viewport. */
-        --lgs-timeline-viewport-margin: max(var(--lgs-timeline-scale-offset), var(--lgs-timeline-end-padding));
         /* Use the compact Web Awesome radius for the time panel. */
         --wa-panel-border-radius: var(--wa-border-radius-s);
         position: relative;
@@ -853,23 +835,31 @@
         scrollbar-width: none;
     }
 
-    & .lgs1920-wa-timeline__surface[data-viewport-margin-left]::before,
-    & .lgs1920-wa-timeline__surface[data-viewport-margin-right]::after {
+    & .lgs1920-wa-timeline__surface-edge-gutters {
         position: absolute;
         top: 0;
         bottom: 0;
         z-index: 3;
-        width: var(--lgs-timeline-viewport-margin);
-        content: '';
-        background: var(--lgs-timeline-surface-color);
+        left: 0;
+        right: 0;
         pointer-events: none;
     }
 
-    & .lgs1920-wa-timeline__surface[data-viewport-margin-left]::before {
+    & .lgs1920-wa-timeline__surface-edge-gutter {
+        position: absolute;
+        top: var(--lgs-timeline-header-height);
+        bottom: var(--lgs-timeline-controls-height);
+        box-sizing: border-box;
+        width: var(--lgs-timeline-viewport-margin);
+        background: var(--lgs-timeline-surface-color);
+        border: 1px solid var(--lgs-timeline-quiet-border-color);
+    }
+
+    & .lgs1920-wa-timeline__surface-edge-gutter--start {
         left: 0;
     }
 
-    & .lgs1920-wa-timeline__surface[data-viewport-margin-right]::after {
+    & .lgs1920-wa-timeline__surface-edge-gutter--end {
         right: 0;
     }
 
@@ -1001,7 +991,7 @@
         pointer-events: none;
     }
 
-    & .lgs1920-wa-timeline__surface--read-only :is(.lgs1920-wa-timeline__playhead-grip, .lgs1920-wa-timeline__range-handle) {
+    & .lgs1920-wa-timeline__surface--read-only .lgs1920-wa-timeline__range-handle {
         cursor: default;
         pointer-events: none;
     }
@@ -1405,6 +1395,15 @@
         touch-action: none;
     }
 
+    & .lgs1920-wa-timeline__range-handle[aria-disabled='true'] {
+        cursor: default;
+        pointer-events: none;
+    }
+
+    & .lgs1920-wa-timeline__range-handle[aria-disabled='true'] > .lgs1920-wa-timeline__range-grip > :is(slot, wa-icon) {
+        display: none;
+    }
+
     & .lgs1920-wa-timeline__range-handle > .lgs1920-wa-timeline__range-grip {
         z-index: 21;
     }
@@ -1437,7 +1436,6 @@
         box-shadow: var(--wa-shadow-s);
     }
 
-    & .lgs1920-wa-timeline__range-handle:hover::before,
     & .lgs1920-wa-timeline__range-handle:focus-visible::before {
         width: 3px;
     }
@@ -1492,7 +1490,7 @@
         opacity: 0.75;
     }
 
-    & .lgs1920-wa-timeline__clip.lgs1920-wa-timeline__clip--resizing .lgs1920-wa-timeline__clip-handle {
+    & .lgs1920-wa-timeline__clip.lgs1920-wa-timeline__clip--resizing .lgs1920-wa-timeline__clip-handle--resizing {
         background: var(--lgs-timeline-clip-resize-grab-color);
     }
 
@@ -1641,16 +1639,17 @@
         cursor: ew-resize;
     }
 
+    & .lgs1920-wa-timeline__clip-handle[aria-hidden='true'] {
+        display: none;
+        cursor: default;
+    }
+
     & .lgs1920-wa-timeline__clip-handle::before {
         width: 4px;
         height: 12px;
         content: '';
         border-inline: 1px solid currentColor;
         filter: drop-shadow(0 1px 1px color-mix(in srgb, black 55%, transparent));
-    }
-
-    & .lgs1920-wa-timeline__clip-handle:hover {
-        color: var(--lgs-timeline-clip-handle-hover-color);
     }
 
     & .lgs1920-wa-timeline__clip-handle:focus-visible {
@@ -1708,7 +1707,8 @@
         overflow-y: auto;
     }
 
-    & .lgs1920-wa-timeline__clip-context-menu .lgs1920-wa-timeline__menu {
+    & .lgs1920-wa-timeline__clip-context-menu .lgs1920-wa-timeline__menu,
+    & .lgs1920-wa-timeline__track-context-menu .lgs1920-wa-timeline__menu {
         width: max-content;
         min-width: 0;
         max-width: min(90vw, 30rem);
@@ -1719,20 +1719,23 @@
         width: 100%;
     }
 
-    & .lgs1920-wa-timeline__clip-context-menu .lgs1920-wa-timeline__menu-item {
+    & .lgs1920-wa-timeline__clip-context-menu .lgs1920-wa-timeline__menu-item,
+    & .lgs1920-wa-timeline__track-context-menu .lgs1920-wa-timeline__menu-item {
         display: block;
         min-width: 0;
         text-align: start;
     }
 
-    & .lgs1920-wa-timeline__clip-context-menu .lgs1920-wa-timeline__menu-item::part(base) {
+    & .lgs1920-wa-timeline__clip-context-menu .lgs1920-wa-timeline__menu-item::part(base),
+    & .lgs1920-wa-timeline__track-context-menu .lgs1920-wa-timeline__menu-item::part(base) {
         justify-content: flex-start;
         width: 100%;
         min-width: 0;
         text-align: start;
     }
 
-    & .lgs1920-wa-timeline__clip-context-menu .lgs1920-wa-timeline__menu-icon {
+    & .lgs1920-wa-timeline__clip-context-menu .lgs1920-wa-timeline__menu-icon,
+    & .lgs1920-wa-timeline__track-context-menu .lgs1920-wa-timeline__menu-icon {
         display: inline-flex;
         flex: 0 0 1.25rem;
         align-items: center;
@@ -1742,12 +1745,14 @@
         margin-inline-end: var(--lgs-gutter-xs, 0.5rem);
     }
 
-    & .lgs1920-wa-timeline__clip-context-menu .lgs1920-wa-timeline__menu-label {
+    & .lgs1920-wa-timeline__clip-context-menu .lgs1920-wa-timeline__menu-label,
+    & .lgs1920-wa-timeline__track-context-menu .lgs1920-wa-timeline__menu-label {
         min-width: 0;
         white-space: nowrap;
     }
 
-    & .lgs1920-wa-timeline__clip-context-menu .lgs1920-wa-timeline__menu {
+    & .lgs1920-wa-timeline__clip-context-menu .lgs1920-wa-timeline__menu,
+    & .lgs1920-wa-timeline__track-context-menu .lgs1920-wa-timeline__menu {
         position: relative;
     }
 
