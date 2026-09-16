@@ -8,8 +8,8 @@
  * Author : LGS1920 Team
  * email: studio@lgs1920.fr
  *
- * Created on: 2026-09-13
- * Last modified: 2026-09-13
+ * Created on: 2026-09-14
+ * Last modified: 2026-09-16
  *
  *
  * Copyright © 2026 LGS1920
@@ -25,6 +25,7 @@ vi.mock('@awesome.me/webawesome/dist/components/icon/icon.js', () => ({}))
 vi.mock('@awesome.me/webawesome/dist/components/input/input.js', () => ({}))
 vi.mock('@awesome.me/webawesome/dist/components/popup/popup.js', () => ({}))
 vi.mock('@awesome.me/webawesome/dist/components/split-panel/split-panel.js', () => ({}))
+vi.mock('@awesome.me/webawesome/dist/components/slider/slider.js', () => ({}))
 vi.mock('@awesome.me/webawesome/dist/components/tooltip/tooltip.js', () => ({}))
 
 import {LGS1920Timeline} from '../src/lgs1920-timeline/LGS1920Timeline'
@@ -128,7 +129,7 @@ describe('timeline gesture integrity', () => {
         const changes = vi.fn()
         const after = vi.fn()
         timeline.addEventListener('lgs1920-timeline-clip-change', changes)
-        timeline.addEventListener('lgs1920-timeline-after-clip-change', after)
+        timeline.on('clip-change', null, {after})
         begin(timeline)
         pointer('pointermove', 100)
         pointer('pointermove', 220, 70)
@@ -193,7 +194,7 @@ describe('timeline gesture integrity', () => {
 
     it('does not change range or duration when an extending keyboard resize is vetoed', () => {
         const timeline = mount({keyboardStepSeconds: 10})
-        timeline.addEventListener('lgs1920-timeline-before-clip-change', event => event.preventDefault())
+        timeline.on('clip-change', null, {before: event => event.preventDefault()})
         timeline.shadowRoot.querySelector('[data-clip-id="clip"] [data-clip-handle="end"]')
             .dispatchEvent(new KeyboardEvent('keydown', {key: 'ArrowRight', bubbles: true}))
         expect(timeline.timeline.durationMillis).toBe(10_000)

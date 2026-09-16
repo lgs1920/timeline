@@ -201,36 +201,80 @@ describe('lgs1920-timeline Web Component', () => {
             .toBe('left-right')
     })
 
-    it('emits cancelable before, main, and after events for transport actions', () => {
+    it('accepts grouped options', () => {
+        const timeline = new LGS1920Timeline()
+        timeline.options = {
+            mode: 'review',
+            durationMillis: 60_000,
+            playback: {loop: 'hidden', timeSlider: 'hidden'},
+            view: {zoomSlider: true, buildingOverlay: false},
+            editing: {clipMenu: true},
+            range: {startMillis: 5_000, endMillis: 50_000},
+        }
+        document.body.append(timeline)
+
+        expect(timeline.options.mode).toBe('review')
+        expect(timeline.timeline.interactive).toBe(true)
+        expect(timeline.timeline.editable).toBe(false)
+        expect(timeline.timeline.rangeStartMillis).toBe(5_000)
+        expect(timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-timeline-loop"]')).toBeNull()
+        expect(timeline.shadowRoot.querySelector('[data-timeline-time-slider]')).toBeNull()
+        expect(timeline.shadowRoot.querySelector('[data-timeline-zoom-slider]')).not.toBeNull()
+    })
+
+    it('registers one event with cancelable before and after hooks', () => {
         const timeline = new LGS1920Timeline()
         const order = []
         configureTimeline(timeline, {currentTimeMillis: 1_000})
-        timeline.addEventListener('lgs1920-timeline-before-play', event => order.push(`before:${event.type}`))
-        timeline.addEventListener('lgs1920-timeline-play', event => order.push(event.type))
-        timeline.addEventListener('lgs1920-timeline-after-play', event => order.push(`after:${event.type}`))
+        timeline.on('play', event => order.push(`main:${event.type}`), {
+            before: event => order.push(`before:${event.type}`),
+            after: event => order.push(`after:${event.type}`),
+        })
         document.body.append(timeline)
 
         timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-timeline-play"]').click()
 
         expect(order).toEqual([
-            'before:lgs1920-timeline-before-play',
-            'lgs1920-timeline-play',
-            'after:lgs1920-timeline-after-play',
+            'before:lgs1920-timeline-play',
+            'main:lgs1920-timeline-play',
+            'after:lgs1920-timeline-play',
         ])
 
         const blocked = vi.fn(event => event.preventDefault())
-        timeline.addEventListener('lgs1920-timeline-before-pause', blocked)
+        timeline.on('pause', null, {before: blocked})
         const pause = vi.fn()
         const afterPause = vi.fn()
-        timeline.addEventListener('lgs1920-timeline-pause', pause)
-        timeline.addEventListener('lgs1920-timeline-after-pause', afterPause)
+        timeline.on('pause', pause, {after: afterPause})
         timeline.playing = true
         timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-timeline-play"]').click()
 
         expect(blocked).toHaveBeenCalledOnce()
         expect(blocked.mock.calls[0][0].cancelable).toBe(true)
+        expect(blocked.mock.calls[0][0].type).toBe('lgs1920-timeline-pause')
         expect(pause).not.toHaveBeenCalled()
         expect(afterPause).not.toHaveBeenCalled()
+    })
+
+    it('keeps repeated event subscriptions independent', () => {
+        const timeline = new LGS1920Timeline()
+        const handler = vi.fn()
+        const unsubscribeFirst = timeline.on('seek', handler)
+        const unsubscribeSecond = timeline.on('lgs1920-timeline-seek', handler)
+        document.body.append(timeline)
+
+        const dispatchSeek = () => timeline.dispatchEvent(new CustomEvent('lgs1920-timeline-seek', {
+            detail: {timeMillis: 1_000},
+        }))
+        dispatchSeek()
+        expect(handler).toHaveBeenCalledTimes(2)
+
+        unsubscribeFirst()
+        dispatchSeek()
+        expect(handler).toHaveBeenCalledTimes(3)
+
+        unsubscribeSecond()
+        dispatchSeek()
+        expect(handler).toHaveBeenCalledTimes(3)
     })
 
     it('keeps the initial ruler wide enough for five seconds', () => {
@@ -292,7 +336,8 @@ describe('lgs1920-timeline Web Component', () => {
         expect(timeline.shadowRoot.querySelector('slot[name="custom-menu"]').assignedElements()).toEqual([customMenu])
         const headerEnd = timeline.shadowRoot.querySelector('.lgs1920-wa-timeline__header-end')
         expect(headerEnd.querySelector('slot[name="header-actions"]')).not.toBeNull()
-        expect(headerEnd.querySelector('.lgs1920-wa-timeline__transport')).not.toBeNull()
+        expect(headerEnd.querySelector('.lgs1920-wa-timeline__transport')).toBeNull()
+        expect(timeline.shadowRoot.querySelector('[part="playback-transport"] .lgs1920-wa-timeline__transport')).not.toBeNull()
         const customMenuClick = vi.fn()
         customMenu.addEventListener('click', customMenuClick)
         customMenu.dispatchEvent(new MouseEvent('click', {bubbles: true, composed: true}))
@@ -559,7 +604,7 @@ describe('lgs1920-timeline Web Component', () => {
         expect(timeline.shadowRoot.querySelector('slot[name="footer"]')).not.toBeNull()
         expect(controlsSpacer).toBeNull()
         expect(customMenu.parentElement).toBe(header)
-        expect(transport.parentElement).toBe(headerEnd)
+        expect(transport.parentElement).toBe(timeline.shadowRoot.querySelector('[part="playback-transport"]'))
         expect([...header.children]).toEqual([headerStart, customMenu, headerEnd])
         expect(tools.querySelectorAll('.lgs1920-wa-timeline__timeline-tool')).toHaveLength(2)
         expect(tooltips).toHaveLength(2)
@@ -603,7 +648,6 @@ describe('lgs1920-timeline Web Component', () => {
         const timeline = new LGS1920Timeline()
         configureTimeline(timeline, {
             timeline: {
-                showTimeSlider: true,
                 showZoomSlider: true,
                 frameIntervalMillis: 40,
             },
@@ -620,7 +664,7 @@ describe('lgs1920-timeline Web Component', () => {
 
         expect(timeSlider).not.toBeNull()
         expect(timeSlider.closest('[part="timeline-scrubber"]')).not.toBeNull()
-        expect(timeSlider.closest('slot')).toBeNull()
+        expect(timeSlider.closest('slot')?.getAttribute('name')).toBe('time-slider')
         const sliderPointerDown = createPointerEvent('pointerdown', {clientX: 0, clientY: 10})
         timeSlider.dispatchEvent(sliderPointerDown)
         expect(sliderPointerDown.defaultPrevented).toBe(false)
@@ -666,7 +710,7 @@ describe('lgs1920-timeline Web Component', () => {
 
     it('does not render built-in sliders when their display options are disabled', () => {
         const timeline = new LGS1920Timeline()
-        configureTimeline(timeline)
+        configureTimeline(timeline, {timeline: {noTimeSlider: true, showZoomSlider: false}})
         document.body.append(timeline)
 
         expect(timeline.shadowRoot.querySelector('[data-timeline-time-slider]')).toBeNull()
@@ -1564,6 +1608,58 @@ describe('lgs1920-timeline Web Component', () => {
         expect([...timeline.shadowRoot.querySelectorAll('[role="menuitem"]')]).toHaveLength(0)
     })
 
+    it('places the transport slot before the playback time and toggles loop mode', () => {
+        const timeline = new LGS1920Timeline()
+        const transportContent = document.createElement('span')
+        transportContent.slot = 'transport'
+        transportContent.textContent = 'Host transport'
+        timeline.append(transportContent)
+        configureTimeline(timeline)
+        document.body.append(timeline)
+
+        const playback = timeline.shadowRoot.querySelector('[part="playback-controls"]')
+        const transport = timeline.shadowRoot.querySelector('[part="playback-transport"]')
+        const loopButton = timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-timeline-loop"]')
+        const loopTooltip = transport.querySelector(`wa-tooltip[for="${loopButton.id}"]`)
+        const loopEvents = []
+        timeline.on('loop-change', null, {before: event => loopEvents.push(`before:${event.detail.looping}`)})
+        timeline.addEventListener('lgs1920-timeline-loop-change', event => loopEvents.push(`change:${event.detail.looping}`))
+        timeline.on('loop-change', null, {after: event => loopEvents.push(`after:${event.detail.looping}`)})
+
+        expect(playback.querySelector('slot[name="transport"]').assignedElements()).toEqual([transportContent])
+        expect(playback.querySelector('slot[name="playback-total"]')).not.toBeNull()
+        expect(playback.querySelector('slot[name="playback-separator"]')).toBeNull()
+        expect(transport.contains(loopButton)).toBe(true)
+        expect(loopTooltip).not.toBeNull()
+        expect(loopTooltip.textContent).toBe('Enable loop mode')
+        expect(loopButton.querySelector('wa-icon').getAttribute('name')).toBe('repeat')
+        expect(loopButton.getAttribute('aria-pressed')).toBe('false')
+        expect(loopButton.getAttribute('variant')).toBe('neutral')
+
+        loopButton.click()
+
+        expect(loopEvents).toEqual(['before:true', 'change:true', 'after:true'])
+        expect(timeline.looping).toBe(true)
+        expect(loopButton.getAttribute('aria-pressed')).toBe('true')
+        expect(loopButton.getAttribute('variant')).toBe('brand')
+        expect(loopButton.getAttribute('aria-label')).toBe('Disable loop mode')
+        expect(transport.querySelector(`wa-tooltip[for="${loopButton.id}"]`)).toBe(loopTooltip)
+        expect(loopTooltip.textContent).toBe('Disable loop mode')
+    })
+
+    it('hides loop mode when noloopmode is enabled', () => {
+        const timeline = new LGS1920Timeline()
+        timeline.noLoopMode = true
+        configureTimeline(timeline, {looping: true})
+        timeline.looping = true
+        document.body.append(timeline)
+
+        expect(timeline.noLoopMode).toBe(true)
+        expect(timeline.looping).toBe(false)
+        expect(timeline.shadowRoot.querySelector('slot[name="transport"]')).not.toBeNull()
+        expect(timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-timeline-loop"]')).toBeNull()
+    })
+
     it('keeps native mouse and pointer events inside the timeline host', () => {
         const timeline = new LGS1920Timeline()
         configureTimeline(timeline)
@@ -1740,6 +1836,7 @@ describe('lgs1920-timeline Web Component', () => {
         events.forEach(name => timeline.addEventListener(`lgs1920-timeline-${name}`, listeners[name]))
 
         expect(timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-timeline-play"]')).toBeNull()
+        expect(timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-timeline-loop"]')).toBeNull()
         expect(timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-timeline-restart"]')).toBeNull()
         expect(timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-add-clip"]')).toBeNull()
         expect(timeline.shadowRoot.querySelector('[data-surface]').getAttribute('tabindex')).toBe('-1')
@@ -2254,7 +2351,7 @@ describe('lgs1920-timeline Web Component', () => {
                 clips: [{id: 'clip', kind: 'video', start: 1, end: 4}],
             }],
         })
-        timeline.addEventListener('lgs1920-timeline-before-drag', beforeDrag)
+        timeline.on('drag', null, {before: beforeDrag})
         timeline.addEventListener('lgs1920-timeline-track-label-change', labelChanges)
         timeline.addEventListener('lgs1920-timeline-clip-change', clipChanges)
         timeline.addEventListener('lgs1920-timeline-range-change', rangeChanges)
@@ -3344,9 +3441,9 @@ describe('lgs1920-timeline Web Component', () => {
         configureTimeline(timeline, {
             tracks: [{id: 'main', label: 'Main', clips: [{id: 'clip', start: 1, end: 4}]}],
         })
-        timeline.addEventListener('lgs1920-timeline-before-remove-clip', beforeRemove)
+        const removeBefore = timeline.on('remove-clip', null, {before: beforeRemove})
         timeline.addEventListener('lgs1920-timeline-remove-clip', removals)
-        timeline.addEventListener('lgs1920-timeline-after-remove-clip', afterRemove)
+        timeline.on('remove-clip', null, {after: afterRemove})
         document.body.append(timeline)
 
         let clip = timeline.shadowRoot.querySelector('[data-clip-id="clip"]')
@@ -3363,7 +3460,7 @@ describe('lgs1920-timeline Web Component', () => {
         expect(removals).not.toHaveBeenCalled()
         expect(timeline.tracks[0].clips).toHaveLength(1)
 
-        timeline.removeEventListener('lgs1920-timeline-before-remove-clip', beforeRemove)
+        removeBefore()
         clip = timeline.shadowRoot.querySelector('[data-clip-id="clip"]')
         clip.dispatchEvent(new KeyboardEvent('keydown', {key: 'Backspace', bubbles: true, cancelable: true}))
 
@@ -4599,9 +4696,9 @@ describe('lgs1920-timeline Web Component', () => {
         timeline.addEventListener('lgs1920-timeline-clip-change', event => {
             timeline.tracks = event.detail.tracks
         })
-        timeline.addEventListener('lgs1920-timeline-before-drag', beforeDrag)
+        timeline.on('drag', null, {before: beforeDrag})
         timeline.addEventListener('lgs1920-timeline-drag', drag)
-        timeline.addEventListener('lgs1920-timeline-after-drag', afterDrag)
+        timeline.on('drag', null, {after: afterDrag})
         document.body.append(timeline)
 
         const surface = timeline.shadowRoot.querySelector('[data-surface]')
@@ -5024,11 +5121,11 @@ describe('lgs1920-timeline Web Component', () => {
             timeline: {showClipMenu: true},
             clipOptions: [{group: 'media', key: 'video', id: 'inserted', label: 'Inserted', duration: 1, trackId: 'main#one'}],
         })
-        timeline.addEventListener('lgs1920-timeline-before-add-clip', event => {
+        timeline.on('add-clip', null, {before: event => {
             if (!cancelNextInsertion) return
             cancelNextInsertion = false
             event.preventDefault()
-        })
+        }})
         timeline.addEventListener('lgs1920-timeline-add-clip', additions)
         document.body.append(timeline)
 
@@ -5463,9 +5560,9 @@ describe('lgs1920-timeline Web Component', () => {
             ],
         })
         timeline.addEventListener('lgs1920-timeline-reorder', reorders)
-        timeline.addEventListener('lgs1920-timeline-before-drag', beforeDrag)
+        timeline.on('drag', null, {before: beforeDrag})
         timeline.addEventListener('lgs1920-timeline-drag', drag)
-        timeline.addEventListener('lgs1920-timeline-after-drag', afterDrag)
+        timeline.on('drag', null, {after: afterDrag})
         document.body.append(timeline)
 
         const nameArea = timeline.shadowRoot.querySelector('[data-row-id="first"] [part="legend-content"]')
@@ -5577,7 +5674,7 @@ describe('lgs1920-timeline Web Component', () => {
         const afterDrag = vi.fn()
         configureTimeline(timeline, {tracks})
         timeline.addEventListener('lgs1920-timeline-reorder', reorders)
-        timeline.addEventListener('lgs1920-timeline-after-drag', afterDrag)
+        timeline.on('drag', null, {after: afterDrag})
         document.body.append(timeline)
 
         const nameArea = timeline.shadowRoot.querySelector('[data-row-id="moving"] [part="legend-content"]')
