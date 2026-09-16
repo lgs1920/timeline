@@ -88,8 +88,6 @@ const readonlyTimeSlider = document.querySelector('#readonly-time-slider')
 const readonlyTimeTooltip = document.querySelector('#readonly-time-tooltip')
 const readonlyStatus = document.querySelector('#readonly-status')
 const rangeTimeline = document.querySelector('#range-timeline')
-const rangeTimeSlider = document.querySelector('#range-time-slider')
-const rangeTimeTooltip = document.querySelector('#range-time-tooltip')
 const eventOutput = document.querySelector('#event-output')
 const eventStatus = document.querySelector('#event-status')
 const rangeStatus = document.querySelector('#range-status')
@@ -315,15 +313,18 @@ configureTimeline(studioTimeline, studioTimelineOptions)
 configureTimeline(interactiveTimeline, {
     durationMillis: SHORT_DEMO_DURATION_MILLIS,
     mode: 'edit',
+    playback: {loop: 'hidden'},
     editing: {clipMenu: false},
 })
 configureTimeline(readonlyTimeline, {
     durationMillis: SHORT_DEMO_DURATION_MILLIS,
     mode: 'readonly',
+    playback: {loop: 'hidden'},
 })
 configureTimeline(rangeTimeline, {
     durationMillis: SHORT_DEMO_DURATION_MILLIS,
     mode: 'edit',
+    playback: {loop: 'hidden'},
     range: {startMillis: 6_000, endMillis: 24_000},
     editing: {clipMenu: false},
 })
@@ -1107,7 +1108,6 @@ const createPacmanDemo = ({canvas, popup, timeline, status, progress, almostProg
 }
 
 readonlyTimeSlider.valueFormatter = value => `${formatMillis(value)} / ${formatMillis(SHORT_DEMO_DURATION_MILLIS)}`
-rangeTimeSlider.valueFormatter = value => `${formatMillis(value)} / ${formatMillis(SHORT_DEMO_DURATION_MILLIS)}`
 
 let studioPacmanDemo
 
@@ -1417,8 +1417,6 @@ let currentRangeStartMillis = 6_000
 let currentRangeEndMillis = 24_000
 
 const updateRangeStatus = timeMillis => {
-    rangeTimeSlider.value = timeMillis
-    rangeTimeTooltip.textContent = rangeTimeSlider.valueFormatter(rangeTimeSlider.value)
     rangeStatus.textContent = `Range: ${formatMillis(currentRangeStartMillis)} – ${formatMillis(currentRangeEndMillis)} · Playback ${rangeTimeline.playing ? 'running' : 'paused'} at ${formatMillis(timeMillis)}`
 }
 
@@ -1436,8 +1434,6 @@ rangeTimeline.addEventListener('lgs1920-timeline-range-change', event => {
     rangeClock.seek(rangeTimeline.currentTimeMillis)
 })
 
-rangeTimeSlider.addEventListener('input', event => rangeClock.seek(event.currentTarget.value))
-rangeTimeSlider.addEventListener('change', event => rangeClock.seek(event.currentTarget.value))
 rangeTimeline.addEventListener('lgs1920-timeline-play', () => {
     rangeTimeline.playing = true
     rangeClock.start()

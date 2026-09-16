@@ -366,12 +366,10 @@ player.addEventListener('timeupdate', () =&gt; {
                 <p>The selected range defines the portion of the timeline that can be played. The light-blue ruler area shows the portion that will actually be recorded or played back.</p>
                 <ul>
                     <li>Drag the green start handle and red end handle to change the range.</li>
-                    <li>Use the external slider to inspect the current position inside the selected range.</li>
+                    <li>Use the timeline transport to inspect the current position inside the selected range.</li>
                     <li>The host updates the playback clock when a range change is committed.</li>
                 </ul>
             </wa-details>
-            <wa-slider id="range-time-slider" label="Range playback time" size="s" variant="brand" min="0" max="30000" step="33.333" value="0"></wa-slider>
-            <wa-tooltip id="range-time-tooltip" for="range-time-slider" placement="top">00:00 / 00:30</wa-tooltip>
             <lgs1920-timeline id="range-timeline" aria-label="Timeline with editable video range"></lgs1920-timeline>
             <p id="range-status" class="demo-note" role="status" aria-live="polite">Range: 00:06 – 00:24 · Playback paused at 00:06</p>
             <pre class="demo-code"><code data-language="javascript">timeline.options = {
