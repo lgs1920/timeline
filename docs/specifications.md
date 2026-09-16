@@ -384,7 +384,7 @@ The public state is divided into five controlled values:
 
 | Value | Responsibility | Units or shape |
 | --- | --- | --- |
-| `timeline` | Duration, frame clock, range, visibility, zoom, layout, and policies | Configuration object |
+| `options` | Duration, frame clock, range, visibility, zoom, layout, and policies | Configuration object |
 | `tracks` | Ordered track and clip data | Array of serializable objects |
 | `currentTimeMillis` | Current playhead position | Milliseconds |
 | `playing` | Playback state shown by the component | Boolean |
@@ -395,7 +395,7 @@ populated according to the menu contract. The component must preserve unknown
 application metadata when it returns track or clip objects through events where
 the operation does not replace that data.
 
-The `timeline` object supports the following public configuration areas:
+The `options` object supports the following public configuration areas:
 
 - duration and frame clock: `durationMillis`, `fps`, `frameCount`,
   `frameIntervalMillis`, and `currentFrameIndex`;
@@ -405,7 +405,7 @@ The `timeline` object supports the following public configuration areas:
   `hostInteraction`, and `hostNoDragClass`;
 - zoom and layout: `zoomPercent`, legend width settings, and keyboard zoom;
 - overlays and controls: `showBuildingOverlay`, `noTimeSlider`,
-  `showTimeSlider` compatibility, `showZoomSlider`, `noZoomControls`, and
+  `showZoomSlider`, `noZoomControls`, and
   `showClipMenu`;
 - editing policies: `collisionPolicy`, `resizeCollisionPolicy`,
   `snapThresholdPixels`, `snapReleaseThresholdPixels`,
@@ -417,7 +417,7 @@ The `timeline` object supports the following public configuration areas:
 - theming and actions: `swatches` and `clipActions`.
 
 The `readonly` attribute/property is a separate interaction setting and must be
-documented alongside the `timeline` configuration without being serialized as
+documented alongside the `options` configuration without being serialized as
 part of that configuration object.
 
 The `noLoopMode` boolean property and its `noloopmode` HTML attribute are a

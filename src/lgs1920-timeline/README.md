@@ -209,55 +209,8 @@ separate controlled properties so applications can update them independently.
 | `layout.legend` | `minWidth`, `width`, `maxWidth` | Sets the track legend width bounds. |
 | `editing` | `clipMenu`, `collisionPolicy`, `resizeCollisionPolicy`, `durationPolicy` | Controls editing features and collision behavior. |
 
-The `options` getter returns the same grouped shape. The older flat
-`timeline` property remains available as a migration alias, but new code should
-use `options`.
-
-### `timeline` (migration alias)
-
-| Property | Type | Description |
-| --- | --- | --- |
-| `durationMillis` | `number` | Timeline duration in milliseconds. |
-| `fps` | `number` | Canonical frame rate used by frame navigation. Defaults to `30`. |
-| `frameCount` | `number` | Canonical frame count. Used to clamp previous/next frame requests. |
-| `frameIntervalMillis` | `number` | Canonical interval between frames. Defaults to `1000 / fps`. |
-| `currentFrameIndex` | `number` | Currently published absolute frame index. |
-| `rangeStartMillis` | `number` | Video range start in milliseconds. Defaults to `0`. |
-| `rangeEndMillis` | `number` | Video range end in milliseconds. Defaults to `durationMillis`. |
-| `initialRangeStartVisible` | `boolean` | Keeps the start handle visible on the initial mount and places it at 5% from the left when there is room. Defaults to `true`. |
-| `visible` | `boolean` | Controls timeline visibility. Defaults to `true`. |
-| `zoomPercent` | `number` | Initial ruler zoom up to `500`; the minimum is calculated from the available surface width, full timeline duration, and right safety margin. |
-| `legendMinWidth` | `number` | Minimum track legend width in pixels. Defaults to `50`. |
-| `legendWidth` | `number` | Initial track legend width in pixels. Defaults to `150`. |
-| `legendMaxWidth` | `number` | Maximum track legend width in pixels. Defaults to `250`. |
-| `editable` | `boolean` | Enables all timeline editing actions: track dragging, title editing, clip insertion and movement, and track removal. When `false`, those actions are unavailable. Defaults to `true`. |
-| `interactive` | `boolean` | Enables playback, scrubbing, editing, menus, and emitted interaction events. Defaults to `true`. |
-| `readonly` attribute | `boolean` | Keeps the standard playback controls, fixed start/end range handles, and draggable playhead grip. Disables ruler/surface scrubbing, range editing, view tools, clip editing, menus, drag targets, and clip selection. |
-| `looping` property | `boolean` | Controlled loop playback state reflected by the loop button. The host must apply this state to its playback clock. Defaults to `false`. |
-| `noLoopMode` property / `noloopmode` attribute | `boolean` | Hides the loop button. Defaults to `false`. |
-| `showBuildingOverlay` | `boolean` | Shows the construction overlay during the initial mount. Defaults to `true`. |
-| `noTimeSlider` | `boolean` | Hides the branded time slider in the playback row. Defaults to `false`. `showTimeSlider: false` remains supported as a compatibility setting. |
-| `showTimeSlider` | `boolean` | Compatibility setting for the built-in time slider. `false` hides it; when omitted, the slider is shown unless `noTimeSlider` is `true`. |
-| `showZoomSlider` | `boolean` | Displays the branded horizontal zoom slider in the timeline footer. Defaults to `false`. |
-| `noZoomControls` property / `nozoomcontrols` attribute | `boolean` | Hides the built-in horizontal and vertical zoom controls, including the optional zoom slider. Defaults to `false`. |
-| `collisionPolicy` | `'allow' \| 'prevent' \| 'ripple'` | Default clip collision policy for tracks. Defaults to `prevent`. |
-| `resizeCollisionPolicy` | `'allow' \| 'prevent' \| 'ripple'` | Default collision policy for clip resizes. Defaults to `prevent`. |
-| `snapThresholdPixels` | `number` | Distance from a ruler or clip edge at which snapping starts. Defaults to `8`. |
-| `snapReleaseThresholdPixels` | `number` | Distance at which an active snap is released. Defaults to the start threshold plus four pixels. |
-| `resizeExtendsDuration` | `boolean` | Allows an end resize to increase the timeline duration when it reaches the current end. Defaults to `true`. Set to `false` to keep the duration fixed for end resizes. |
-| `durationPolicy` | `'fixed' \| 'extend'` | Keeps the duration fixed or extends it when an edit exceeds the end. Defaults to `extend`. |
-| `keyboardZoomActive` | `boolean` | Enables arrow-key zoom when the containing host is selected. Defaults to `false`. |
-| `hostInteraction` | `'selectable'` | Allows the embedding host to receive the timeline's selection and drag input. Omit it to keep input local to the component. |
-| `hostNoDragClass` | `string` | Optional class supplied by the embedding host and applied to clips and editable track rows so the host can exclude them from its own drag handling. |
-| `swatches` | `Array<{color, label, palette}>` | Color choices for the clip color menu. Defaults to the ten Web Awesome neutral palette colors. Pass an empty array to hide the color action. |
-| `showClipMenu` | `boolean` | Displays the optional clip creation action. Defaults to `false`. |
-| `clipActions` | `Array<{key, label, icon?, variant?, disabled?}>` | Adds application-defined actions to every editable clip context menu. The action emits the `clip-action` event and is configured globally on the timeline. `clipContextMenuActions` is accepted as a compatibility alias. |
-| `defaultTrackId` | `string` | Track used when a clip-menu option does not specify a track. |
-| `minClipDuration` | `number` | Default minimum clip duration in seconds. Defaults to one frame at `fps`. |
-| `defaultClipDuration` | `number` | Default duration for a clip-menu insertion in seconds. Defaults to `1`. |
-| `keyboardStepSeconds` | `number` | Keyboard resize step in seconds. Defaults to `0.1`. |
-| `addTrackLabel` | `string` | Track creation button label. Defaults to `Add track`. |
-| `addTrackIcon` | `string` | Track creation button icon. Defaults to `plus`. |
+The `options` getter returns the same grouped shape. The grouped properties above
+are the complete public configuration surface.
 
 ### `tracks`
 
@@ -424,7 +377,7 @@ slotted actions can sit beside them without an extra frame.
 | `header-actions` | Application actions such as settings, help, or host controls. |
 | `timeline-actions` | Application actions such as recording or exporting video. |
 | `transport` | Application transport content placed in the right playback control group. The standard transport controls and the built-in loop button are displayed in this area; the loop button is on the right unless `noloopmode` is enabled. |
-| `time-slider` | Replacement content for the built-in temporal slider in the left playback area. The fallback is hidden by `noTimeSlider` or `showTimeSlider: false`. |
+| `time-slider` | Replacement content for the built-in temporal slider in the left playback area. The fallback is hidden by `noTimeSlider`. |
 | `playback-start` | Content before the current time. |
 | `playback-current` | Current-time label. |
 | `playback-total` | Total-time label. |
@@ -808,16 +761,12 @@ stops at the neighboring clip and leaves that clip in place.
 
 | Policy | Behavior |
 | --- | --- |
-| `allow` | Legacy alias for `prevent`; committed edits still reject overlaps. |
 | `prevent` | Clips cannot overlap. A moved or inserted clip must fit completely in the available gap; a resize stops at the neighboring clip. |
 | `ripple` | The inserted or moved clip stays at the requested time. Overlapping clips and subsequent clips shift right while preserving their durations. Read-only clips block ripples that would move them. |
 
 Resize ripple shifts all clips on the same track on the edited side: a start
 resize shifts clips to the left of the edited clip, while an end resize shifts
 clips to its right. The clips keep their durations and relative spacing. The
-`allow` value remains accepted for backwards compatibility and follows the
-same no-overlap rule as `prevent`.
-
 While a clip is dragged over an occupied or otherwise invalid drop zone, it
 continues following the pointer and displays the `not-allowed` cursor. The
 invalid position is not committed on release. Releasing in a forbidden track,
