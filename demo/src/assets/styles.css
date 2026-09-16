@@ -734,6 +734,11 @@ h2 {
     padding-inline-start: 1.25rem;
 }
 
+.demo-action-hint {
+    color: var(--wa-color-brand-60, var(--demo-text));
+    font-weight: 700;
+}
+
 .demo-explanation {
     display: grid;
     grid-template-columns: minmax(12rem, 0.8fr) minmax(0, 1.2fr);
