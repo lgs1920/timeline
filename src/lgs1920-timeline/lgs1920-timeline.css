@@ -90,6 +90,12 @@
     --lgs-timeline-row-height: 24px;
     /* Timeline ruler pixel width per major unit. */
     --lgs-timeline-scale-width: 40px;
+    /* Track grid width for one major ruler interval. */
+    --lgs-timeline-grid-major-width: var(--lgs-timeline-scale-width);
+    /* Track grid width for one minor ruler interval. */
+    --lgs-timeline-grid-minor-width: calc(var(--lgs-timeline-scale-width) / 5);
+    /* Track grid origin aligned with the ruler axis. */
+    --lgs-timeline-grid-offset: var(--lgs-timeline-scale-offset);
     /* Minimum duration represented by the timeline's initial viewport. */
     --lgs-timeline-min-visible-duration: 5;
     /* Timeline ruler left offset matching the React editor. */
@@ -1182,8 +1188,12 @@
         width: 100%;
         min-height: var(--lgs-timeline-row-height);
         background-color: var(--lgs-timeline-surface-color);
-        background-image: linear-gradient(90deg, color-mix(in srgb, var(--lgs-timeline-quiet-border-color) 60%, transparent) 1px, transparent 1px);
-        background-size: var(--lgs-timeline-scale-width) 100%;
+        background-image:
+            linear-gradient(90deg, color-mix(in srgb, var(--lgs-timeline-quiet-border-color) 42%, transparent) 1px, transparent 1px),
+            linear-gradient(90deg, color-mix(in srgb, var(--lgs-timeline-quiet-border-color) 68%, transparent) 1px, transparent 1px);
+        background-position: var(--lgs-timeline-grid-offset) 0, var(--lgs-timeline-grid-offset) 0;
+        background-size: var(--lgs-timeline-grid-minor-width) 100%, var(--lgs-timeline-grid-major-width) 100%;
+        background-origin: border-box;
         border-block: 1px solid var(--lgs-timeline-quiet-border-color);
         border-radius: 0;
         overflow: hidden;

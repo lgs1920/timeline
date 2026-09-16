@@ -1981,6 +1981,24 @@ export class LGS1920Timeline extends HTMLElement {
     }
 
     /**
+     * Keep the track grid on the same geometry as the ruler ticks.
+     *
+     * @param {HTMLElement|null} element - Rendered timeline surface.
+     * @param {number} scaleWidth - Pixels represented by one major ruler unit.
+     * @param {number} scaleSplitCount - Number of minor ruler subdivisions.
+     * @returns {void}
+     */
+    #updateTrackGridGeometry = (element, scaleWidth, scaleSplitCount) => {
+        if (!element) return
+        const majorWidth = Math.max(Number.EPSILON, Number(scaleWidth) || 0)
+        const splitCount = Math.max(1, Number(scaleSplitCount) || 1)
+        const scaleOffset = this.#numericToken('scale-offset', START_LEFT)
+        element.style.setProperty('--lgs-timeline-grid-major-width', `${majorWidth}px`)
+        element.style.setProperty('--lgs-timeline-grid-minor-width', `${majorWidth / splitCount}px`)
+        element.style.setProperty('--lgs-timeline-grid-offset', `${scaleOffset}px`)
+    }
+
+    /**
      * Update duration-dependent geometry without rebuilding stable timeline DOM.
      *
      * The ruler units are added or removed in place while the scroll surfaces
@@ -1995,6 +2013,7 @@ export class LGS1920Timeline extends HTMLElement {
         this.#cachePlayheadGeometry(majorSeconds, scaleWidth)
         const nextScaleCount = this.#scaleCountForDuration(durationSeconds, majorSeconds, scaleWidth)
         this.#contentWidth = Math.max(this.#clipWorkspaceWidth, this.#contentWidthForDuration(durationSeconds, majorSeconds, scaleWidth))
+        this.#updateTrackGridGeometry(this.#root.querySelector('[part="timeline"]'), scaleWidth, scaleSplitCount)
         const widthSelectors = ['[part="canvas"]', '[part="ruler"]', '[part="tracks-viewport"]', '[part="tracks"]']
         widthSelectors.forEach(selector => {
             const element = this.#root.querySelector(selector)
@@ -2189,6 +2208,7 @@ export class LGS1920Timeline extends HTMLElement {
         this.#cachePlayheadGeometry(majorSeconds, scaleWidth)
         const scaleCount = this.#scaleCountForDuration(durationSeconds, majorSeconds, scaleWidth)
         this.#contentWidth = Math.max(this.#clipWorkspaceWidth, this.#contentWidthForDuration(durationSeconds, majorSeconds, scaleWidth))
+        this.#updateTrackGridGeometry(this.#root.querySelector('[part="timeline"]'), scaleWidth, scaleSplitCount)
         this.#rowHeight = this.#resolveRowHeight()
         const structure = this.#structure(scaleCount, majorSeconds, scaleSplitCount)
         const initialOverlay = this.#building
@@ -2439,6 +2459,7 @@ export class LGS1920Timeline extends HTMLElement {
             'aria-label': this.getAttribute('aria-label') || 'Video timeline tracks',
             appearance: 'plain',
         })
+        this.#updateTrackGridGeometry(section, this.#scaleWidth(), scaleSplitCount)
         if (this.#building) section.setAttribute('data-building', '')
         const additionalContent = this.#additionalContent()
         if (additionalContent) section.append(additionalContent)

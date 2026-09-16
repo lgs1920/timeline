@@ -1201,6 +1201,27 @@ describe('lgs1920-timeline Web Component', () => {
             .toBeLessThan(canvasWidthAtNormalZoom)
     })
 
+    it('keeps track grid geometry aligned with ruler ticks after zoom changes', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline)
+        document.body.append(timeline)
+
+        const readGrid = () => {
+            const surface = timeline.shadowRoot.querySelector('[part="timeline"]')
+            return {
+                major: surface.style.getPropertyValue('--lgs-timeline-grid-major-width'),
+                minor: surface.style.getPropertyValue('--lgs-timeline-grid-minor-width'),
+                offset: surface.style.getPropertyValue('--lgs-timeline-grid-offset'),
+            }
+        }
+
+        expect(readGrid()).toEqual({major: '40px', minor: '8px', offset: '20px'})
+
+        timeline.setZoom(-20)
+
+        expect(readGrid()).toEqual({major: '64px', minor: '12.8px', offset: '20px'})
+    })
+
     it('maps unmodified arrow keys to vertical and horizontal zoom', () => {
         const timeline = new LGS1920Timeline()
         configureTimeline(timeline)
