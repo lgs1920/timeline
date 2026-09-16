@@ -148,8 +148,21 @@ timeline.tracks = [
 ]
 ```
 
-Set `interactive: false` for a read-only projection. Set `editable: false` to
+Set `interactive: false` for a display-only projection. Set `editable: false` to
 keep the interactive surface while disabling editing operations.
+
+In the interactive editable mode, right-click a track to open its context menu.
+It contains `Edit`, plus `Hide`/`Show` and `Remove` when the track configuration
+allows those actions. The track list itself has no persistent action icons.
+
+Use the `readonly` HTML attribute for a playback-only projection. It keeps the
+standard playback controls, fixed start/end range handles, and draggable
+playhead grip. It disables ruler and surface scrubbing, range editing, view
+tools, editing, menus, drag targets, and clip selection:
+
+```html
+<lgs1920-timeline readonly></lgs1920-timeline>
+```
 
 ## External clip sources
 

@@ -91,6 +91,18 @@ component then renders the controlled ruler, playhead, tracks, and clips
 without playback controls, menus, focusable scrubbing, editing handlers, or
 interaction events.
 
+Use the `readonly` attribute for a playback-only projection:
+
+```html
+<lgs1920-timeline id="timeline" readonly></lgs1920-timeline>
+```
+
+Readonly mode keeps the standard playback controls, the fixed start/end range
+handles, and the draggable playhead grip. It removes ruler and surface
+scrubbing, range editing, view tools, clip editing, clip menus, drag targets,
+and clip selection. The host continues to control `currentTimeMillis` and
+`playing`.
+
 ```html
 <lgs1920-timeline id="timeline" aria-label="Video timeline"></lgs1920-timeline>
 ```
@@ -176,6 +188,7 @@ clock integration.
 | `legendMaxWidth` | `number` | Maximum track legend width in pixels. Defaults to `250`. |
 | `editable` | `boolean` | Enables all timeline editing actions: track dragging, title editing, clip insertion and movement, and track removal. When `false`, those actions are unavailable. Defaults to `true`. |
 | `interactive` | `boolean` | Enables playback, scrubbing, editing, menus, and emitted interaction events. Defaults to `true`. |
+| `readonly` attribute | `boolean` | Keeps the standard playback controls, fixed start/end range handles, and draggable playhead grip. Disables ruler/surface scrubbing, range editing, view tools, clip editing, menus, drag targets, and clip selection. |
 | `showBuildingOverlay` | `boolean` | Shows the construction overlay during the initial mount. Defaults to `true`. |
 | `showTimeSlider` | `boolean` | Displays the branded time slider above the ruler. Defaults to `false`. |
 | `showZoomSlider` | `boolean` | Displays the branded horizontal zoom slider in the surface controls. Defaults to `false`. |
@@ -220,6 +233,13 @@ clock integration.
 
 The track removal action is displayed only for editable tracks that contain no
 clips. A track with clips must be emptied before it can be removed.
+
+The track context menu is available only when `interactive` and the timeline's
+`editable` option are enabled, the component is not `readonly`, and the track
+itself is editable. It exposes `Edit` when the track is visible, `Hide` or
+`Show` when `canHide` is enabled, and `Remove` when the track has no clips. A
+hidden track exposes `Show` so its title can be made editable again. The track
+list does not display persistent visibility or remove icons.
 
 Each clip supports:
 
@@ -495,16 +515,17 @@ wa-drawer lgs1920-timeline,
 
 ### Track slots
 
-Each track has a legend area and a right-aligned action area. Track reordering
-starts from the legend area itself; the action area supports the `visibility`,
-`remove`, and `actions` slots.
+Each track has a legend area. Track reordering starts from the legend area
+itself. In the normal interactive editable mode, right-clicking a track opens
+its context menu; the built-in actions and track-specific custom content are
+rendered there.
 
 | Global slot | Targeted slot | Description |
 | --- | --- | --- |
 | `track-label` or `name` | `track-label-{trackId}` or `name-{trackId}` | Track name content. |
-| `visibility` | `visibility-{trackId}` | Visibility control content. |
-| `remove` | `remove-{trackId}` | Remove action content. |
-| `actions` | `actions-{trackId}` | Reserved track-specific actions. |
+| `visibility` | `visibility-{trackId}` | Visibility action content in the track context menu. |
+| `remove` | `remove-{trackId}` | Remove action content in the track context menu. |
+| `actions` | `actions-{trackId}` | Track-specific action content appended to the track context menu. |
 
 ```html
 <lgs1920-timeline>
@@ -1009,7 +1030,6 @@ lgs1920-timeline::part(clip) {
 | `--lgs-timeline-clip-handle-width` | Clip resize handle width. |
 | `--lgs-timeline-clip-resize-grab-color` | Light overlay shown across the full clip height while resizing. |
 | `--lgs-timeline-clip-handle-color` | Clip resize handle color. |
-| `--lgs-timeline-clip-handle-hover-color` | Clip resize handle hover color. |
 | `--lgs-timeline-clip-handle-focus-ring` | Clip resize handle focus ring. |
 | `--lgs-timeline-track-drop-indicator-color` | Drag-target accent color used by track and clip feedback. |
 | `--lgs-timeline-popup-background` | Popup background. |
@@ -1021,7 +1041,7 @@ Useful CSS parts include `timeline`, `additional-content`,
 `building-overlay-text`, `top`, `header`, `header-start`,
 `custom-menu`, `controls`, `header-actions`, `playback-controls`,
 `layout`, `legend`, `legend-viewport`, `legend-rows`,
-`legend-row`, `legend-content`, `track-actions`, `split-panel`,
+`legend-row`, `legend-content`, `track-context-menu`, `track-menu`, `split-panel`,
 `surface`, `canvas`, `ruler`, `tick`, `minor-tick`, `tracks`, `track`, `clip`,
 `tracks-viewport`,
 `timeline-scrubber`, `time-slider`, `zoom-control`, `zoom-slider`,
