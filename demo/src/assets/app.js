@@ -69,6 +69,8 @@ const studioPacmanMusicLabel = document.querySelector('#studio-pacman-music-labe
 const studioPacmanCanvas = document.querySelector('#studio-pacman-canvas')
 const studioPacmanStatus = document.querySelector('#studio-pacman-status')
 const studioPacmanProgress = document.querySelector('#studio-pacman-progress')
+const studioPacmanAlmostProgress = document.querySelector('#studio-pacman-almost-progress')
+const studioPacmanResult = document.querySelector('#studio-pacman-result')
 
 const showStudioToast = (message, icon) => {
     studioToast?.create(message, {
@@ -258,39 +260,31 @@ const configureTimeline = (element, options = {}) => {
     const durationMillis = Number(options.durationMillis) > 0
         ? Number(options.durationMillis)
         : DEMO_DURATION_MILLIS
-    const clipOptions = options.interactive === true
+    const clipOptions = options.mode === 'edit'
         ? [{key: 'marker', label: 'Add marker', kind: 'marker', duration: 4, icon: 'bookmark'}]
         : []
-    element.timeline = {
+    element.options = {
         durationMillis,
-        visible: true,
-        showClipMenu: options.interactive === true,
         ...options,
     }
     element.tracks = cloneTracks(tracks, durationMillis)
     element.clipOptions = clipOptions
     element.currentTimeMillis = 0
     element.playing = false
+    element.looping = false
 }
 
 const studioTimelineOptions = {
-    interactive: true,
-    editable: true,
+    mode: 'edit',
     horizontalFit: true,
     fps: 30,
     frameCount: 1_801,
     frameIntervalMillis: 1000 / 30,
-    rangeStartMillis: 0,
-    rangeEndMillis: DEMO_DURATION_MILLIS,
-    showTimeSlider: true,
-    showZoomSlider: true,
-    collisionPolicy: 'prevent',
-    resizeCollisionPolicy: 'ripple',
-    resizeExtendsDuration: true,
-    durationPolicy: 'extend',
+    range: {startMillis: 0, endMillis: DEMO_DURATION_MILLIS},
+    playback: {loop: 'toggle', timeSlider: 'visible'},
+    view: {visible: true, zoomSlider: true, buildingOverlay: false},
+    editing: {clipMenu: false, collisionPolicy: 'prevent', resizeCollisionPolicy: 'ripple', durationPolicy: 'extend'},
     keyboardZoomActive: true,
-    showBuildingOverlay: false,
-    showClipMenu: false,
 }
 
 const emitStatus = event => {
@@ -320,19 +314,18 @@ const applyBrand = value => {
 configureTimeline(studioTimeline, studioTimelineOptions)
 configureTimeline(interactiveTimeline, {
     durationMillis: SHORT_DEMO_DURATION_MILLIS,
-    interactive: true,
-    showClipMenu: false,
+    mode: 'edit',
+    editing: {clipMenu: false},
 })
 configureTimeline(readonlyTimeline, {
     durationMillis: SHORT_DEMO_DURATION_MILLIS,
+    mode: 'readonly',
 })
 configureTimeline(rangeTimeline, {
     durationMillis: SHORT_DEMO_DURATION_MILLIS,
-    interactive: true,
-    editable: true,
-    rangeStartMillis: 6_000,
-    rangeEndMillis: 24_000,
-    showClipMenu: false,
+    mode: 'edit',
+    range: {startMillis: 6_000, endMillis: 24_000},
+    editing: {clipMenu: false},
 })
 
 /**
@@ -374,6 +367,13 @@ const createPlaybackClock = ({timeline, startMillis = 0, endMillis = DEMO_DURATI
         const nextTime = sync(clockStartMillis + ((performance.now() - clockStartedAt) * rate))
         const end = Number(getEndMillis()) || DEMO_DURATION_MILLIS
         if (nextTime >= end) {
+            if (timeline.looping) {
+                const start = Number(getStartMillis()) || 0
+                sync(start)
+                clockStartMillis = start
+                clockStartedAt = performance.now()
+                return
+            }
             timeline.playing = false
             stopClock()
             onTime(nextTime)
@@ -588,7 +588,7 @@ const createPacmanAudio = ({musicButton, musicLabel, soundButton, soundLabel}) =
     }
 }
 
-const createPacmanDemo = ({canvas, popup, timeline, status, progress}) => {
+const createPacmanDemo = ({canvas, popup, timeline, status, progress, almostProgress, result}) => {
     const worldLeft = -4.4
     const worldWidth = 9.6
     const trackHeight = 0.66
@@ -614,6 +614,8 @@ const createPacmanDemo = ({canvas, popup, timeline, status, progress}) => {
     let camera = null
     let pacman = null
     let pacmanBody = null
+    let pacmanMouth = null
+    let pacmanOutcome = ''
     let clipGroup = null
     let laneGroup = null
     let rulerGroup = null
@@ -632,9 +634,18 @@ const createPacmanDemo = ({canvas, popup, timeline, status, progress}) => {
     let popupOffset = {x: 0, y: 0}
     let dragState = null
 
-    const setMessage = (message, count = 0, total = clipEntries.length) => {
+    const setMessage = (message, eatenCount = 0, almostEatenCount = 0, total = clipEntries.length) => {
         status.textContent = message
-        progress.textContent = `${count} / ${total} clips eaten`
+        progress.textContent = `${eatenCount} / ${total} clips eaten`
+        almostProgress.textContent = `${almostEatenCount} / ${total} almost eaten`
+        const hasWon = total > 0 && eatenCount === total
+        const hasLost = total > 0 && almostEatenCount * 2 >= total
+        const outcome = hasWon ? 'win' : hasLost ? 'lose' : 'pending'
+        result.dataset.outcome = outcome
+        result.textContent = hasWon ? 'Win' : hasLost ? 'Lose' : 'In progress'
+        const durationMillis = Number(timeline.options?.durationMillis) || DEMO_DURATION_MILLIS
+        const hasReachedDemoEnd = currentTimeMillis >= durationMillis
+        updatePacmanExpression(hasLost ? 'lose' : 'win', hasReachedDemoEnd)
     }
 
     const resolveClipColor = clip => {
@@ -710,7 +721,7 @@ const createPacmanDemo = ({canvas, popup, timeline, status, progress}) => {
             new THREE.BufferGeometry().setFromPoints(rulerPoints),
             new THREE.LineBasicMaterial({color: 0x6682a8, transparent: true, opacity: 0.75}),
         ))
-        const durationMillis = Number(timeline.timeline?.durationMillis) || DEMO_DURATION_MILLIS
+        const durationMillis = Number(timeline.options?.durationMillis) || DEMO_DURATION_MILLIS
         for (let second = 0; second <= durationMillis / 1000; second += 10) {
             const x = worldLeft + ((second * 1000) / durationMillis) * worldWidth
             const tick = new THREE.Line(
@@ -730,7 +741,7 @@ const createPacmanDemo = ({canvas, popup, timeline, status, progress}) => {
     }
 
     const getEntries = () => {
-        const durationMillis = Number(timeline.timeline?.durationMillis) || DEMO_DURATION_MILLIS
+        const durationMillis = Number(timeline.options?.durationMillis) || DEMO_DURATION_MILLIS
         const trackIds = (timeline.tracks ?? []).map(track => track.id)
         const trackIndexById = new Map(trackIds.map((id, index) => [id, index]))
         return (timeline.tracks ?? []).flatMap(track => (track.clips ?? []).map(clip => ({
@@ -772,6 +783,27 @@ const createPacmanDemo = ({canvas, popup, timeline, status, progress}) => {
             })
     }
 
+    const getEatenState = (entry, index, entries, timeMillis) => {
+        const nextEntry = entries[index + 1]
+        const changesTrack = nextEntry && nextEntry.trackId !== entry.trackId
+        const biteEndMillis = changesTrack
+            ? Math.min(entry.endMillis, nextEntry.startMillis)
+            : entry.endMillis
+        const progress = Math.max(0, Math.min(1,
+            (Math.min(timeMillis, biteEndMillis) - entry.startMillis)
+            / Math.max(1, entry.endMillis - entry.startMillis),
+        ))
+
+        return {
+            biteEndMillis,
+            almostEaten: biteEndMillis > entry.startMillis
+                && biteEndMillis < entry.endMillis
+                && timeMillis >= biteEndMillis,
+            fullyEaten: biteEndMillis === entry.endMillis && timeMillis >= entry.endMillis,
+            progress,
+        }
+    }
+
     const disposeObject = object => {
         object.traverse?.(child => {
             child.geometry?.dispose()
@@ -794,6 +826,22 @@ const createPacmanDemo = ({canvas, popup, timeline, status, progress}) => {
         const previousGeometry = pacmanBody.geometry
         pacmanBody.geometry = geometry
         previousGeometry.dispose()
+    }
+
+    const updatePacmanExpression = (outcome, visible = false) => {
+        if (!pacmanMouth) return
+        pacmanMouth.visible = visible
+        if (!visible || pacmanOutcome === outcome) return
+        const isFrowning = outcome === 'lose'
+        const previousGeometry = pacmanMouth.geometry
+        const mouthCurve = new THREE.QuadraticBezierCurve3(
+            new THREE.Vector3(0.31, isFrowning ? -0.02 : 0.02, 0),
+            new THREE.Vector3(0.2, isFrowning ? 0.12 : -0.12, 0),
+            new THREE.Vector3(0.08, isFrowning ? 0.05 : -0.05, 0),
+        )
+        pacmanMouth.geometry = new THREE.BufferGeometry().setFromPoints(mouthCurve.getPoints(20))
+        previousGeometry.dispose()
+        pacmanOutcome = outcome
     }
 
     const rebuildClips = () => {
@@ -888,7 +936,13 @@ const createPacmanDemo = ({canvas, popup, timeline, status, progress}) => {
             new THREE.MeshBasicMaterial({color: 0x101828}),
         )
         eye.position.set(0.12, 0.17, 0.34)
-        pacman.add(pacmanBody, eye)
+        pacmanMouth = new THREE.Line(
+            new THREE.BufferGeometry(),
+            new THREE.LineBasicMaterial({color: 0x101828, depthTest: false}),
+        )
+        pacmanMouth.visible = false
+        pacman.add(pacmanBody, eye, pacmanMouth)
+        updatePacmanExpression('win')
         pacman.position.copy(targetPosition)
         scene.add(pacman)
         rebuildClips()
@@ -900,7 +954,7 @@ const createPacmanDemo = ({canvas, popup, timeline, status, progress}) => {
 
     const syncScene = () => {
         if (!renderer) return
-        const durationMillis = Number(timeline.timeline?.durationMillis) || DEMO_DURATION_MILLIS
+        const durationMillis = Number(timeline.options?.durationMillis) || DEMO_DURATION_MILLIS
         if (playhead) playhead.position.x = worldLeft + (Math.max(0, Math.min(durationMillis, currentTimeMillis)) / durationMillis) * worldWidth
         const nextEntries = getEntries()
         const nextSignature = nextEntries.map(entry => `${entry.trackId}:${entry.trackLabel}:${entry.clip.id}:${entry.clip.start}:${entry.clip.end}:${entry.clip.label}:${(entry.clip.colorClasses ?? []).join(',')}`).join('|')
@@ -914,21 +968,21 @@ const createPacmanDemo = ({canvas, popup, timeline, status, progress}) => {
             if (entry.startMillis <= currentTimeMillis) activeIndex = index
         })
         const currentEntry = activeIndex >= 0 ? clipEntries[activeIndex] : clipEntries[0]
+        const eatenStates = clipEntries.map((entry, index) => getEatenState(entry, index, clipEntries, currentTimeMillis))
+        const eatenCount = eatenStates.filter(state => state.fullyEaten).length
+        const almostEatenCount = eatenStates.filter(state => state.almostEaten).length
         clipEntries.forEach((entry, index) => {
+            const eatenState = eatenStates[index]
             entry.mesh.position.copy(entry.position)
-            const isPrevious = activeIndex >= 0 && index < activeIndex
             const isActive = index === activeIndex
-            entry.mesh.visible = true
-            entry.mesh.material.opacity = isPrevious ? 0.42 : isActive ? 1 : 0.9
+            entry.mesh.visible = !eatenState.fullyEaten
+            entry.mesh.material.opacity = isActive ? 1 : eatenState.progress > 0 ? 0.42 : 0.9
             entry.mesh.scale.setScalar(1)
-            if (isPrevious || isActive) {
-                const clipProgress = isPrevious
-                    ? 1
-                    : Math.max(0, Math.min(1, (currentTimeMillis - entry.startMillis) / Math.max(1, entry.endMillis - entry.startMillis)))
-                const remaining = Math.max(0.04, 1 - clipProgress)
+            if (eatenState.progress > 0) {
+                const remaining = Math.max(0.04, 1 - eatenState.progress)
                 const clipLength = entry.endPosition.x - entry.startPosition.x
                 entry.mesh.scale.x = remaining
-                entry.mesh.position.x = entry.startPosition.x + ((clipProgress + (remaining / 2)) * clipLength)
+                entry.mesh.position.x = entry.startPosition.x + ((eatenState.progress + (remaining / 2)) * clipLength)
             }
         })
         if (currentEntry) {
@@ -943,13 +997,13 @@ const createPacmanDemo = ({canvas, popup, timeline, status, progress}) => {
                 pacman.position.copy(targetPosition)
             }
             lastActiveIndex = activeIndex
-            setMessage(`Eating ${currentEntry.clip.label ?? currentEntry.clip.id}`, Math.max(0, activeIndex))
+            setMessage(`${chewing ? 'Eating' : 'At'} ${currentEntry.clip.label ?? currentEntry.clip.id}`, eatenCount, almostEatenCount)
         } else {
             targetPosition = new THREE.Vector3(worldLeft, 0, 0.4)
             targetEntry = null
             chewing = false
             lastActiveIndex = -1
-            setMessage('Waiting for the first clip', 0)
+            setMessage('Waiting for the first clip', eatenCount, almostEatenCount)
         }
     }
 
@@ -1074,6 +1128,8 @@ studioPacmanDemo = createPacmanDemo({
     canvas: studioPacmanCanvas,
     popup: studioPacmanPopup,
     progress: studioPacmanProgress,
+    almostProgress: studioPacmanAlmostProgress,
+    result: studioPacmanResult,
     status: studioPacmanStatus,
     timeline: studioTimeline,
 })
@@ -1170,6 +1226,10 @@ seekStudioBy(studioSeekForwardButton, 'advance', 10_000)
 
 studioTimeline.addEventListener('lgs1920-timeline-seek', event => {
     seekFromTimelineEvent(studioClock, event)
+})
+studioTimeline.addEventListener('lgs1920-timeline-loop-change', event => {
+    studioTimeline.looping = event.detail.looping
+    showStudioToast(event.detail.looping ? 'Loop enabled' : 'Loop disabled', 'repeat')
 })
 studioTimeline.addEventListener('lgs1920-timeline-play', () => {
     showStudioToast('Clip started', 'play')

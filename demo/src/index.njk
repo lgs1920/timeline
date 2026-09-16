@@ -75,12 +75,13 @@
             </div>
             <span id="studio-status" class="event-status" role="status" aria-live="polite">Ready</span>
         </div>
-        <p class="section-intro">The timeline stays controlled by its host. The standard time and zoom controls remain inside the component. The play button emits a playback intent, then the host clock advances <code>currentTimeMillis</code>. The host also controls playback speed at 1×, 2×, or 5× through the top menu slot. Play opens a draggable Three.js Pac-Man companion that eats the clips in chronological order.</p>
+        <p class="section-intro">The timeline stays controlled by its host. The standard time, transport, loop, and zoom controls remain inside the component. The play button emits a playback intent, then the host clock advances <code>currentTimeMillis</code>. The host also controls playback speed at 1×, 2×, or 5× through the top menu slot. Play opens a draggable Three.js Pac-Man companion that eats the clips in chronological order. When the next clip starts on another track, Pac-Man changes lane and leaves the current clip shortened.</p>
         <wa-details class="demo-details" summary="What this demo shows" appearance="filled-outlined">
             <p>The timeline is controlled by the host application. The component emits playback and seek requests, while the host clock writes the resulting position back through <code>currentTimeMillis</code>.</p>
             <ul>
                 <li>Use the top menu to move the playhead by ten seconds.</li>
                 <li>Use <strong>Shuffle</strong> in the top menu to redistribute every existing clip across the current tracks.</li>
+                <li>Use the loop button in the transport area to repeat the selected range.</li>
                 <li>Drag the generated sources to create video, audio, text, or other clips.</li>
                 <li>Use the standard time and zoom controls rendered by the component.</li>
                 <li><strong class="demo-action-hint">Play the timeline to open the draggable Pac-Man view</strong>. Fully eaten clips disappear and increase the counter; clips interrupted by a lane change stay shortened and do not count.</li>
@@ -148,8 +149,10 @@
                 <div class="pacman-popup-footer">
                     <span id="studio-pacman-status">Ready for playback</span>
                     <strong id="studio-pacman-progress">0 clips eaten</strong>
+                    <span id="studio-pacman-almost-progress">0 almost eaten</span>
+                    <strong id="studio-pacman-result" data-outcome="pending">In progress</strong>
                 </div>
-                <p id="studio-pacman-description" class="pacman-popup-note">Press play in Demo 01. Pac-Man jumps to each clip start, eats it in place, then jumps to the next one. A clip may remain almost eaten when the next clip starts.</p>
+                <p id="studio-pacman-description" class="pacman-popup-note">Press play in Demo 01. Pac-Man eats clips in chronological order. If the next clip starts on another track first, Pac-Man changes lane and leaves the current clip shortened. The counter includes only clips eaten to their end; the run is lost when at least half of the clips are almost eaten. At the end of the demo, Pac-Man smiles if the run is not lost and frowns after a loss.</p>
             </div>
         </wa-popup>
         <div class="timeline-output">
@@ -242,11 +245,44 @@ const updatePacman = (timeMillis, playing) =&gt; {
     const clip = clips[activeIndex]
     if (!clip) return
 
+    const nextClip = clips[activeIndex + 1]
     const progress = Math.min(1, Math.max(0,
         (timeMillis - (clip.start * 1000)) / ((clip.end - clip.start) * 1000),
     ))
+    const changesTrack = nextClip &amp;&amp; nextClip.trackId !== clip.trackId
+    const biteEndMillis = changesTrack
+        ? Math.min(clip.end * 1000, nextClip.start * 1000)
+        : clip.end * 1000
+    const visibleProgress = Math.min(progress, Math.max(0,
+        (biteEndMillis - (clip.start * 1000)) / ((clip.end - clip.start) * 1000),
+    ))
     pacman.position.copy(positionAtClip(clip, progress))
-    clipMeshes[activeIndex].scale.x = Math.max(0.04, 1 - progress)
+    clipMeshes[activeIndex].scale.x = Math.max(0.04, 1 - visibleProgress)
+
+    const eatenCount = clips.filter((candidate, index) =&gt; {
+        const followingClip = clips[index + 1]
+        const changesLane = followingClip &amp;&amp; followingClip.trackId !== candidate.trackId
+        const candidateBiteEnd = changesLane
+            ? Math.min(candidate.end * 1000, followingClip.start * 1000)
+            : candidate.end * 1000
+        return candidateBiteEnd === candidate.end * 1000 &amp;&amp; timeMillis &gt;= candidate.end * 1000
+    }).length
+    const almostEatenCount = clips.filter((candidate, index) =&gt; {
+        const followingClip = clips[index + 1]
+        const changesLane = followingClip &amp;&amp; followingClip.trackId !== candidate.trackId
+        const candidateBiteEnd = changesLane
+            ? Math.min(candidate.end * 1000, followingClip.start * 1000)
+            : candidate.end * 1000
+        return candidateBiteEnd &gt; candidate.start * 1000
+            &amp;&amp; candidateBiteEnd &lt; candidate.end * 1000
+            &amp;&amp; timeMillis &gt;= candidateBiteEnd
+    }).length
+    const result = eatenCount === clips.length
+        ? 'Win'
+        : almostEatenCount * 2 &gt;= clips.length
+            ? 'Lose'
+            : 'In progress'
+    // Render eatenCount, almostEatenCount, and result in the Pac-Man popup footer.
 
     if (playing) {
         pacmanAudio.playChomp()
@@ -268,7 +304,7 @@ const updatePacman = (timeMillis, playing) =&gt; {
             <p>This example focuses on editing and event handling. Move or resize a clip, edit a track name, open the track context menu, change visibility, and inspect the serialized event detail in the fixed-height event panel.</p>
             <ul>
                 <li>Apply <code>event.detail.tracks</code> when a clip or track edit is accepted.</li>
-                <li>Use the before and after event lifecycle when an action needs validation or persistence.</li>
+                <li>Use <code>timeline.on(name, {before, on, after})</code> when an action needs validation or persistence.</li>
                 <li>The host playback clock continues to own <code>currentTimeMillis</code>.</li>
                 <li>Track actions are contextual: <code>Edit</code> applies to visible editable rows, while <code>Hide</code>/<code>Show</code> and <code>Remove</code> follow the track configuration.</li>
             </ul>
@@ -280,8 +316,10 @@ const updatePacman = (timeMillis, playing) =&gt; {
             </div>
             <code id="event-output">None</code>
         </div>
-        <pre class="demo-code"><code data-language="javascript">timeline.addEventListener('lgs1920-timeline-clip-change', event =&gt; {
-    timeline.tracks = event.detail.tracks
+        <pre class="demo-code"><code data-language="javascript">timeline.on('clip-change', {
+    before: event =&gt; validateClipEdit(event.detail),
+    on: event =&gt; timeline.tracks = event.detail.tracks,
+    after: event =&gt; console.log('edit completed', event.detail),
 })
 
 timeline.addEventListener('lgs1920-timeline-seek', event =&gt; {
@@ -298,7 +336,7 @@ timeline.addEventListener('lgs1920-timeline-seek', event =&gt; {
                 <p>Readonly mode is useful when another component owns the timeline data and current position. The host keeps sending the external player position, while the timeline exposes playback controls, fixed start/end range handles, the draggable playhead grip, and standard clip icons.</p>
                 <ul>
                     <li>Use the <code>readonly</code> attribute to keep the standard playback controls inside the timeline.</li>
-                    <li>Use <code>interactive: false</code> for a passive projection, or <code>editable: false</code> when playback and review navigation should remain available without editing.</li>
+                    <li>Use <code>options.mode = 'passive'</code> for a passive projection, or <code>options.mode = 'review'</code> when playback and review navigation should remain available without editing.</li>
                     <li>Keep the external player's time slider outside the timeline.</li>
                     <li>Use this pattern for monitoring views, review screens, or compact sequence summaries.</li>
                 </ul>
@@ -311,7 +349,7 @@ timeline.addEventListener('lgs1920-timeline-seek', event =&gt; {
             <lgs1920-timeline id="readonly-timeline" readonly aria-label="Readonly playback timeline"></lgs1920-timeline>
             <p id="readonly-status" class="demo-note" role="status" aria-live="polite">External player paused · 00:00</p>
             <pre class="demo-code"><code data-language="html">&lt;lgs1920-timeline id="timeline" readonly&gt;&lt;/lgs1920-timeline&gt;</code></pre>
-            <pre class="demo-code"><code data-language="javascript">timeline.timeline = {
+            <pre class="demo-code"><code data-language="javascript">timeline.options = {
     durationMillis: 30000,
 }
 
@@ -336,9 +374,8 @@ player.addEventListener('timeupdate', () =&gt; {
             <wa-tooltip id="range-time-tooltip" for="range-time-slider" placement="top">00:00 / 00:30</wa-tooltip>
             <lgs1920-timeline id="range-timeline" aria-label="Timeline with editable video range"></lgs1920-timeline>
             <p id="range-status" class="demo-note" role="status" aria-live="polite">Range: 00:06 – 00:24 · Playback paused at 00:06</p>
-            <pre class="demo-code"><code data-language="javascript">timeline.timeline = {
-    rangeStartMillis: 6_000,
-    rangeEndMillis: 24_000,
+            <pre class="demo-code"><code data-language="javascript">timeline.options = {
+    range: {startMillis: 6_000, endMillis: 24_000},
 }
 
 timeline.addEventListener('lgs1920-timeline-range-change', event =&gt; {
@@ -350,10 +387,11 @@ timeline.addEventListener('lgs1920-timeline-range-change', event =&gt; {
     <section class="demo-panel api-demo" aria-labelledby="slots-title">
         <p class="eyebrow">Demo 05 · Slots and controlled state</p>
         <h2 id="slots-title">Compose the surrounding UI</h2>
-        <p class="section-intro">The component owns the timeline surface while the application owns its context: a time slider in <code>timeline-ruler</code>, a zoom control in <code>timeline-controls</code>, and application actions in <code>custom-menu</code>. The full slot reference is available in the documentation.</p>
+        <p class="section-intro">The component owns the timeline surface while the application owns its context: the temporal slider in <code>time-slider</code>, footer controls in <code>timeline-controls</code> and <code>footer</code>, and application actions in <code>custom-menu</code>. The full slot reference is available in the documentation.</p>
         <wa-details class="demo-details" summary="What this demo shows" appearance="filled-outlined">
             <p>Slots let the host place application controls around the timeline without coupling those controls to the component implementation.</p>
             <ul>
+                <li><code>time-slider</code> replaces the temporal slider in the playback row.</li>
                 <li><code>timeline-ruler</code> places content above the time ruler.</li>
                 <li><code>timeline-controls</code> adds controls alongside the built-in zoom controls in the footer.</li>
                 <li><code>custom-menu</code> adds host actions to the timeline header.</li>
@@ -363,13 +401,15 @@ timeline.addEventListener('lgs1920-timeline-range-change', event =&gt; {
         </wa-details>
         <div class="slot-list" aria-label="Slots used in the demos">
             <span class="demo-slot-chip">timeline-ruler · external scrubber</span>
+            <span class="demo-slot-chip">time-slider · playback scrubber</span>
             <span class="demo-slot-chip">timeline-controls · footer controls</span>
             <span class="demo-slot-chip">footer · application content</span>
             <span class="demo-slot-chip">custom-menu · host actions</span>
             <span class="demo-slot-chip">overlay-text · initial loading label</span>
         </div>
         <pre class="demo-code"><code data-language="html">&lt;lgs1920-timeline&gt;
-    &lt;span slot="timeline-ruler"&gt;...time slider...&lt;/span&gt;
+    &lt;span slot="time-slider"&gt;...time slider...&lt;/span&gt;
+    &lt;span slot="timeline-ruler"&gt;...ruler content...&lt;/span&gt;
     &lt;span slot="timeline-controls"&gt;...zoom slider...&lt;/span&gt;
     &lt;span slot="footer"&gt;...footer content...&lt;/span&gt;
     &lt;wa-button slot="custom-menu"&gt;Settings&lt;/wa-button&gt;
@@ -430,7 +470,7 @@ timeline.addEventListener('lgs1920-timeline-range-change', event =&gt; {
             </table>
         </div>
         <p class="keyboard-note"><strong>Mod</strong> means <kbd>Ctrl</kbd> on Windows and Linux, and <kbd>⌘</kbd> on macOS. Wheel gestures are also available on the timeline surface: <kbd>Shift</kbd> or <kbd>Alt</kbd> + wheel changes row height, while <kbd>Meta</kbd> + wheel changes horizontal ruler zoom. <kbd>Ctrl</kbd> + wheel remains available to the browser.</p>
-        <pre class="demo-code"><code data-language="javascript">timeline.timeline = {
+        <pre class="demo-code"><code data-language="javascript">timeline.options = {
     keyboardZoomActive: true,
     keyboardStepSeconds: 0.1,
 }
