@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-15
+ * Last modified: 2026-09-16
  *
  *
  * Copyright © 2026 LGS1920
@@ -370,6 +370,8 @@ export const createTimelineClipEditor = ({
     setRows,
     setInteractionDurationMillis,
     emit,
+    emitBefore = () => ({defaultPrevented: false}),
+    emitAfter = () => {},
     render,
 }) => {
     const resizeRippleHistory = new Map()
@@ -957,13 +959,13 @@ export const createTimelineClipEditor = ({
         if (!result) return
         recordResizeResult({baseRows: rows, result, clipId, edge})
         const detail = changeDetail(state, result, event)
-        if (emit('before-clip-change', detail, {cancelable: true}).defaultPrevented) return
+        if (emitBefore('clip-change', detail).defaultPrevented) return
         setRows(result.rows)
         setRangeEndMillis(result.rangeEndMillis)
         setInteractionDurationMillis(result.durationMillis)
         emit('clip-change', detail)
         render()
-        emit('after-clip-change', detail)
+        emitAfter('clip-change', detail)
     }
 
     /**
@@ -1084,13 +1086,13 @@ export const createTimelineClipEditor = ({
             },
         }
         const detail = changeDetail(state, result, event)
-        if (emit('before-clip-change', detail, {cancelable: true}).defaultPrevented) return
+        if (emitBefore('clip-change', detail).defaultPrevented) return
         setRows(result.rows)
         setRangeEndMillis(result.rangeEndMillis)
         setInteractionDurationMillis(result.durationMillis)
         emit('clip-change', detail)
         render()
-        emit('after-clip-change', detail)
+        emitAfter('clip-change', detail)
     }
 
     return {changeDetail, extend, findClipEntry, moveByKeyboard, place, preview, recordResizeResult, resizeByKeyboard}

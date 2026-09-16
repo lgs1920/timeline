@@ -91,14 +91,119 @@ const ROW_DRAG_THRESHOLD = 4
 const CLIP_DRAG_THRESHOLD = 4
 const TOUCH_CLIP_DRAG_THRESHOLD = 8
 export const CLIP_OPTION_DRAG_MIME = 'application/x-lgs1920-timeline-clip'
+const TIMELINE_EVENT_PREFIX = 'lgs1920-timeline-'
+const TIMELINE_MODES = Object.freeze(['passive', 'review', 'edit', 'readonly'])
+
+const normalizeTimelineEventName = name => {
+    const value = String(name ?? '').trim()
+    return value.startsWith(TIMELINE_EVENT_PREFIX)
+        ? value.slice(TIMELINE_EVENT_PREFIX.length)
+        : value
+}
 let timelineAdditionalContentInstance = 0
 let activeClipOptionDrag = null
+
+const normalizeTimelineOptions = options => {
+    const value = options && typeof options === 'object' ? options : {}
+    const playback = value.playback && typeof value.playback === 'object' ? value.playback : {}
+    const view = value.view && typeof value.view === 'object' ? value.view : {}
+    const range = value.range && typeof value.range === 'object' ? value.range : {}
+    const layout = value.layout && typeof value.layout === 'object' ? value.layout : {}
+    const legend = layout.legend && typeof layout.legend === 'object' ? layout.legend : {}
+    const editing = value.editing && typeof value.editing === 'object' ? value.editing : {}
+    const mode = TIMELINE_MODES.includes(value.mode) ? value.mode : null
+    const flattened = {...value}
+    delete flattened.playback
+    delete flattened.view
+    delete flattened.range
+    delete flattened.layout
+    delete flattened.editing
+    if (mode) {
+        flattened.interactive = mode !== 'passive'
+        flattened.editable = mode === 'edit'
+        flattened.readonly = mode === 'readonly'
+    }
+    if (Object.prototype.hasOwnProperty.call(playback, 'loop')) flattened.noLoopMode = playback.loop === 'hidden'
+    if (Object.prototype.hasOwnProperty.call(playback, 'timeSlider')) {
+        flattened.noTimeSlider = playback.timeSlider === 'hidden'
+        flattened.showTimeSlider = playback.timeSlider !== 'hidden'
+    }
+    if (Object.prototype.hasOwnProperty.call(view, 'visible')) flattened.visible = view.visible
+    if (Object.prototype.hasOwnProperty.call(view, 'zoomSlider')) flattened.showZoomSlider = view.zoomSlider
+    if (Object.prototype.hasOwnProperty.call(view, 'zoomControls')) flattened.noZoomControls = view.zoomControls === 'hidden'
+    if (Object.prototype.hasOwnProperty.call(view, 'buildingOverlay')) flattened.showBuildingOverlay = view.buildingOverlay
+    if (Object.prototype.hasOwnProperty.call(view, 'initialRangeStartVisible')) flattened.initialRangeStartVisible = view.initialRangeStartVisible
+    if (Object.prototype.hasOwnProperty.call(range, 'startMillis')) flattened.rangeStartMillis = range.startMillis
+    if (Object.prototype.hasOwnProperty.call(range, 'endMillis')) flattened.rangeEndMillis = range.endMillis
+    if (Object.prototype.hasOwnProperty.call(legend, 'minWidth')) flattened.legendMinWidth = legend.minWidth
+    if (Object.prototype.hasOwnProperty.call(legend, 'width')) flattened.legendWidth = legend.width
+    if (Object.prototype.hasOwnProperty.call(legend, 'maxWidth')) flattened.legendMaxWidth = legend.maxWidth
+    if (Object.prototype.hasOwnProperty.call(editing, 'clipMenu')) flattened.showClipMenu = editing.clipMenu
+    if (Object.prototype.hasOwnProperty.call(editing, 'collisionPolicy')) flattened.collisionPolicy = editing.collisionPolicy
+    if (Object.prototype.hasOwnProperty.call(editing, 'resizeCollisionPolicy')) flattened.resizeCollisionPolicy = editing.resizeCollisionPolicy
+    if (Object.prototype.hasOwnProperty.call(editing, 'durationPolicy')) flattened.durationPolicy = editing.durationPolicy
+    return flattened
+}
+
+const timelineOptionsFromConfig = config => {
+    const mode = config.readonly === true
+        ? 'readonly'
+        : config.interactive === false
+            ? 'passive'
+            : config.editable === false
+                ? 'review'
+                : 'edit'
+    const options = {
+        ...config,
+        mode,
+        playback: {
+            loop: config.noLoopMode === true ? 'hidden' : 'toggle',
+            timeSlider: config.noTimeSlider === true || config.showTimeSlider === false ? 'hidden' : 'visible',
+        },
+        view: {
+            visible: config.visible !== false,
+            zoomSlider: config.showZoomSlider === true,
+            zoomControls: config.noZoomControls === true ? 'hidden' : 'visible',
+            buildingOverlay: config.showBuildingOverlay !== false,
+            initialRangeStartVisible: config.initialRangeStartVisible !== false,
+        },
+        range: {
+            startMillis: config.rangeStartMillis,
+            endMillis: config.rangeEndMillis,
+        },
+        layout: {
+            legend: {
+                minWidth: config.legendMinWidth,
+                width: config.legendWidth,
+                maxWidth: config.legendMaxWidth,
+            },
+        },
+        editing: {
+            clipMenu: config.showClipMenu === true,
+            collisionPolicy: config.collisionPolicy,
+            resizeCollisionPolicy: config.resizeCollisionPolicy,
+            durationPolicy: config.durationPolicy,
+        },
+    }
+    const groupedKeys = [
+        'interactive', 'editable', 'readonly',
+        'noLoopMode', 'noTimeSlider', 'showTimeSlider',
+        'visible', 'showZoomSlider', 'noZoomControls', 'showBuildingOverlay',
+        'initialRangeStartVisible', 'rangeStartMillis', 'rangeEndMillis',
+        'legendMinWidth', 'legendWidth', 'legendMaxWidth',
+        'showClipMenu', 'collisionPolicy', 'resizeCollisionPolicy', 'durationPolicy',
+    ]
+    groupedKeys.forEach(key => delete options[key])
+    return options
+}
 const STRUCTURAL_CONFIG_KEYS = Object.freeze([
     'interactive',
     'readonly',
+    'noLoopMode',
     'editable',
     'showClipMenu',
     'showTimeSlider',
+    'noTimeSlider',
     'showZoomSlider',
     'noZoomControls',
     'legendMinWidth',
@@ -130,6 +235,7 @@ export class LGS1920Timeline extends HTMLElement {
     #localDurationDirty = false
     #currentTimeMillis = 0
     #playing = false
+    #looping = false
     #visible = true
     #clipOptions = null
     #zoom = 0
@@ -178,6 +284,7 @@ export class LGS1920Timeline extends HTMLElement {
     #dynamicElements = null
     #clipPresentationElements = null
     #transportState = null
+    #lifecycleHandlers = new Map()
     #domCache
     #resizeObserver = null
     #layoutRefreshFrame = null
@@ -219,9 +326,11 @@ export class LGS1920Timeline extends HTMLElement {
     #renderer
     #stateSignatures = createTimelineStateSignatures()
     #isReadonlyMode = () => this.readonly
+        || this.#timelineConfig.readonly === true
+        || this.#timelineConfig.mode === 'readonly'
 
     static get observedAttributes() {
-        return ['readonly', 'nozoomcontrols']
+        return ['readonly', 'noloopmode', 'nozoomcontrols']
     }
 
     /**
@@ -232,7 +341,8 @@ export class LGS1920Timeline extends HTMLElement {
      * @param {string|null} nextValue - New attribute value.
      */
     attributeChangedCallback(name, previousValue, nextValue) {
-        if (!['readonly', 'nozoomcontrols'].includes(name) || previousValue === nextValue) return
+        if (!['readonly', 'noloopmode', 'nozoomcontrols'].includes(name) || previousValue === nextValue) return
+        if (name === 'noloopmode' && this.noLoopMode) this.#looping = false
         const config = name === 'nozoomcontrols'
             ? {...this.#timelineConfig, noZoomControls: this.hasAttribute('nozoomcontrols')}
             : this.#timelineConfig
@@ -245,7 +355,7 @@ export class LGS1920Timeline extends HTMLElement {
      * @returns {boolean} Whether the readonly attribute is present.
      */
     get readonly() {
-        return this.hasAttribute('readonly')
+        return this.hasAttribute('readonly') || this.#timelineConfig.readonly === true || this.#timelineConfig.mode === 'readonly'
     }
 
     /**
@@ -255,6 +365,95 @@ export class LGS1920Timeline extends HTMLElement {
      */
     set readonly(value) {
         this.toggleAttribute('readonly', value === true)
+    }
+
+    /**
+     * Whether the loop-mode control is hidden.
+     *
+     * @returns {boolean} Whether loop mode is disabled for this component.
+     */
+    get noLoopMode() {
+        return this.hasAttribute('noloopmode') || this.#timelineConfig.noLoopMode === true
+    }
+
+    /**
+     * Toggle the loop-mode control.
+     *
+     * @param {boolean} value - Whether loop mode should be hidden.
+     */
+    set noLoopMode(value) {
+        this.toggleAttribute('noloopmode', value === true)
+    }
+
+    /**
+     * Get the grouped timeline options.
+     *
+     * @returns {Object} Timeline options.
+     */
+    get options() {
+        return timelineOptionsFromConfig({...this.#timelineConfig, readonly: this.readonly})
+    }
+
+    /**
+     * Set the grouped timeline options.
+     *
+     * @param {Object} value - Timeline options.
+     */
+    set options(value) {
+        this.timeline = normalizeTimelineOptions(value)
+    }
+
+    /**
+     * Subscribe to one timeline event and its optional lifecycle hooks.
+     *
+     * The main handler receives the canonical DOM event. Lifecycle hooks are
+     * called with events of the same type before and after the main event;
+     * calling preventDefault in a before hook cancels the action.
+     *
+     * @param {string} name - Event suffix, with or without the public prefix.
+     * @param {Function|Object} handler - Main handler or lifecycle descriptor.
+     * @param {Object} [options] - Lifecycle callbacks.
+     * @param {Function} [options.before] - Cancelable pre-action callback.
+     * @param {Function} [options.after] - Post-action callback.
+     * @returns {Function} Unsubscribe callback.
+     */
+    on(name, handler, options = {}) {
+        const eventName = normalizeTimelineEventName(name)
+        if (!eventName) return () => {}
+        const descriptor = handler && typeof handler === 'object' ? handler : options
+        const mainHandler = typeof handler === 'function'
+            ? handler
+            : (descriptor?.on ?? descriptor?.main)
+        const beforeHandler = descriptor?.before
+        const afterHandler = descriptor?.after
+        const lifecycle = this.#lifecycleHandlers.get(eventName) ?? {
+            before: new Set(),
+            after: new Set(),
+        }
+        this.#lifecycleHandlers.set(eventName, lifecycle)
+        const removers = []
+        if (typeof mainHandler === 'function') {
+            const publicEventName = `${TIMELINE_EVENT_PREFIX}${eventName}`
+            const mainListener = event => mainHandler(event)
+            this.addEventListener(publicEventName, mainListener)
+            removers.push(() => this.removeEventListener(publicEventName, mainListener))
+        }
+        if (typeof beforeHandler === 'function') {
+            const beforeListener = event => beforeHandler(event)
+            lifecycle.before.add(beforeListener)
+            removers.push(() => lifecycle.before.delete(beforeListener))
+        }
+        if (typeof afterHandler === 'function') {
+            const afterListener = event => afterHandler(event)
+            lifecycle.after.add(afterListener)
+            removers.push(() => lifecycle.after.delete(afterListener))
+        }
+        return () => {
+            removers.forEach(remove => remove())
+            if (lifecycle.before.size === 0 && lifecycle.after.size === 0) {
+                this.#lifecycleHandlers.delete(eventName)
+            }
+        }
     }
 
     /**
@@ -273,6 +472,27 @@ export class LGS1920Timeline extends HTMLElement {
      */
     set noZoomControls(value) {
         this.toggleAttribute('nozoomcontrols', value === true)
+    }
+
+    /**
+     * Get the controlled loop playback state.
+     *
+     * @returns {boolean} Whether playback should repeat its selected range.
+     */
+    get looping() {
+        return this.#looping
+    }
+
+    /**
+     * Set the controlled loop playback state.
+     *
+     * @param {boolean} value - Whether playback should repeat its selected range.
+     */
+    set looping(value) {
+        const nextLooping = value === true && !this.noLoopMode
+        if (nextLooping === this.#looping) return
+        this.#looping = nextLooping
+        this.#updateLoopButton()
     }
 
     /**
@@ -335,6 +555,8 @@ export class LGS1920Timeline extends HTMLElement {
                 this.#refreshDurationGeometry()
             },
             emit: (name, detail, options) => this.#emit(name, detail, options),
+            emitBefore: (name, detail) => this.#emitBefore(name, detail),
+            emitAfter: (name, detail) => this.#emitAfter(name, detail),
             render: () => {
                 this.#updateClipInteractionPresentation()
             },
@@ -385,9 +607,6 @@ export class LGS1920Timeline extends HTMLElement {
             getDurationMillis: () => this.#durationMillis(),
             getContentWidth: () => this.#contentWidth,
             getZoom: () => this.#zoom,
-            timelineTools: () => this.#timelineTools(),
-            timelineScrubber: () => this.#timelineScrubber(),
-            timelineZoomControl: () => this.#timelineZoomControl(),
             isClipSelected: clip => this.#isClipSelected(clip),
             contextualSlot: (prefix, identifier, globalName, fallback) => this.#contextualSlot(prefix, identifier, globalName, fallback),
             hasContextualSlot: (prefix, identifier) => this.#hasContextualSlot(prefix, identifier),
@@ -425,6 +644,8 @@ export class LGS1920Timeline extends HTMLElement {
             handleRulerPointerDown: event => this.#handleRulerPointerDown(event),
             handleRulerClick: event => this.#handleRulerClick(event),
             emit: (name, detail) => this.#emit(name, detail),
+            emitBefore: (name, detail) => this.#emitBefore(name, detail),
+            emitAfter: (name, detail) => this.#emitAfter(name, detail),
             setScrubPointerId: value => {
                 this.#scrubPointerId = value
             },
@@ -827,7 +1048,8 @@ export class LGS1920Timeline extends HTMLElement {
         const {minimum, maximum, initial} = resolveLegendBounds(config)
         if (!Number.isFinite(this.#legendWidth)) this.#legendWidth = initial
         this.#timelineConfig = Object.assign({}, config, {
-            readonly: this.readonly,
+            readonly: config.readonly === true || this.hasAttribute('readonly'),
+            noLoopMode: config.noLoopMode === true || this.hasAttribute('noloopmode'),
             noZoomControls: config.noZoomControls === true || this.hasAttribute('nozoomcontrols'),
             legendMinWidth: minimum,
             legendMaxWidth: maximum,
@@ -1040,6 +1262,7 @@ export class LGS1920Timeline extends HTMLElement {
             if (this.#controlledUpdateDepth === 0) this.#flushControlledSync()
         }
         if (Object.prototype.hasOwnProperty.call(state, 'playing')) this.playing = state.playing
+        if (Object.prototype.hasOwnProperty.call(state, 'looping')) this.looping = state.looping
         if (Object.prototype.hasOwnProperty.call(state, 'currentTimeMillis')) this.currentTimeMillis = state.currentTimeMillis
     }
 
@@ -2499,7 +2722,6 @@ export class LGS1920Timeline extends HTMLElement {
         headerStart.append(createElement('slot', '', {name: 'header'}))
         const headerEnd = createElement('span', 'lgs1920-wa-timeline__header-end', {part: 'header-end'})
         const playbackControls = this.#playbackControls()
-        if (playbackControls) headerEnd.append(playbackControls)
         headerEnd.append(headerActions)
         header.append(
             headerStart,
@@ -2512,10 +2734,21 @@ export class LGS1920Timeline extends HTMLElement {
         top.append(header)
 
         const playback = createElement('div', 'lgs1920-wa-timeline__playback-controls', {part: 'playback-controls', 'aria-label': 'Timeline playback controls'})
+        const timeSliderSlot = createElement('slot', '', {name: 'time-slider'})
+        const timeSlider = this.#timelineScrubber()
+        if (timeSlider) timeSliderSlot.append(timeSlider)
+        const playbackTransport = createElement('span', 'lgs1920-wa-timeline__playback-transport', {part: 'playback-transport'})
+        if (playbackControls) playbackTransport.append(playbackControls)
+        playbackTransport.append(createElement('slot', '', {name: 'transport'}))
+        if (playbackControls && !this.noLoopMode) {
+            const loopButton = this.#loopButton()
+            playbackTransport.append(loopButton, this.#tooltip(loopButton.id, loopButton.getAttribute('aria-label')))
+        }
         playback.append(
+            timeSliderSlot,
+            playbackTransport,
             createElement('slot', '', {name: 'playback-start'}),
             this.#slotWithFallback('playback-current', this.#timeText(this.#currentTimeMillis / 1000, 'current')),
-            this.#slotWithFallback('playback-separator', document.createTextNode(' / ')),
             this.#slotWithFallback('playback-total', this.#timeText(this.#durationSeconds(), 'total')),
             createElement('slot', '', {name: 'playback-end'}),
         )
@@ -2840,6 +3073,36 @@ export class LGS1920Timeline extends HTMLElement {
     }
 
     /**
+     * Create the loop-mode toggle for the playback transport area.
+     *
+     * @returns {HTMLElement} Loop-mode button.
+     */
+    #loopButton = () => {
+        const label = this.#looping ? 'Disable loop mode' : 'Enable loop mode'
+        const button = this.#button({
+            iconName: 'repeat',
+            label,
+            testId: 'timeline-loop',
+            iconSlot: 'loop-icon',
+            variant: this.#looping ? 'brand' : 'neutral',
+            appearance: 'plain',
+        })
+        button.id = 'lgs1920-timeline-transport-loop'
+        button.setAttribute('aria-pressed', String(this.#looping))
+        button.addEventListener('click', event => {
+            const looping = !this.#looping
+            const detail = {
+                source: 'timeline-loop-toggle',
+                looping,
+                event,
+            }
+            if (!this.#emitAction('loop-change', detail)) return
+            this.looping = looping
+        })
+        return button
+    }
+
+    /**
      * Create one Web Awesome button with icon and label slots.
      *
      * @param {Object} options - Button options.
@@ -2942,7 +3205,7 @@ export class LGS1920Timeline extends HTMLElement {
      * @returns {HTMLElement|null} Time scrubber, or null when disabled.
      */
     #timelineScrubber = () => {
-        if (this.#isReadonlyMode() || this.#timelineConfig.interactive === false || this.#timelineConfig.showTimeSlider !== true) return null
+        if (this.#isReadonlyMode() || this.#timelineConfig.interactive === false || this.#isTimeSliderDisabled()) return null
         const scrubber = createElement('div', `lgs1920-wa-timeline__timeline-scrubber${this.#hostNoDragClasses()}`, {
             part: 'timeline-scrubber',
             'data-timeline-ruler-fixed': '',
@@ -2982,6 +3245,18 @@ export class LGS1920Timeline extends HTMLElement {
         this.#stopTimelineControlPropagation(scrubber)
         return scrubber
     }
+
+    /**
+     * Check whether the built-in timeline time slider is disabled.
+     *
+     * `showTimeSlider: false` remains supported for callers using the previous
+     * opt-in setting. New callers can use `noTimeSlider`, which defaults to
+     * false because the playback row displays the slider by default.
+     *
+     * @returns {boolean} Whether the built-in slider is disabled.
+     */
+    #isTimeSliderDisabled = () => this.#timelineConfig.noTimeSlider === true
+        || this.#timelineConfig.showTimeSlider === false
 
     /**
      * Create the optional horizontal zoom slider displayed in the control band.
@@ -3343,13 +3618,7 @@ export class LGS1920Timeline extends HTMLElement {
         const rows = createElement('div', 'lgs1920-wa-timeline__legend-rows', {part: 'legend-rows'})
         this.#rows.forEach(row => rows.append(this.#legendRow(row)))
         viewport.append(rows)
-        legend.append(
-            this.#scrollbarShell(viewport, {role: 'legend', horizontal: false, vertical: true}),
-            createElement('div', 'lgs1920-wa-timeline__legend-controls-spacer', {
-                part: 'controls-spacer',
-                'aria-hidden': 'true',
-            }),
-        )
+        legend.append(this.#scrollbarShell(viewport, {role: 'legend', horizontal: false, vertical: true}))
         return legend
     }
 
@@ -3766,7 +4035,7 @@ export class LGS1920Timeline extends HTMLElement {
             event,
             data: this.#publicSnapshot(),
         }
-        const request = this.#emit('before-remove-clip', detail, {cancelable: true})
+        const request = this.#emitBefore('remove-clip', detail)
         if (request.defaultPrevented) return
         this.#rows = nextRows
         this.#localRowsDirty = true
@@ -3782,7 +4051,7 @@ export class LGS1920Timeline extends HTMLElement {
             data: this.#publicSnapshot(),
         })
         this.#render()
-        this.#emit('after-remove-clip', {
+        this.#emitAfter('remove-clip', {
             ...detail,
             tracks: this.tracks,
             data: this.#publicSnapshot(),
@@ -5557,8 +5826,8 @@ export class LGS1920Timeline extends HTMLElement {
         // refreshed. Their internal DraggableElement listens on the shadow DOM
         // slider and must survive every zoom update in a pointer gesture.
         for (const selector of ['[data-timeline-time-slider]', '[data-timeline-zoom-slider]']) {
-            const currentSlider = currentSplitPanel.querySelector(selector)
-            const nextSlider = nextSplitPanel.querySelector(selector)
+            const currentSlider = currentStructure.querySelector(selector)
+            const nextSlider = nextStructure.querySelector(selector)
             if (!currentSlider || !nextSlider) continue
             const currentTooltip = currentSlider.parentElement?.querySelector(`wa-tooltip[for="${currentSlider.id}"]`)
             const nextTooltip = nextSlider.parentElement?.querySelector(`wa-tooltip[for="${nextSlider.id}"]`)
@@ -6631,7 +6900,7 @@ export class LGS1920Timeline extends HTMLElement {
                     durationMillis: this.#durationMillis(),
                 }, event)
                 : {}
-            this.#emit('after-drag', {
+            this.#emitAfter('drag', {
                 context: this.#dragContext(state),
                 ...clipDetail,
                 committed: event.type === 'pointerup' && (state.type === 'clip' ? Boolean(state.lastResult) : rowOrderChanged),
@@ -7177,6 +7446,7 @@ export class LGS1920Timeline extends HTMLElement {
         this.#updatePlayheadPresentation(elements)
         this.#updateZoomSlider(elements)
         this.#updateTransportButtons(elements)
+        this.#updateLoopButton(elements)
         const {total, end, rangeStart, rangeEnd} = elements
         if (total) total.textContent = formatTime(this.#durationSeconds())
         const {majorSeconds} = this.#resolveScale()
@@ -7533,6 +7803,24 @@ export class LGS1920Timeline extends HTMLElement {
     }
 
     /**
+     * Update the loop-mode button without rebuilding the timeline.
+     *
+     * @param {Object} [elements] - Cached dynamic elements.
+     */
+    #updateLoopButton = (elements = this.#dynamicElements) => {
+        const button = elements?.loopButton
+        if (!button) return
+        const label = this.#looping ? 'Disable loop mode' : 'Enable loop mode'
+        const tooltip = button.parentElement?.querySelector(`wa-tooltip[for="${button.id}"]`)
+        button.setAttribute('aria-label', label)
+        button.setAttribute('title', label)
+        button.setAttribute('variant', this.#looping ? 'brand' : 'neutral')
+        button.setAttribute('aria-pressed', String(this.#looping))
+        if (tooltip) tooltip.textContent = label
+        button.replaceChildren(this.#slotWithFallback('loop-icon', createIcon('repeat', 'solid')))
+    }
+
+    /**
      * Emit the canonical component event.
      *
      * @param {string} name - Event suffix.
@@ -7545,22 +7833,30 @@ export class LGS1920Timeline extends HTMLElement {
     }
 
     /**
-     * Emit a cancelable lifecycle start event for a timeline action.
+     * Run cancelable pre-action handlers without publishing another DOM event.
      *
      * @param {string} name - Action name.
      * @param {Object} detail - Action detail.
-     * @returns {CustomEvent} Lifecycle start event.
+     * @returns {CustomEvent} Lifecycle event passed to the handlers.
      */
-    #emitBefore = (name, detail) => this.#emit(`before-${name}`, detail, {cancelable: true})
+    #emitBefore = (name, detail) => {
+        const event = createEvent(`${TIMELINE_EVENT_PREFIX}${name}`, detail, {cancelable: true})
+        this.#lifecycleHandlers.get(name)?.before.forEach(handler => handler(event))
+        return event
+    }
 
     /**
-     * Emit a lifecycle completion event for a timeline action.
+     * Run post-action handlers without publishing another DOM event.
      *
      * @param {string} name - Action name.
      * @param {Object} detail - Action detail.
-     * @returns {CustomEvent} Lifecycle completion event.
+     * @returns {CustomEvent} Lifecycle event passed to the handlers.
      */
-    #emitAfter = (name, detail) => this.#emit(`after-${name}`, detail)
+    #emitAfter = (name, detail) => {
+        const event = createEvent(`${TIMELINE_EVENT_PREFIX}${name}`, detail)
+        this.#lifecycleHandlers.get(name)?.after.forEach(handler => handler(event))
+        return event
+    }
 
     /**
      * Emit a complete lifecycle for an action that has no internal state step.

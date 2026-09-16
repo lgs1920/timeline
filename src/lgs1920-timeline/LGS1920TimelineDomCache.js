@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-15
- * Last modified: 2026-09-15
+ * Last modified: 2026-09-16
  *
  *
  * Copyright © 2026 LGS1920
@@ -44,6 +44,7 @@ export const createTimelineDomCache = root => {
             nextButton: root.querySelector('[data-testid="lgs1920-wa-timeline-next-frame"]'),
             endButton: root.querySelector('[data-testid="lgs1920-wa-timeline-end"]'),
             playbackButton: root.querySelector('[data-testid="lgs1920-wa-timeline-play"]'),
+            loopButton: root.querySelector('[data-testid="lgs1920-wa-timeline-loop"]'),
         }
         return dynamicElements
     }

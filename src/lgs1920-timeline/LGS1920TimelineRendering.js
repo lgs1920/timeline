@@ -43,7 +43,6 @@ export const createTimelineRenderer = ({
     getDurationMillis,
     getContentWidth,
     getZoom,
-    timelineScrubber,
     isClipSelected,
     contextualSlot,
     hasContextualSlot,
@@ -78,6 +77,8 @@ export const createTimelineRenderer = ({
     handleRulerPointerDown,
     handleRulerClick,
     emit,
+    emitBefore = () => ({defaultPrevented: false}),
+    emitAfter = () => {},
     setScrubPointerId,
     scaleWidth,
     scaleOffset,
@@ -90,7 +91,7 @@ export const createTimelineRenderer = ({
      */
     const isTimelineRulerSlotEvent = event => (typeof event.composedPath === 'function'
         ? event.composedPath()
-        : []).some(target => target?.getAttribute?.('slot') === 'timeline-ruler')
+        : []).some(target => ['timeline-ruler', 'time-slider'].includes(target?.getAttribute?.('slot')))
 
     /**
      * Check whether an event belongs to one of the timeline's own controls.
@@ -185,9 +186,9 @@ export const createTimelineRenderer = ({
                     context: {type: 'clip', trackId: value.trackId ?? null, clipId: value.id},
                     event,
                 }
-                if (emit('before-dblclick', detail, {cancelable: true}).defaultPrevented) return
+                if (emitBefore('dblclick', detail).defaultPrevented) return
                 emit('dblclick', detail)
-                emit('after-dblclick', detail)
+                emitAfter('dblclick', detail)
             })
             element.addEventListener('keydown', event => {
                 if (!movable) {
@@ -618,8 +619,6 @@ export const createTimelineRenderer = ({
         )
         tracksViewport.append(tracks)
         canvas.append(ruler, tracksViewport, overlay)
-        const scrubber = timelineScrubber?.()
-        if (scrubber) surface.append(scrubber)
         surface.append(createElement('slot', '', {name: 'timeline-ruler'}), canvas)
         if (interactive) {
             ruler.addEventListener('pointerdown', event => handleRulerPointerDown(event))
