@@ -71,7 +71,7 @@
     /* Timeline horizontal scrollbar allowance. */
     --lgs-timeline-scrollbar-height: 8px;
     /* Timeline custom scrollbar rail size. */
-    --lgs-timeline-scrollbar-size: var(--lgs-scrollbar-size, 8px);
+    --lgs-timeline-scrollbar-size: var(--lgs-scrollbar-size, 6px);
     /* Timeline custom scrollbar minimum thumb size. */
     --lgs-timeline-scrollbar-thumb-min-size: 30px;
     /* Timeline custom scrollbar inactivity timeout matching LGSScrollbars. */
