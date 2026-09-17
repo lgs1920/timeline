@@ -19,7 +19,7 @@ user intent and editing results.
 The component is designed for Web Awesome applications. It uses Web Awesome
 components, themes, and design tokens for its controls and visual integration.
 
-The current release is `0.1.3`.
+The current release is `1.0.0`.
 
 ## Overview
 
