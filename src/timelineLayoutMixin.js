@@ -671,7 +671,7 @@ export const TimelineLayoutMixin = Base => class extends Base {
         })
         const start = this._button({
             iconName: 'backward-step',
-            label: 'Go to timeline start',
+            label: 'Go to start',
             testId: 'timeline-restart',
             iconSlot: 'start-icon',
             variant: 'brand',
@@ -725,7 +725,7 @@ export const TimelineLayoutMixin = Base => class extends Base {
         })
         const stop = this._button({
             iconName: 'stop',
-            label: 'Stop timeline',
+            label: 'Stop',
             testId: 'timeline-stop',
             iconSlot: 'stop-icon',
             variant: 'brand',
@@ -773,13 +773,13 @@ export const TimelineLayoutMixin = Base => class extends Base {
         })
         transportButtons.append(
             start,
-            this._tooltip(start.id, 'Go to timeline start'),
+            this._tooltip(start.id, 'Go to start'),
             previous,
             this._tooltip(previous.id, 'Previous frame'),
             play,
             this._tooltip(play.id, this._playing ? 'Pause timeline' : 'Play timeline'),
             stop,
-            this._tooltip(stop.id, 'Stop timeline'),
+            this._tooltip(stop.id, 'Stop'),
             next,
             this._tooltip(next.id, 'Next frame'),
             end,

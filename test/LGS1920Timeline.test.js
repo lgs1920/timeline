@@ -1622,6 +1622,14 @@ describe('lgs1920-timeline Web Component', () => {
             .toBe('backward-step')
         expect(timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-timeline-end"] wa-icon').getAttribute('name'))
             .toBe('forward-step')
+        expect(timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-timeline-restart"]')
+            .getAttribute('aria-label')).toBe('Go to start')
+        expect(timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-timeline-stop"]')
+            .getAttribute('aria-label')).toBe('Stop')
+        expect(timeline.shadowRoot.querySelector('wa-tooltip[for="lgs1920-timeline-transport-start"]')
+            .textContent).toBe('Go to start')
+        expect(timeline.shadowRoot.querySelector('wa-tooltip[for="lgs1920-timeline-transport-stop"]')
+            .textContent).toBe('Stop')
 
         expect(timeline.shadowRoot.querySelector('slot[name="custom-menu"]')).not.toBeNull()
         expect([...timeline.shadowRoot.querySelectorAll('[role="menuitem"]')]).toHaveLength(0)
@@ -1948,6 +1956,30 @@ describe('lgs1920-timeline Web Component', () => {
             expect(timeline.shadowRoot.querySelector(`[part="track-background"][data-row-id="${trackId}"]`)
                 .classList.contains('lgs1920-wa-timeline__track-background--read-only')).toBe(false)
         }
+    })
+
+    it('keeps visible readonly track names at normal contrast without enabling editing', () => {
+        const timeline = new LGS1920Timeline()
+        timeline.readonly = true
+        configureTimeline(timeline, {
+            tracks: [
+                {id: 'visible', label: 'Visible', editable: false, clips: []},
+                {id: 'hidden', label: 'Hidden', visible: false, editable: false, clips: []},
+            ],
+        })
+        document.body.append(timeline)
+
+        const visibleRow = timeline.shadowRoot.querySelector('[data-row-id="visible"]')
+        const visibleContent = visibleRow.querySelector('[part="legend-content"]')
+        expect(visibleRow.classList.contains('lgs1920-wa-timeline__legend-row--title-disabled')).toBe(false)
+        expect(visibleContent.classList.contains('lgs1920-wa-timeline__track-content--title-disabled')).toBe(false)
+        expect(visibleContent.getAttribute('aria-disabled')).toBeNull()
+
+        visibleContent.dispatchEvent(new MouseEvent('dblclick', {bubbles: true, cancelable: true}))
+        expect(timeline.shadowRoot.querySelector('[data-edit-row-id="visible"]')).toBeNull()
+
+        const hiddenRow = timeline.shadowRoot.querySelector('[data-row-id="hidden"]')
+        expect(hiddenRow.classList.contains('lgs1920-wa-timeline__legend-row--title-disabled')).toBe(true)
     })
 
     it('supports global and contextual slots for repeated track and clip content', () => {

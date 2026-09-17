@@ -208,7 +208,8 @@ The component exposes four interaction contracts:
   `Edit`, `Hide`/`Show`, or `Remove` actions when the data allows them.
 - `readonly` HTML attribute: playback controls and the playhead grip remain
   available; range handles are fixed and editing, scrubbing, selection, menus,
-  and drag targets are disabled.
+  and drag targets are disabled. Visible and enabled track names keep their
+  normal text color while remaining non-editable.
 
 `readonly` is also available as a boolean element property. It is separate from
 the `timeline` configuration object.

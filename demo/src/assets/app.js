@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-16
+ * Last modified: 2026-09-17
  *
  *
  * Copyright © 2026 LGS1920
@@ -381,9 +381,9 @@ const createPlaybackClock = ({timeline, startMillis = 0, endMillis = DEMO_DURATI
         }
     }
 
-    const start = () => {
+    const start = (startAt = getStartMillis()) => {
         stopClock()
-        const startMillisValue = Number(getStartMillis()) || 0
+        const startMillisValue = Number(startAt) || 0
         clockStartMillis = startMillisValue
         sync(clockStartMillis)
         clockStartedAt = performance.now()
@@ -1576,13 +1576,18 @@ const readonlyClock = createPlaybackClock({
     onTime: updateReadonlyTime,
 })
 
-const setReadonlyPlayback = playing => {
+const setReadonlyPlayback = (playing, startAt = readonlyTimeline.currentTimeMillis) => {
+    readonlyTimeline.playing = playing === true
     if (playing) {
-        readonlyTimeline.playing = true
-        readonlyClock.start()
+        readonlyClock.start(startAt)
         return
     }
     readonlyClock.pause()
+}
+
+const stopReadonlyPlayback = () => {
+    readonlyTimeline.playing = false
+    readonlyClock.stop()
 }
 
 readonlyPlayButton.addEventListener('click', () => {
@@ -1590,13 +1595,13 @@ readonlyPlayButton.addEventListener('click', () => {
 })
 readonlyTimeSlider.addEventListener('input', event => readonlyClock.seek(event.currentTarget.value))
 readonlyTimeSlider.addEventListener('change', event => readonlyClock.seek(event.currentTarget.value))
-readonlyTimeline.addEventListener('lgs1920-timeline-play', () => {
-    setReadonlyPlayback(true)
+readonlyTimeline.addEventListener('lgs1920-timeline-play', event => {
+    setReadonlyPlayback(true, event.detail.timeMillis)
 })
 readonlyTimeline.addEventListener('lgs1920-timeline-pause', () => {
     setReadonlyPlayback(false)
 })
-readonlyTimeline.addEventListener('lgs1920-timeline-stop', () => readonlyClock.stop())
+readonlyTimeline.addEventListener('lgs1920-timeline-stop', stopReadonlyPlayback)
 readonlyTimeline.addEventListener('lgs1920-timeline-restart', event => readonlyClock.seek(event.detail.timeMillis))
 readonlyTimeline.addEventListener('lgs1920-timeline-seek', event => seekFromTimelineEvent(readonlyClock, event))
 
