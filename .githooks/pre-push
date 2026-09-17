@@ -2,4 +2,15 @@
 
 set -e
 
-bun scripts/vendor-agent-links.mjs check
+if [ -n "${BUN_BIN:-}" ] && [ -x "$BUN_BIN" ]; then
+    :
+elif command -v bun >/dev/null 2>&1; then
+    BUN_BIN="$(command -v bun)"
+elif [ -x "${HOME}/.bun/bin/bun" ]; then
+    BUN_BIN="${HOME}/.bun/bin/bun"
+else
+    echo "Bun is required by the Git hooks. Install Bun or set BUN_BIN to its executable path." >&2
+    exit 1
+fi
+
+"$BUN_BIN" scripts/vendor-agent-links.mjs check
