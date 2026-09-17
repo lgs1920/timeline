@@ -7,12 +7,14 @@
  * Author : LGS1920 Team
  * email: studio@lgs1920.fr
  *
- * Created on: 2026-09-17
+ * Created on: 2026-09-14
  * Last modified: 2026-09-17
  *
  *
  * Copyright © 2026 LGS1920
  ******************************************************************************/
+
+import {installTimelineTrackEventDelegation} from './timelineTrackInteraction.js'
 
 /**
  * Create the timeline visual renderer.
@@ -163,65 +165,6 @@ export const createTimelineRenderer = ({
                 hidden: true,
             }),
         )
-        if (selectable) {
-            element.addEventListener('pointerdown', event => {
-                if (event.button !== 0 || event.target.closest('[data-clip-handle]')) return
-                const wasSelected = isClipSelected(value)
-                selectClip(value, event, element)
-                if (movable) startClipInteraction(event, value.id, 'move', null, wasSelected)
-            })
-            element.addEventListener('click', event => {
-                event.stopPropagation()
-            })
-            element.addEventListener('contextmenu', event => {
-                if (!movable) return
-                event.preventDefault()
-                event.stopPropagation()
-                selectClip(value, event, element)
-                openClipContextMenu(value, event)
-            })
-            element.addEventListener('dblclick', event => {
-                const detail = {
-                    clip: value,
-                    context: {type: 'clip', trackId: value.trackId ?? null, clipId: value.id},
-                    event,
-                }
-                if (emitBefore('dblclick', detail).defaultPrevented) return
-                emit('dblclick', detail)
-                emitAfter('dblclick', detail)
-            })
-            element.addEventListener('keydown', event => {
-                if (!movable) {
-                    if (['Enter', ' '].includes(event.key)) {
-                        event.preventDefault()
-                        selectClip(value, event, element)
-                    }
-                    return
-                }
-                if (!event.ctrlKey && !event.metaKey && !event.shiftKey
-                    && ['ArrowLeft', 'ArrowRight'].includes(event.key)) {
-                    if (!isClipSelected(value)) selectClip(value, event, element)
-                    moveClipByKeyboard(value.id, event)
-                    return
-                }
-                if (['Backspace', 'Delete'].includes(event.key)) {
-                    removeClip(value.id, event)
-                    return
-                }
-                if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey
-                    && ['c', 'd'].includes(event.key.toLowerCase())) {
-                    duplicateClip(value.id, event)
-                    return
-                }
-                if (!event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'm') {
-                    toggleClipVisibility(value.id, event)
-                    return
-                }
-                if (!event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'v') {
-                    toggleClipEnabled(value.id, event)
-                }
-            })
-        }
         return element
     }
 
@@ -306,14 +249,6 @@ export const createTimelineRenderer = ({
         })
         if (getTimelineConfig().readonly !== true) {
             handle.append(contextualSlot(`clip-${edge}-handle`, value.id, `clip-${edge}-handle`, createIcon('grip-lines-vertical', 'solid')))
-        }
-        if (enabled) {
-            handle.addEventListener('pointerdown', event => {
-                if (event.button !== 0) return
-                selectClip(value, event, handle.closest('[data-clip-id]'))
-                startClipInteraction(event, value.id, 'resize', edge)
-            })
-            handle.addEventListener('keydown', event => resizeClipByKeyboard(value.id, edge, event))
         }
         return handle
     }
@@ -484,6 +419,50 @@ export const createTimelineRenderer = ({
     }
 
     /**
+     * Refresh only the legend rows and track rows while preserving the timeline shell.
+     *
+     * @param {Object} elements - Existing row containers.
+     * @param {HTMLElement} elements.legendRows - Legend row container.
+     * @param {HTMLElement} elements.tracks - Track row container.
+     * @param {number} elements.majorSeconds - Seconds represented by one ruler unit.
+     * @returns {boolean} Whether the row containers were refreshed.
+     */
+    const trackElement = (row, majorSeconds) => {
+        const timeline = getTimelineConfig()
+        const readonly = timeline.readonly === true
+        const dragState = getDragState()
+        const isClipDropRejected = dragState?.type === 'clip'
+            && dragState.targetTrackId === row.id
+            && dragState.dropRejected === true
+        const isClipDropTarget = dragState?.type === 'clip'
+            && dragState.targetTrackId === row.id
+            && !isClipDropRejected
+        const isRejectedRow = dragState?.type === 'row'
+            && dragState.rowId === row.id
+            && dragState.dropRejected === true
+        const trackReadOnly = !readonly && row.editable === false
+        const track = createElement('div', `lgs1920-wa-timeline__track${trackReadOnly ? ' lgs1920-wa-timeline__track--read-only' : ''}${row.visible === false ? ' lgs1920-wa-timeline__track--hidden' : ''}${dragState?.type === 'row' && dragState.rowId === row.id ? ' lgs1920-wa-timeline__track--dragging' : ''}${isRejectedRow ? ' lgs1920-wa-timeline__track--drop-rejected' : ''}${isClipDropTarget ? ' lgs1920-wa-timeline__track--clip-drop-target' : ''}${isClipDropRejected ? ' lgs1920-wa-timeline__track--clip-drop-rejected' : ''}`, {part: 'track', 'data-row-id': row.id})
+        track.style.height = 'var(--lgs-timeline-row-height)'
+        const trackBackground = createElement('div', `lgs1920-wa-timeline__track-background${trackReadOnly ? ' lgs1920-wa-timeline__track-background--read-only' : ''}${row.visible === false ? ' lgs1920-wa-timeline__track-background--hidden' : ''}${isClipDropRejected ? ' lgs1920-wa-timeline__track-background--clip-drop-rejected' : ''}`, {
+            part: 'track-background',
+            'data-row-id': row.id,
+            'aria-hidden': 'true',
+        })
+        track.append(trackBackground)
+        for (const value of row.actions ?? []) {
+            track.append(clip(Object.assign({}, value, {trackId: row.id}), majorSeconds, row.visible !== false, row.editable !== false, row.clipResizable === true))
+        }
+        return track
+    }
+
+    const updateRows = ({legendRows, tracks, majorSeconds} = {}) => {
+        if (!legendRows || !tracks) return false
+        legendRows.replaceChildren(...getRows().map(row => legendRow(row)))
+        tracks.replaceChildren(...getRows().map(row => trackElement(row, majorSeconds)))
+        return true
+    }
+
+    /**
      * Create the ruler, tracks, playhead, and end marker surface.
      *
      * @param {number} scaleCount - Number of major ruler units.
@@ -543,42 +522,30 @@ export const createTimelineRenderer = ({
         )
         const tracks = createElement('div', 'lgs1920-wa-timeline__tracks', {part: 'tracks'})
         tracks.style.width = `${getContentWidth()}px`
-        getRows().forEach(row => {
-            const dragState = getDragState()
-            const isClipDropRejected = dragState?.type === 'clip'
-                && dragState.targetTrackId === row.id
-                && dragState.dropRejected === true
-            const isClipDropTarget = dragState?.type === 'clip'
-                && dragState.targetTrackId === row.id
-                && !isClipDropRejected
-            const isRejectedRow = dragState?.type === 'row'
-                && dragState.rowId === row.id
-                && dragState.dropRejected === true
-            const trackReadOnly = !readonly && row.editable === false
-            const track = createElement('div', `lgs1920-wa-timeline__track${trackReadOnly ? ' lgs1920-wa-timeline__track--read-only' : ''}${row.visible === false ? ' lgs1920-wa-timeline__track--hidden' : ''}${dragState?.type === 'row' && dragState.rowId === row.id ? ' lgs1920-wa-timeline__track--dragging' : ''}${isRejectedRow ? ' lgs1920-wa-timeline__track--drop-rejected' : ''}${isClipDropTarget ? ' lgs1920-wa-timeline__track--clip-drop-target' : ''}${isClipDropRejected ? ' lgs1920-wa-timeline__track--clip-drop-rejected' : ''}`, {part: 'track', 'data-row-id': row.id})
-            track.style.height = 'var(--lgs-timeline-row-height)'
-            const trackBackground = createElement('div', `lgs1920-wa-timeline__track-background${trackReadOnly ? ' lgs1920-wa-timeline__track-background--read-only' : ''}${row.visible === false ? ' lgs1920-wa-timeline__track-background--hidden' : ''}${isClipDropRejected ? ' lgs1920-wa-timeline__track-background--clip-drop-rejected' : ''}`, {
-                part: 'track-background',
-                'data-row-id': row.id,
-                'aria-hidden': 'true',
-            })
-            track.append(trackBackground)
-            for (const value of row.actions ?? []) {
-                track.append(clip(Object.assign({}, value, {trackId: row.id}), majorSeconds, row.visible !== false, row.editable !== false, row.clipResizable === true))
-            }
-            if (interactive) {
-                track.addEventListener('dragover', event => handleClipDragOver(event, row.id, track))
-                track.addEventListener('dragleave', event => handleClipDragLeave(event, track))
-                track.addEventListener('drop', event => handleClipDrop(event, row.id, track))
-            }
-            if (interactive && timeline.editable !== false && row.editable !== false) {
-                track.addEventListener('contextmenu', event => {
-                    event.preventDefault()
-                    event.stopPropagation()
-                    openTrackContextMenu(row, event)
-                })
-            }
-            tracks.append(track)
+        getRows().forEach(row => tracks.append(trackElement(row, majorSeconds)))
+        installTimelineTrackEventDelegation({
+            tracks,
+            interactive,
+            editable: timeline.editable !== false,
+            getRows,
+            getTimelineConfig,
+            isClipSelected,
+            removeClip,
+            duplicateClip,
+            toggleClipEnabled,
+            toggleClipVisibility,
+            selectClip,
+            openClipContextMenu,
+            openTrackContextMenu,
+            handleClipDragOver,
+            handleClipDragLeave,
+            handleClipDrop,
+            startClipInteraction,
+            moveClipByKeyboard,
+            resizeClipByKeyboard,
+            emit,
+            emitBefore,
+            emitAfter,
         })
         const tracksViewport = createElement('div', 'lgs1920-wa-timeline__tracks-viewport', {
             part: 'tracks-viewport',
@@ -658,5 +625,5 @@ export const createTimelineRenderer = ({
         return {surface}
     }
 
-    return {clip, clipHandle, legendRow, rangeHandle, surfaceElement, updateRulerDuration}
+    return {clip, clipHandle, legendRow, rangeHandle, surfaceElement, updateRulerDuration, updateRows}
 }
