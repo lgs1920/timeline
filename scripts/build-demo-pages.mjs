@@ -1,3 +1,19 @@
+/*******************************************************************************
+ *
+ * This file is part of the LGS1920/timeline project.
+ *
+ * File: build-demo-pages.mjs
+ *
+ * Author : LGS1920 Team
+ * email: studio@lgs1920.fr
+ *
+ * Created on: 2026-09-14
+ * Last modified: 2026-09-17
+ *
+ *
+ * Copyright © 2026 LGS1920
+ ******************************************************************************/
+
 import {mkdir} from 'node:fs/promises'
 import {parseReleaseTags, renderChangelogEntries} from './changelog.mjs'
 
@@ -67,9 +83,24 @@ apply()
 </script>`
 
 const controls = `<div class="site-banner-controls" aria-label="Display settings">
-    <label>Theme <select data-theme-control="theme"><option>default</option><option>awesome</option><option>shoelace</option></select></label>
-    <label>Mode <select data-theme-control="mode"><option value="dark">Dark</option><option value="light">Light</option></select></label>
-    <label>Brand <select data-theme-control="color"><option>blue</option><option>red</option><option>orange</option><option>green</option><option>cyan</option><option>purple</option><option>pink</option></select></label>
+    <wa-select data-theme-control="theme" label="Theme" size="medium" value="default">
+        <wa-option value="default">Default</wa-option>
+        <wa-option value="awesome">Awesome</wa-option>
+        <wa-option value="shoelace">Shoelace</wa-option>
+    </wa-select>
+    <wa-select data-theme-control="mode" label="Mode" size="medium" value="dark">
+        <wa-option value="dark">Dark</wa-option>
+        <wa-option value="light">Light</wa-option>
+    </wa-select>
+    <wa-select data-theme-control="color" label="Brand" size="medium" value="blue">
+        <wa-option value="blue">Blue</wa-option>
+        <wa-option value="red">Red</wa-option>
+        <wa-option value="orange">Orange</wa-option>
+        <wa-option value="green">Green</wa-option>
+        <wa-option value="cyan">Cyan</wa-option>
+        <wa-option value="purple">Purple</wa-option>
+        <wa-option value="pink">Pink</wa-option>
+    </wa-select>
 </div>`
 
 const shell = (currentPage, title, content) => `<!doctype html>

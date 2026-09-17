@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-16
+ * Last modified: 2026-09-17
  *
  *
  * Copyright © 2026 LGS1920
@@ -72,10 +72,10 @@ body {
 }
 
 .site-banner-controls {
-    flex: 0 0 auto;
-    justify-content: flex-start;
-    margin-inline-start: clamp(1rem, 4vw, 4rem);
-    gap: var(--wa-space-2xs);
+    flex: 1 1 auto;
+    justify-content: center;
+    margin-inline-start: 0;
+    gap: var(--wa-space-xs);
 }
 
 .site-banner-external {
@@ -83,26 +83,8 @@ body {
 }
 
 .site-banner-controls wa-select {
-    inline-size: 6rem;
-    min-inline-size: 0;
-}
-
-.site-banner-controls label {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--wa-space-2xs);
-    color: var(--demo-muted);
-    font-size: 0.75rem;
-}
-
-.site-banner-controls select {
-    inline-size: 6rem;
-    min-inline-size: 6rem;
-    padding: 0.25rem;
-    border: 1px solid var(--demo-panel-border);
-    border-radius: var(--wa-border-radius-s);
-    background: var(--demo-panel);
-    color: var(--demo-text);
+    inline-size: clamp(7rem, 10vw, 8rem);
+    min-inline-size: 7rem;
 }
 
 .readme-content {
@@ -1145,17 +1127,6 @@ kbd {
     .site-banner-controls {
         gap: var(--wa-space-2xs);
         justify-content: center;
-    }
-
-    .site-banner-controls label {
-        gap: 0;
-        font-size: 0;
-    }
-
-    .site-banner-controls select {
-        inline-size: 5.5rem;
-        min-inline-size: 5.5rem;
-        padding-inline: 0.15rem;
     }
 
     .demo-shell {
