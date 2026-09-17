@@ -218,10 +218,11 @@ export const createTimelineControls = ({
                 updateDynamicState()
                 return
             }
+            setHorizontalFitActive(false)
             setZoom(zoomPercent)
             emit('zoom-change', detail)
+            render()
             if (settled) {
-                render()
                 emitAfter('zoom-change', detail)
             }
         }

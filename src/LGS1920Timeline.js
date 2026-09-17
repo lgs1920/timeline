@@ -865,6 +865,26 @@ export class LGS1920Timeline extends TimelineBase {
     }
 
     /**
+     * Check whether an event belongs to one of the built-in sliders.
+     *
+     * Web Awesome installs the continuation listeners for slider drags on the
+     * document. The timeline input boundary must therefore let those events
+     * cross the shadow root after the slider has started its gesture.
+     *
+     * @param {Event} event - Native event to inspect.
+     * @returns {boolean} Whether the event originated from a built-in slider.
+     */
+    _isBuiltInSliderEvent = event => {
+        const composedPath = typeof event.composedPath === 'function' ? event.composedPath() : []
+        const selector = '[data-timeline-time-slider], [data-timeline-zoom-slider]'
+        if (composedPath.some(target => target?.matches?.(selector))) return true
+        if (event.target?.matches?.(selector) || event.target?.closest?.(selector)) return true
+        return [...this._root.querySelectorAll(selector)].some(slider => (
+            slider === event.target || slider.shadowRoot?.contains?.(event.target)
+        ))
+    }
+
+    /**
      * Update the disclosure state of the generic additional-content panel.
      *
      * @returns {void}
@@ -956,6 +976,8 @@ export class LGS1920Timeline extends TimelineBase {
             return
         }
         if (this._isApplicationSlotEvent(event)) return
+        if (this._isBuiltInSliderEvent(event)
+            && EXTERNAL_INTERACTION_CONTINUATION_EVENT_TYPES.includes(event.type)) return
         if (HOST_DRAG_START_EVENT_TYPES.includes(event.type)
             && this._isSplitPanelDividerEvent(event)) {
             event.stopImmediatePropagation()

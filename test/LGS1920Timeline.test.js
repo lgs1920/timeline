@@ -684,12 +684,29 @@ describe('lgs1920-timeline Web Component', () => {
         expect(zoomSlider.value).toBe(0)
         expect(typeof zoomSlider.valueFormatter).toBe('function')
 
+        const documentPointerMove = vi.fn()
+        document.addEventListener('pointermove', documentPointerMove)
+        try {
+            const sliderTargets = [
+                timeSlider,
+                zoomSlider,
+            ]
+            sliderTargets.forEach(target => target?.dispatchEvent(new Event('pointermove', {
+                bubbles: true,
+                composed: true,
+            })))
+            expect(documentPointerMove).toHaveBeenCalledTimes(2)
+        } finally {
+            document.removeEventListener('pointermove', documentPointerMove)
+        }
+
         const zoomSliderDuringInput = zoomSlider
         const replaceChildren = vi.spyOn(timeline.shadowRoot, 'replaceChildren')
         zoomSlider.value = 75
         zoomSlider.dispatchEvent(new Event('input', {bubbles: true}))
         expect(timeline.shadowRoot.querySelector('[data-timeline-zoom-slider]')).toBe(zoomSliderDuringInput)
         expect(replaceChildren).not.toHaveBeenCalled()
+        expect(timeline.shadowRoot.querySelector('[data-surface]').getAttribute('data-zoom-percent')).toBe('75')
 
         timeSlider.value = 5_000
         timeSlider.dispatchEvent(new Event('input', {bubbles: true}))
@@ -701,6 +718,9 @@ describe('lgs1920-timeline Web Component', () => {
         })
 
         zoomSlider.value = 100
+        timeline._horizontalFitActive = true
+        zoomSlider.dispatchEvent(new Event('input', {bubbles: true}))
+        expect(timeline._horizontalFitActive).toBe(false)
         zoomSlider.dispatchEvent(new Event('change', {bubbles: true}))
         expect(zoomChange.mock.calls.at(-1)[0].detail).toMatchObject({
             settled: true,
