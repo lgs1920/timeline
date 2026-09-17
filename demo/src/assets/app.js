@@ -85,7 +85,6 @@ const interactiveTimeline = document.querySelector('#interactive-timeline')
 const readonlyTimeline = document.querySelector('#readonly-timeline')
 const readonlyPlayButton = document.querySelector('#readonly-play')
 const readonlyTimeSlider = document.querySelector('#readonly-time-slider')
-const readonlyTimeTooltip = document.querySelector('#readonly-time-tooltip')
 const readonlyStatus = document.querySelector('#readonly-status')
 const rangeTimeline = document.querySelector('#range-timeline')
 
@@ -356,7 +355,7 @@ configureTimeline(interactiveTimeline, {
 configureTimeline(readonlyTimeline, {
     durationMillis: SHORT_DEMO_DURATION_MILLIS,
     mode: 'readonly',
-    playback: {loop: 'hidden'},
+    playback: {loop: 'hidden', transport: 'hidden', time: 'hidden'},
 })
 configureTimeline(rangeTimeline, {
     durationMillis: SHORT_DEMO_DURATION_MILLIS,
@@ -1189,6 +1188,8 @@ const createPacmanDemo = ({canvas, popup, timeline, status, progress, almostProg
     }
 }
 
+readonlyTimeSlider.withTooltip = true
+readonlyTimeSlider.tooltipPlacement = 'top'
 readonlyTimeSlider.valueFormatter = value => `${formatMillis(value)} / ${formatMillis(SHORT_DEMO_DURATION_MILLIS)}`
 
 let studioPacmanDemo
@@ -1603,9 +1604,8 @@ interactiveTimeline.addEventListener('lgs1920-timeline-add-clip', event => {
 
 const updateReadonlyTime = timeMillis => {
     readonlyTimeSlider.value = timeMillis
-    readonlyTimeTooltip.textContent = readonlyTimeSlider.valueFormatter(readonlyTimeSlider.value)
     readonlyPlayButton.textContent = readonlyTimeline.playing ? 'Pause preview' : 'Play preview'
-    readonlyStatus.textContent = `External player ${readonlyTimeline.playing ? 'playing' : 'paused'} · ${formatMillis(timeMillis)}`
+    readonlyStatus.textContent = `External player ${readonlyTimeline.playing ? 'playing' : 'paused'}`
 }
 
 const readonlyClock = createPlaybackClock({

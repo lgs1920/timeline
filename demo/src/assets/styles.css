@@ -580,7 +580,6 @@ h2 {
 }
 
 .demo-skip-controls wa-tooltip,
-.readonly-controls wa-tooltip,
 .example-card > wa-tooltip {
     display: contents;
 }

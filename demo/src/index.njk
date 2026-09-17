@@ -326,11 +326,11 @@ timeline.addEventListener('lgs1920-timeline-seek', event =&gt; {
         <article class="demo-panel example-card">
             <p class="eyebrow">Demo 03 · Readonly playback</p>
             <h2>Readonly Playback Projection</h2>
-            <p>The timeline is a readonly playback projection: it keeps the standard playback controls while the host controls and sends the current time. Inside the timeline, only the playhead grip can move. Use this pattern for a video player, a presentation preview, or a monitoring screen.</p>
+            <p>The timeline is a readonly playback projection: the host controls and sends the current time through an external player control. Inside the timeline, only the playhead grip can move. Use this pattern for a video player, a presentation preview, or a monitoring screen.</p>
             <wa-details class="demo-details" summary="What this demo shows" appearance="filled-outlined">
                 <p>Readonly mode is useful when another component owns the timeline data and current position. The host keeps sending the external player position, while the timeline exposes playback controls, fixed start/end range handles, the draggable playhead grip, and standard clip icons.</p>
                 <ul>
-                    <li>Use the <code>readonly</code> attribute to keep the standard playback controls inside the timeline.</li>
+                    <li>Use the <code>readonly</code> attribute with <code>playback.transport = 'hidden'</code> and <code>playback.time = 'hidden'</code> when the host owns the controls.</li>
                     <li>Use <code>options.mode = 'passive'</code> for a passive projection, or <code>options.mode = 'review'</code> when playback and review navigation should remain available without editing.</li>
                     <li>Keep the external player's time slider outside the timeline.</li>
                     <li>Use this pattern for monitoring views, review screens, or compact sequence summaries.</li>
@@ -338,11 +338,10 @@ timeline.addEventListener('lgs1920-timeline-seek', event =&gt; {
             </wa-details>
             <div class="readonly-controls">
                 <wa-button id="readonly-play" appearance="accent" size="s" disabled>Play preview</wa-button>
-                <wa-slider id="readonly-time-slider" label="External player time" size="s" variant="brand" min="0" max="30000" step="33.333" value="0"></wa-slider>
-                <wa-tooltip id="readonly-time-tooltip" for="readonly-time-slider" placement="top">00:00 / 00:30</wa-tooltip>
+                <wa-slider id="readonly-time-slider" label="External player time" size="s" variant="brand" min="0" max="30000" step="33.333" value="0" with-tooltip tooltip-placement="top"></wa-slider>
             </div>
             <lgs1920-timeline id="readonly-timeline" readonly aria-label="Readonly playback timeline"></lgs1920-timeline>
-            <p id="readonly-status" class="demo-note" role="status" aria-live="polite">External player paused · 00:00</p>
+            <p id="readonly-status" class="demo-note" role="status" aria-live="polite">External player paused</p>
             <pre class="demo-code"><code data-language="html">&lt;lgs1920-timeline id="timeline" readonly&gt;&lt;/lgs1920-timeline&gt;</code></pre>
             <pre class="demo-code"><code data-language="javascript">timeline.options = {
     durationMillis: 30000,
