@@ -26,6 +26,7 @@
 export const createTimelineSelection = ({
     getRoot,
     getRows,
+    getClipElement,
     getSelectedKey,
     setSelectedKey,
     findClipEntry,
@@ -36,28 +37,44 @@ export const createTimelineSelection = ({
     emit,
     publicSnapshot,
 }) => {
+    let presentedSelectedKey = null
+
+    const clipIdFromKey = selectedKey => {
+        if (selectedKey === null || selectedKey === undefined) return null
+        const separatorIndex = String(selectedKey).indexOf('\u0000')
+        return separatorIndex < 0 ? null : String(selectedKey).slice(separatorIndex + 1)
+    }
+
+    const findElement = selectedKey => {
+        const clipId = clipIdFromKey(selectedKey)
+        if (clipId === null) return null
+        const cachedElement = getClipElement?.(clipId)
+        if (cachedElement) return cachedElement
+        return [...getRoot().querySelectorAll('[data-clip-id]')]
+            .find(element => String(element.getAttribute('data-clip-id')) === clipId) ?? null
+    }
     const key = (trackId, clipId) => `${String(trackId ?? '')}\u0000${String(clipId ?? '')}`
 
     const updatePresentation = () => {
         const selectedKey = getSelectedKey()
-        getRoot().querySelectorAll('[data-clip-id]').forEach(element => {
-            const selected = selectedKey === key(
-                element.getAttribute('data-clip-track-id'),
-                element.getAttribute('data-clip-id'),
-            )
-            element.classList.toggle('lgs1920-wa-timeline__clip--selected', selected)
-            element.setAttribute('aria-selected', selected ? 'true' : 'false')
-        })
+        if (presentedSelectedKey === selectedKey) return
+        const previousElement = findElement(presentedSelectedKey)
+        const nextElement = findElement(selectedKey)
+        if (previousElement && previousElement !== nextElement) {
+            previousElement.classList.remove('lgs1920-wa-timeline__clip--selected')
+            previousElement.setAttribute('aria-selected', 'false')
+        }
+        if (nextElement) {
+            nextElement.classList.add('lgs1920-wa-timeline__clip--selected')
+            nextElement.setAttribute('aria-selected', 'true')
+        }
+        presentedSelectedKey = selectedKey
     }
 
     const focusSelected = () => {
         const selectedKey = getSelectedKey()
         if (selectedKey === null) return
-        const element = [...getRoot().querySelectorAll('[data-clip-id]')]
-            .find(value => selectedKey === key(
-                value.getAttribute('data-clip-track-id'),
-                value.getAttribute('data-clip-id'),
-            ))
+        const element = findElement(selectedKey)
         element?.focus?.({preventScroll: true})
     }
 
@@ -117,12 +134,6 @@ export const createTimelineSelection = ({
         const selectedKey = getSelectedKey()
         const rows = getRows()
         const selectedClipExists = selectedKey === null
-            || [...getRoot().querySelectorAll('[data-clip-id]')].some(element => (
-                selectedKey === key(
-                    element.getAttribute('data-clip-track-id'),
-                    element.getAttribute('data-clip-id'),
-                )
-            ))
             || rows.some(row => (row.actions ?? []).some(clip => selectedKey === key(row.id, clip.id)))
         if (!selectedClipExists && selectedKey !== null) {
             const separatorIndex = selectedKey.indexOf('\u0000')

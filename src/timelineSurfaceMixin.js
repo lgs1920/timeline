@@ -133,12 +133,11 @@ export const TimelineSurfaceMixin = Base => class extends Base {
             rows: this._dragState.baseRows,
             durationMillis: state.initialDurationMillis,
         }, event)
-        const dragDetail = {
+        const dragDetail = this._withLazySnapshot({
             context: this._dragContext(this._dragState),
             ...changeDetail,
             event,
-            data: this._publicSnapshot(),
-        }
+        })
         const beforeClipChange = this._emitBefore('clip-change', changeDetail)
         if (beforeClipChange.defaultPrevented) {
             this._dragState = null
@@ -444,11 +443,7 @@ export const TimelineSurfaceMixin = Base => class extends Base {
      * Refresh dimensions in place without rebuilding the timeline DOM.
      */
     _refreshLayoutMetrics = () => {
-        const startedAt = globalThis.performance?.now?.() ?? Date.now()
         this._refreshLayoutMetricsInternal()
-        console.log('[LGS1920Timeline] layout refresh', {
-            durationMs: Number(((globalThis.performance?.now?.() ?? Date.now()) - startedAt).toFixed(2)),
-        })
     }
 
     _refreshLayoutMetricsInternal = () => {
@@ -479,7 +474,6 @@ export const TimelineSurfaceMixin = Base => class extends Base {
     }
 
     _scheduleLayoutRefresh = () => {
-        console.log('[LGS1920Timeline] ResizeObserver callback')
         if (this._layoutRefreshFrame !== null) return
         const refresh = () => {
             this._layoutRefreshFrame = null

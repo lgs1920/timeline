@@ -95,11 +95,10 @@ export const TimelineDragMixin = Base => class extends Base {
             baseRows: timelineEditing.cloneRows(this._rows),
             rowGhostGeometry,
         }
-        const detail = {
+        const detail = this._withLazySnapshot({
             context: this._dragContext(this._dragState),
             event,
-            data: this._publicSnapshot(),
-        }
+        })
         if (this._emitBefore('drag', detail).defaultPrevented) {
             this._dragState = null
             this._releasePointerCapture()
@@ -446,13 +445,12 @@ export const TimelineDragMixin = Base => class extends Base {
                 rows: this._rows,
                 durationMillis: this._durationMillis(),
             }
-            this._emit('drag', {
+            this._emit('drag', this._withLazySnapshot({
                 context: this._dragContext(this._dragState),
                 ...this._clipEditor.changeDetail(this._dragState, result, event),
                 accepted: this._dragState.dropRejected !== true,
                 event,
-                data: this._publicSnapshot(),
-            })
+            }))
             return
         }
         if (this._dragState?.type === 'range') {
@@ -504,11 +502,10 @@ export const TimelineDragMixin = Base => class extends Base {
             this._dragState.lastValidDropIndex = dropIndex
             this._dragState.dropRejected = false
             this.removeAttribute('data-row-drop-rejected')
-            this._emit('drag', {
+            this._emit('drag', this._withLazySnapshot({
                 context: this._dragContext(this._dragState),
                 event,
-                data: this._publicSnapshot(),
-            })
+            }))
             this._updateRowDragPresentation()
         }
     }
@@ -673,13 +670,12 @@ export const TimelineDragMixin = Base => class extends Base {
                     durationMillis: this._durationMillis(),
                 }, event)
                 : {}
-            this._emitAfter('drag', {
+            this._emitAfter('drag', this._withLazySnapshot({
                 context: this._dragContext(state),
                 ...clipDetail,
                 committed: event.type === 'pointerup' && (state.type === 'clip' ? Boolean(state.lastResult) : rowOrderChanged),
                 event,
-                data: this._publicSnapshot(),
-            })
+            }))
             if (wasSimpleClick) this._clearClipSelection(event)
         }
         if (state?.type === 'clip' && event.type === 'pointerup') {
@@ -792,13 +788,12 @@ export const TimelineDragMixin = Base => class extends Base {
                     rows: this._rows,
                     durationMillis: this._durationMillis(),
                 }
-                this._emit('drag', {
+                this._emit('drag', this._withLazySnapshot({
                     context: this._dragContext(state),
                     ...this._clipEditor.changeDetail(state, result, pointerEvent),
                     accepted: state.dropRejected !== true,
                     event: pointerEvent,
-                    data: this._publicSnapshot(),
-                })
+                }))
             }
             this._pinActiveTimeHandle(pointerEvent)
             if (this._isEdgeDragLimitReached(this._edgeDirection)) {

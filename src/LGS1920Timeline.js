@@ -652,6 +652,7 @@ export class LGS1920Timeline extends TimelineBase {
         this._selection = createTimelineSelection({
             getRoot: () => this._root,
             getRows: () => this._rows,
+            getClipElement: clipId => this._domCache.getClipPresentationElements()?.clips.get(String(clipId)) ?? null,
             getSelectedKey: () => this._selectedClipKey,
             setSelectedKey: value => {
                 this._selectedClipKey = value
@@ -803,7 +804,6 @@ export class LGS1920Timeline extends TimelineBase {
      * Render the component when it is attached to the document.
      */
     connectedCallback() {
-        const startedAt = globalThis.performance?.now?.() ?? Date.now()
         this._initialBuildComplete = false
         this._initialRangeStartPositioned = false
         this._building = this._timelineConfig.showBuildingOverlay !== false
@@ -829,13 +829,8 @@ export class LGS1920Timeline extends TimelineBase {
             if (this._timelineConfig.showBuildingOverlay === false) {
                 this._root.querySelector('[data-building-overlay]')?.remove()
             }
-            console.log('[LGS1920Timeline] connected without projection')
         }
         this.setAttribute('data-ready', '')
-        console.log('[LGS1920Timeline] connected', {
-            phase: this._projection ? 'active' : 'empty',
-            durationMs: Number(((globalThis.performance?.now?.() ?? Date.now()) - startedAt).toFixed(2)),
-        })
     }
 
     /**

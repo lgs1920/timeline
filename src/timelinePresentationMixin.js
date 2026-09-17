@@ -17,6 +17,7 @@
 import * as timelineUtils from './timelineUtils.js'
 import {resolveClipInterval} from './timelineEditing.js'
 import {TIMELINE_EVENT_PREFIX} from './timelineConstants.js'
+import {withLazySnapshot} from './timelineEventDetails.js'
 
 /**
  * Add dynamic presentation and event emission methods to a timeline host.
@@ -25,6 +26,8 @@ import {TIMELINE_EVENT_PREFIX} from './timelineConstants.js'
  * @returns {typeof HTMLElement} Extended host class.
  */
 export const TimelinePresentationMixin = Base => class extends Base {
+    _withLazySnapshot = detail => withLazySnapshot(detail, () => this._publicSnapshot())
+
     _cacheDynamicElements = () => {
         this._dynamicElements = this._domCache.cacheDynamicElements()
         this._transportState = null
