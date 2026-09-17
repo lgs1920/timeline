@@ -88,6 +88,23 @@ const readonlyTimeSlider = document.querySelector('#readonly-time-slider')
 const readonlyTimeTooltip = document.querySelector('#readonly-time-tooltip')
 const readonlyStatus = document.querySelector('#readonly-status')
 const rangeTimeline = document.querySelector('#range-timeline')
+
+// Attach the preview toggle before the heavier demo initialization starts.
+readonlyPlayButton.addEventListener('click', () => {
+    setReadonlyPlayback(!readonlyTimeline.playing)
+})
+readonlyPlayButton.disabled = false
+readonlyTimeSlider.addEventListener('input', event => readonlyClock.seek(event.currentTarget.value))
+readonlyTimeSlider.addEventListener('change', event => readonlyClock.seek(event.currentTarget.value))
+readonlyTimeline.addEventListener('lgs1920-timeline-play', event => {
+    setReadonlyPlayback(true, event.detail.timeMillis)
+})
+readonlyTimeline.addEventListener('lgs1920-timeline-pause', () => {
+    setReadonlyPlayback(false)
+})
+readonlyTimeline.addEventListener('lgs1920-timeline-stop', stopReadonlyPlayback)
+readonlyTimeline.addEventListener('lgs1920-timeline-restart', event => readonlyClock.seek(event.detail.timeMillis))
+readonlyTimeline.addEventListener('lgs1920-timeline-seek', event => seekFromTimelineEvent(readonlyClock, event))
 const eventOutput = document.querySelector('#event-output')
 const eventStatus = document.querySelector('#event-status')
 const rangeStatus = document.querySelector('#range-status')
@@ -363,6 +380,7 @@ const createPlaybackClock = ({timeline, startMillis = 0, endMillis = DEMO_DURATI
     const tick = () => {
         if (!timeline.playing) {
             stopClock()
+            onTime(timeline.currentTimeMillis)
             return
         }
         const nextTime = sync(clockStartMillis + ((performance.now() - clockStartedAt) * rate))
@@ -1589,21 +1607,6 @@ const stopReadonlyPlayback = () => {
     readonlyTimeline.playing = false
     readonlyClock.stop()
 }
-
-readonlyPlayButton.addEventListener('click', () => {
-    setReadonlyPlayback(!readonlyTimeline.playing)
-})
-readonlyTimeSlider.addEventListener('input', event => readonlyClock.seek(event.currentTarget.value))
-readonlyTimeSlider.addEventListener('change', event => readonlyClock.seek(event.currentTarget.value))
-readonlyTimeline.addEventListener('lgs1920-timeline-play', event => {
-    setReadonlyPlayback(true, event.detail.timeMillis)
-})
-readonlyTimeline.addEventListener('lgs1920-timeline-pause', () => {
-    setReadonlyPlayback(false)
-})
-readonlyTimeline.addEventListener('lgs1920-timeline-stop', stopReadonlyPlayback)
-readonlyTimeline.addEventListener('lgs1920-timeline-restart', event => readonlyClock.seek(event.detail.timeMillis))
-readonlyTimeline.addEventListener('lgs1920-timeline-seek', event => seekFromTimelineEvent(readonlyClock, event))
 
 document.querySelector('[data-theme-control="theme"]').addEventListener('change', event => applyTheme(event.currentTarget.value))
 document.querySelector('[data-theme-control="mode"]').addEventListener('change', event => applyMode(event.currentTarget.value))
