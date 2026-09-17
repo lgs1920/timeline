@@ -7,7 +7,7 @@
  * Author : LGS1920 Team
  * email: studio@lgs1920.fr
  *
- * Created on: 2026-09-17
+ * Created on: 2026-09-14
  * Last modified: 2026-09-17
  *
  *
@@ -22,6 +22,7 @@ import {
     removeClipFromRows,
     resolveClipInterval,
 } from './timelineClipData.js'
+import {sameTimelineValue} from './timelineState.js'
 
 export {
     clipsOverlap,
@@ -377,14 +378,14 @@ export const createTimelineClipEditor = ({
     const resizeRippleHistory = new Map()
 
     /**
-     * Build a stable signature for clip placement on one track.
+     * Build a normalized clip placement layout for one track.
      *
      * @param {Array} clips - Track clips.
-     * @returns {string} Placement signature.
+     * @returns {Array} Normalized placement layout.
      */
-    const clipLayoutSignature = clips => JSON.stringify((clips ?? [])
+    const clipLayout = clips => (clips ?? [])
         .map(clip => [String(clip.id), Number(clip.start), Number(clip.end)])
-        .sort((left, right) => left[0].localeCompare(right[0])))
+        .sort((left, right) => left[0].localeCompare(right[0]))
 
     /**
      * Build the key used to retain one resize ripple history.
@@ -412,9 +413,9 @@ export const createTimelineClipEditor = ({
         if (!before || !after || before.row.id !== after.row.id) return
         if (resolveCollisionPolicy(getTimelineConfig(), before.row, 'resize') !== 'ripple') return
         const key = resizeRippleHistoryKey(before.row.id, clipId, edge)
-        const currentSignature = clipLayoutSignature(before.row.actions)
+        const currentLayout = clipLayout(before.row.actions)
         const previous = resizeRippleHistory.get(key)
-        const baseline = previous?.resultSignature === currentSignature
+        const baseline = previous && sameTimelineValue(previous.resultLayout, currentLayout)
             ? previous
             : {
                 baselineClips: cloneRows([{actions: before.row.actions}])[0].actions,
@@ -423,7 +424,7 @@ export const createTimelineClipEditor = ({
         resizeRippleHistory.set(key, {
             baselineClips: baseline.baselineClips,
             baselineClip: baseline.baselineClip,
-            resultSignature: clipLayoutSignature(after.row.actions),
+            resultLayout: clipLayout(after.row.actions),
         })
     }
 
@@ -541,7 +542,7 @@ export const createTimelineClipEditor = ({
             ? resizeRippleHistory.get(historyKey)
             : null
         const useResizeHistory = Boolean(resizeHistory
-            && resizeHistory.resultSignature === clipLayoutSignature(target.actions))
+            && sameTimelineValue(resizeHistory.resultLayout, clipLayout(target.actions)))
         const historicalClips = useResizeHistory
             ? resizeHistory.baselineClips.map(value => {
                 const current = targetClips.find(candidate => candidate.id === value.id)

@@ -1094,7 +1094,10 @@ export class LGS1920Timeline extends TimelineBase {
         this._visible = this._timelineConfig.visible !== false
         this._requestControlledSync({
             zoomPercent: applyControlledZoom ? requestedZoom : undefined,
-            forceRender: previousStructureConfig !== this._structureConfig(this._timelineConfig, STRUCTURAL_CONFIG_KEYS),
+            forceRender: !this._stateSignatures.valuesEqual(
+                previousStructureConfig,
+                this._structureConfig(this._timelineConfig, STRUCTURAL_CONFIG_KEYS),
+            ),
         })
     }
 
@@ -1146,8 +1149,8 @@ export class LGS1920Timeline extends TimelineBase {
             const {actions, ...track} = row ?? {}
             return {...track, clips: normalizeClipLayout(track.clips ?? actions)}
         })
-        const controlledRowsChanged = this._stateSignatures.rowSignature(incoming) !== this._stateSignatures.rowSignature(this._trackDefinitions)
-        const localPlacementChanged = this._stateSignatures.placementSignature(this._rows) !== this._stateSignatures.placementSignature(this._trackDefinitions)
+        const controlledRowsChanged = !this._stateSignatures.rowsEqual(incoming, this._trackDefinitions)
+        const localPlacementChanged = !this._stateSignatures.placementEqual(this._rows, this._trackDefinitions)
         const baselineIds = this._trackDefinitions.map(row => row.id)
         const incomingIds = incoming.map(row => row.id)
         const incomingUsesBaselineIds = incomingIds.length === baselineIds.length
@@ -1156,7 +1159,7 @@ export class LGS1920Timeline extends TimelineBase {
             && (
                 !controlledRowsChanged
                 || (incomingUsesBaselineIds && localPlacementChanged
-                    && this._stateSignatures.placementSignature(incoming) === this._stateSignatures.placementSignature(this._rows))
+                    && this._stateSignatures.placementEqual(incoming, this._rows))
             )
         if (!preserveLocalRows) {
             this._localRowsDirty = false

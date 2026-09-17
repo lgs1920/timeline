@@ -24,13 +24,40 @@ import * as timelineUtils from './timelineUtils.js'
  */
 export const TimelineLayoutMixin = Base => class extends Base {
     _render = (options = {}) => {
-        const startedAt = globalThis.performance?.now?.() ?? Date.now()
-        const phase = this._projection ? 'active' : 'empty'
         this._renderStructure(options)
-        console.log('[LGS1920Timeline] render', {
-            phase,
-            durationMs: Number(((globalThis.performance?.now?.() ?? Date.now()) - startedAt).toFixed(2)),
+    }
+
+    /**
+     * Refresh row containers while preserving the timeline shell and controls.
+     *
+     * @param {Object} options - Row rendering options.
+     * @param {number} options.majorSeconds - Seconds represented by one ruler unit.
+     * @returns {boolean} Whether the row containers were refreshed.
+     */
+    _updateRowsInPlace = ({majorSeconds} = {}) => {
+        const legendRows = this._root.querySelector('[part="legend-rows"]')
+        const tracks = this._root.querySelector('[part="tracks"]')
+        this._closeClipContextMenu()
+        this._closeTrackContextMenu()
+        const updated = this._renderer.updateRows({
+            legendRows,
+            tracks,
+            majorSeconds: majorSeconds ?? this._resolveScale().majorSeconds,
         })
+        if (!updated) return false
+        this._domCache.invalidate()
+        this._cacheDynamicElements()
+        this._cacheClipPresentationElements()
+        this._cacheScrollbarElements()
+        this._updateDynamicState()
+        this._positionRowDragGhost()
+        this._updateLegendScroll()
+        this._updateScrollbars()
+        this._updateClipSelectionPresentation()
+        this._updateClipCopyPresentation()
+        this._scheduleClipCopyPresentation()
+        this._updateClipSnapGuidePresentation()
+        return true
     }
 
     /**
@@ -302,7 +329,6 @@ export const TimelineLayoutMixin = Base => class extends Base {
             const surfaceWidth = this._surface?.clientWidth ?? 0
             const layoutMeasured = this._surfaceWidth > 0 || surfaceWidth > 0
             const layoutSignature = this._buildingLayout()
-            const layoutStable = layoutSignature === this._buildingLayoutSignature
             if (typeof requestAnimationFrame === 'function'
                 && typeof ResizeObserver !== 'undefined'
                 && this._projection
@@ -316,11 +342,6 @@ export const TimelineLayoutMixin = Base => class extends Base {
             this._building = false
             this._initialBuildComplete = true
             this._buildingLayoutSignature = null
-            console.log('[LGS1920Timeline] building overlay complete', {
-                durationMs: Number(((globalThis.performance?.now?.() ?? Date.now()) - (this._openingBuildingStartedAt ?? (globalThis.performance?.now?.() ?? Date.now()))).toFixed(2)),
-                layoutMeasured,
-                layoutStable,
-            })
             this._openingBuildingStartedAt = null
             this._root.querySelector('[data-building-overlay]')?.remove()
             this._root.querySelector('[data-building]')?.removeAttribute('data-building')
@@ -604,7 +625,6 @@ export const TimelineLayoutMixin = Base => class extends Base {
         if (!positionMatches) splitPanel.positionInPixels = requested
         if (!this._initialBuildComplete) {
             this._legendWidthCorrectionNeedsMeasure = true
-            console.log('[LGS1920Timeline] split panel deferred correction skipped while building')
             return
         }
         if (positionMatches && !this._legendWidthCorrectionNeedsMeasure) return
@@ -630,7 +650,6 @@ export const TimelineLayoutMixin = Base => class extends Base {
             return
         }
 
-        const startedAt = globalThis.performance?.now?.() ?? Date.now()
         const scheduledCorrection = {splitPanel, requested, firstFrame: null, secondFrame: null}
         this._legendWidthCorrection = scheduledCorrection
         scheduledCorrection.firstFrame = globalThis.requestAnimationFrame(() => {
@@ -643,10 +662,6 @@ export const TimelineLayoutMixin = Base => class extends Base {
                 const resolved = applyMeasuredWidth(scheduledCorrection)
                 this._legendWidthCorrection = null
                 this._legendWidthCorrectionNeedsMeasure = resolved === null
-                console.log('[LGS1920Timeline] split panel measured', {
-                    durationMs: Number(((globalThis.performance?.now?.() ?? Date.now()) - startedAt).toFixed(2)),
-                    width: splitPanel.getBoundingClientRect?.().width ?? 0,
-                })
             })
         })
     }

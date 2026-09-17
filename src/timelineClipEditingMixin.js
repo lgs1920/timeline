@@ -17,6 +17,7 @@
 import * as timelineUtils from './timelineUtils.js'
 import * as timelineEditing from './timelineEditing.js'
 import * as timelineConstants from './timelineConstants.js'
+import {sameTimelineValue} from './timelineState.js'
 
 /**
  * Add clip insertion, copy, drag, and track mutation methods to a timeline host.
@@ -1164,7 +1165,7 @@ export const TimelineClipEditingMixin = Base => class extends Base {
     _ensureClipOptionDragState = (option, event, rowId) => {
         if (!option) return null
         const existing = this._dragState?.external === true ? this._dragState : null
-        if (existing && existing.optionSignature === JSON.stringify(option)) {
+        if (existing && sameTimelineValue(existing.option, option)) {
             existing.targetTrackId = rowId
             existing.option = option
             return existing
@@ -1190,7 +1191,6 @@ export const TimelineClipEditingMixin = Base => class extends Base {
             edge: null,
             clipId: previewId,
             option,
-            optionSignature: JSON.stringify(option),
             optionClip,
             sourceTrackId: rowId,
             targetTrackId: rowId,
@@ -1327,7 +1327,7 @@ export const TimelineClipEditingMixin = Base => class extends Base {
         event.preventDefault()
         event.stopPropagation()
         let state = this._dragState?.external === true ? this._dragState : null
-        if (!state || state.optionSignature !== JSON.stringify(option)) {
+        if (!state || !sameTimelineValue(state.option, option)) {
             state = this._ensureClipOptionDragState(option, event, rowId)
         }
         state.targetTrackId = rowId

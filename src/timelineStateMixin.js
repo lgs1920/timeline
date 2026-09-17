@@ -95,8 +95,8 @@ export const TimelineStateMixin = Base => class extends Base {
         }))
         const preserveLocalRows = this._localRowsDirty
             && (
-                this._stateSignatures.rowSignature(incomingRows) === this._stateSignatures.rowSignature(sourceRows)
-                || this._stateSignatures.rowSignature(incomingRows) === this._stateSignatures.rowSignature(this._rows)
+                this._stateSignatures.rowsEqual(incomingRows, sourceRows)
+                || this._stateSignatures.rowsEqual(incomingRows, this._rows)
             )
         const nextRows = preserveLocalRows ? this._rows : incomingRows
         const previousTimeMillis = this._currentTimeMillis
@@ -107,6 +107,12 @@ export const TimelineStateMixin = Base => class extends Base {
         const patchInPlace = !playbackResumed
             && state.forceRender !== true
             && this._canPatchControlledState(nextProjection, nextRows, state)
+        const rowsPresentationChanged = !this._stateSignatures.sameRows(previousRows, nextRows)
+            && !this._stateSignatures.rowsEqual(previousRows, nextRows)
+        const rowsOnly = rowsPresentationChanged
+            && !playbackResumed
+            && state.forceRender !== true
+            && this._canPatchRowsInPlace(nextProjection, nextRows, state)
         this._projection = nextProjection
         this._rows = nextRows
         const wasPlaying = this._playing
@@ -150,12 +156,15 @@ export const TimelineStateMixin = Base => class extends Base {
             playbackStarted ? this._rangeStartMillis : (state.currentTimeMillis ?? 0),
             false,
         )
+        if (!patchInPlace && rowsOnly && this._updateRowsInPlace({majorSeconds: this._resolveScale().majorSeconds})) {
+            this._followPlaybackViewport(previousTimeMillis)
+            return
+        }
         if (!patchInPlace) {
             this._render({replaceRoot: true})
             this._followPlaybackViewport(previousTimeMillis)
             return
         }
-        const rowsPresentationChanged = this._stateSignatures.rowSignature(previousRows) !== this._stateSignatures.rowSignature(nextRows)
         if (rowsPresentationChanged) this._updateClipInteractionPresentation()
         else this._updateDynamicState()
         this._updatePlaybackButton()
@@ -178,19 +187,39 @@ export const TimelineStateMixin = Base => class extends Base {
         if (currentDuration !== nextDuration) return false
         if (state.visible !== undefined && state.visible !== this._visible) return false
         if (Number.isFinite(Number(state.zoomPercent))) return false
-        if (JSON.stringify(this._clipOptions) !== JSON.stringify(state.clipOptions ?? null)) return false
+        if (!this._stateSignatures.valuesEqual(this._clipOptions, state.clipOptions ?? null)) return false
 
-        return this._stateSignatures.rowPresentationSignature(this._rows) === this._stateSignatures.rowPresentationSignature(rows)
+        return this._stateSignatures.sameRows(this._rows, rows)
+            || this._stateSignatures.rowPresentationEqual(this._rows, rows)
     }
 
     /**
-     * Serialize the configuration fields that determine the rendered structure.
+     * Check whether changed rows can be rebuilt without replacing the timeline shell.
+     *
+     * @param {Object|null} projection - Next normalized projection.
+     * @param {Array} rows - Next editor rows.
+     * @param {Object} state - Other controlled values that may require a full render.
+     * @returns {boolean} Whether row containers can be refreshed in place.
+     */
+    _canPatchRowsInPlace = (projection, rows, state) => {
+        if (!this._surface || !this._tracksViewport || !projection || !Array.isArray(rows)) return false
+        if (this._dragState) return false
+        const currentDuration = Number(this._projection?.durationMillis) || 0
+        const nextDuration = Number(projection.durationMillis) || 0
+        if (currentDuration !== nextDuration) return false
+        if (state.visible !== undefined && state.visible !== this._visible) return false
+        if (Number.isFinite(Number(state.zoomPercent))) return false
+        return this._stateSignatures.valuesEqual(this._clipOptions, state.clipOptions ?? null)
+    }
+
+    /**
+     * Select the configuration fields that determine the rendered structure.
      *
      * @param {Object} config - Timeline configuration.
      * @param {Array<string>} keys - Structure-affecting field names.
-     * @returns {string} Stable structure signature.
+     * @returns {Array} Structure values.
      */
-    _structureConfig = (config, keys) => JSON.stringify(keys.map(key => [key, config?.[key]]))
+    _structureConfig = (config, keys) => keys.map(key => [key, config?.[key]])
 
     /**
      * Set the controlled logical time without emitting a seek event.
