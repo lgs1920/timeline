@@ -2,13 +2,13 @@
  *
  * This file is part of the LGS1920/timeline project.
  *
- * File: LGS1920TimelineUtils.js
+ * File: timelineUtils.js
  *
  * Author : LGS1920 Team
  * email: studio@lgs1920.fr
  *
- * Created on: 2026-09-14
- * Last modified: 2026-09-16
+ * Created on: 2026-09-17
+ * Last modified: 2026-09-17
  *
  *
  * Copyright © 2026 LGS1920

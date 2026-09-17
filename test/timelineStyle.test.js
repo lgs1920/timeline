@@ -2,13 +2,13 @@
  *
  * This file is part of the LGS1920/timeline project.
  *
- * File: LGS1920TimelineStyle.test.js
+ * File: timelineStyle.test.js
  *
  * Author : LGS1920 Team
  * email: studio@lgs1920.fr
  *
- * Created on: 2026-09-14
- * Last modified: 2026-09-16
+ * Created on: 2026-09-17
+ * Last modified: 2026-09-17
  *
  *
  * Copyright © 2026 LGS1920
@@ -18,7 +18,7 @@ import {readFileSync} from 'node:fs'
 import {resolve} from 'node:path'
 import {describe, expect, it} from 'vitest'
 
-const styleSource = readFileSync(resolve('src/lgs1920-timeline/lgs1920-timeline.css'), 'utf8')
+const styleSource = readFileSync(resolve('src/timeline.css'), 'utf8')
 
 describe('lgs1920-timeline styles', () => {
     it('keeps the color picker trigger visually hidden while preserving swatch interaction', () => {

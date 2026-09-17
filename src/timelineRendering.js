@@ -2,13 +2,13 @@
  *
  * This file is part of the LGS1920/timeline project.
  *
- * File: LGS1920TimelineRendering.js
+ * File: timelineRendering.js
  *
  * Author : LGS1920 Team
  * email: studio@lgs1920.fr
  *
- * Created on: 2026-09-14
- * Last modified: 2026-09-16
+ * Created on: 2026-09-17
+ * Last modified: 2026-09-17
  *
  *
  * Copyright © 2026 LGS1920
@@ -366,7 +366,7 @@ export const createTimelineRenderer = ({
         const readonly = timeline.readonly === true
         const interactive = timeline.interactive !== false && !readonly
         const editable = interactive && timeline.editable !== false && row.editable !== false
-        const titleDisabled = row.visible === false || !editable
+        const titleDisabled = row.visible === false || (!readonly && !editable)
         const titleEditable = editable && row.visible !== false
         const readOnly = !readonly && row.editable === false
         const label = resolveRowLabel(row)

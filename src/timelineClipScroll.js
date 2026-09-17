@@ -2,13 +2,13 @@
  *
  * This file is part of the LGS1920/timeline project.
  *
- * File: LGS1920TimelineClipScroll.js
+ * File: timelineClipScroll.js
  *
  * Author : LGS1920 Team
  * email: studio@lgs1920.fr
  *
- * Created on: 2026-09-13
- * Last modified: 2026-09-13
+ * Created on: 2026-09-17
+ * Last modified: 2026-09-17
  *
  *
  * Copyright © 2026 LGS1920

@@ -39,16 +39,32 @@ API.
 The public element remains the single integration boundary. Its implementation
 is split by responsibility:
 
-- `LGS1920TimelineRendering.js` builds the visual structure and clip elements.
-- `LGS1920TimelineEditing.js` coordinates move, resize, snapping, and collision
-  policies.
-- `LGS1920TimelineClipData.js` contains serializable clip operations and the
-  optimized layout checks used by editing.
-- `LGS1920TimelineState.js` compares controlled row snapshots.
-- `LGS1920TimelineDomCache.js` owns indexes for dynamic, clip, and scrollbar
-  elements.
-- `LGS1920TimelineInteraction.js` and `LGS1920TimelineClipScroll.js` handle
-  input and edge scrolling.
+- `LGS1920Timeline.js` is the public coordinator and composes the internal
+  responsibilities. It is the only prefixed implementation file.
+- `timelineRendering.js`, `timelineLayoutMixin.js`,
+  `timelineGeometryMixin.js`, and `timelineSurfaceMixin.js` build and update
+  the visual structure, layout, geometry, and DOM surface.
+- `timelineEditing.js`, `timelineClipEditingMixin.js`, and
+  `timelineDragMixin.js` coordinate clip and track changes, snapping,
+  collisions, drag and drop, and insertion policies.
+- `timelinePlaybackMixin.js` and `timelineTimeInteraction.js` handle playback,
+  seeking, keyboard time navigation, and temporal controls.
+- `timelinePresentationMixin.js`, `timelineControls.js`, `timelineMenus.js`,
+  `timelineSelection.js`, `timelineScrollbars.js`, and
+  `timelineClipScroll.js` isolate presentation and interaction controllers.
+- `timelineClipData.js` contains serializable clip operations and the
+  optimized interval checks used by editing.
+- `timelineState.js`, `timelineStateMixin.js`, and `timelineDomCache.js`
+  compare controlled snapshots and own indexes for reusable DOM elements.
+- `timelineInteraction.js`, `timelineConstants.js`, and `timelineUtils.js`
+  provide shared input contracts, constants, and pure helpers.
+- `timelineReact.jsx` is the optional React adapter and `timeline.css` contains
+  the component styles.
+
+All implementation files are directly under `src/`; there is no intermediate
+source directory. The main test follows the same public name as
+`test/LGS1920Timeline.test.js`, while the other tests use the corresponding
+unprefixed module names.
 
 These modules are internal implementation details. The custom element name,
 public properties, clip units, and `lgs1920-timeline-*` events remain unchanged.
@@ -124,7 +140,8 @@ timeline.options = {
 ```
 
 Readonly mode keeps the standard playback controls, the fixed start/end range
-handles, and the draggable playhead grip. It removes ruler and surface
+handles, and the draggable playhead grip. Visible and enabled track names keep
+their normal text color while remaining non-editable. It removes ruler and surface
 scrubbing, range editing, view tools, clip editing, clip menus, drag targets,
 and clip selection. The host continues to control `currentTimeMillis` and
 `playing`.

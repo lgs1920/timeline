@@ -3,13 +3,13 @@
  *
  * This file is part of the LGS1920/timeline project.
  *
- * File: LGS1920TimelineReact.test.jsx
+ * File: timelineReact.test.jsx
  *
  * Author : LGS1920 Team
  * email: studio@lgs1920.fr
  *
- * Created on: 2026-09-14
- * Last modified: 2026-09-16
+ * Created on: 2026-09-17
+ * Last modified: 2026-09-17
  *
  *
  * Copyright © 2026 LGS1920
@@ -29,7 +29,7 @@ vi.mock('@awesome.me/webawesome/dist/components/split-panel/split-panel.js', () 
 vi.mock('@awesome.me/webawesome/dist/components/slider/slider.js', () => ({}))
 vi.mock('@awesome.me/webawesome/dist/components/tooltip/tooltip.js', () => ({}))
 
-import {LGS1920TimelineReact} from '../src/lgs1920-timeline/LGS1920TimelineReact'
+import {LGS1920TimelineReact} from '../src/timelineReact'
 
 const options = {
     mode: 'edit',

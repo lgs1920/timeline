@@ -21,13 +21,13 @@ const packageJson = await Bun.file('./package.json').json()
 const protectMarkdownScript = markdown => markdown.replaceAll('</script', '<\\/script')
 const readmeMarkdown = protectMarkdownScript((await Bun.file('./README.md').text())
     .replaceAll('](docs/specifications.md)', '](./docs/specifications.html)'))
-const componentReadmeMarkdown = protectMarkdownScript((await Bun.file('./src/lgs1920-timeline/README.md').text())
+const componentReadmeMarkdown = protectMarkdownScript((await Bun.file('./src/README.md').text())
     .replaceAll('](../../README.md)', '](../readme.html)')
     .replaceAll('](../../docs/specifications.md)', '](./specifications.html)')
     .replaceAll('](../../LICENSE.md)', '](https://github.com/lgs1920/timeline/blob/main/LICENSE.md)'))
 const specificationsMarkdown = protectMarkdownScript((await Bun.file('./docs/specifications.md').text())
     .replaceAll('](../README.md)', '](../readme.html)')
-    .replaceAll('](../src/lgs1920-timeline/README.md)', '](./)'))
+    .replaceAll('](../src/README.md)', '](./)'))
 
 const readGitReleases = () => {
     const result = Bun.spawnSync([

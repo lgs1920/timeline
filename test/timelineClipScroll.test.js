@@ -2,20 +2,20 @@
  *
  * This file is part of the LGS1920/timeline project.
  *
- * File: LGS1920TimelineClipScroll.test.js
+ * File: timelineClipScroll.test.js
  *
  * Author : LGS1920 Team
  * email: studio@lgs1920.fr
  *
- * Created on: 2026-09-13
- * Last modified: 2026-09-13
+ * Created on: 2026-09-17
+ * Last modified: 2026-09-17
  *
  *
  * Copyright © 2026 LGS1920
  ******************************************************************************/
 
 import {afterEach, describe, expect, it, vi} from 'vitest'
-import {createTimelineClipScroll, resolveEdgeVelocity} from '../src/lgs1920-timeline/LGS1920TimelineClipScroll'
+import {createTimelineClipScroll, resolveEdgeVelocity} from '../src/timelineClipScroll'
 
 afterEach(() => vi.unstubAllGlobals())
 

@@ -3,13 +3,13 @@
  *
  * This file is part of the LGS1920/timeline project.
  *
- * File: LGS1920TimelineGestures.test.js
+ * File: timelineGestures.test.js
  *
  * Author : LGS1920 Team
  * email: studio@lgs1920.fr
  *
- * Created on: 2026-09-14
- * Last modified: 2026-09-16
+ * Created on: 2026-09-17
+ * Last modified: 2026-09-17
  *
  *
  * Copyright © 2026 LGS1920
@@ -28,7 +28,7 @@ vi.mock('@awesome.me/webawesome/dist/components/split-panel/split-panel.js', () 
 vi.mock('@awesome.me/webawesome/dist/components/slider/slider.js', () => ({}))
 vi.mock('@awesome.me/webawesome/dist/components/tooltip/tooltip.js', () => ({}))
 
-import {LGS1920Timeline} from '../src/lgs1920-timeline/LGS1920Timeline'
+import {LGS1920Timeline} from '../src/LGS1920Timeline'
 
 const timelineState = {
     durationMillis: 10_000,

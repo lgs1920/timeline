@@ -7,8 +7,8 @@
  * Author : LGS1920 Team
  * email: studio@lgs1920.fr
  *
- * Created on: 2026-09-01
- * Last modified: 2026-09-01
+ * Created on: 2026-09-14
+ * Last modified: 2026-09-17
  *
  *
  * Copyright © 2026 LGS1920
@@ -31,9 +31,9 @@ const inlineCssPlugin = {
     setup: build => {
         build.onResolve({filter: /\.css\?inline$/}, argumentsValue => {
             const filePath = resolve(argumentsValue.resolveDir, argumentsValue.path.replace('?inline', ''))
-            inlineCssPaths.set('lgs1920-timeline.css', filePath)
+            inlineCssPaths.set('timeline.css', filePath)
             return {
-                path: 'lgs1920-timeline.css',
+                path: 'timeline.css',
                 namespace: 'inline-css',
             }
         })
@@ -83,5 +83,5 @@ await buildEntry(resolve(entryRoot, 'index.js'), 'index.js')
 await buildEntry(resolve(entryRoot, 'react.jsx'), 'react.js')
 await Bun.write(
     resolve(outputRoot, 'styles.css'),
-    Bun.file(resolve(projectRoot, 'src/lgs1920-timeline/lgs1920-timeline.css')),
+    Bun.file(resolve(projectRoot, 'src/timeline.css')),
 )

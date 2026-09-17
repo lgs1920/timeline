@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-16
+ * Last modified: 2026-09-17
  *
  *
  * Copyright © 2026 LGS1920
@@ -16,9 +16,9 @@
 
 // @vitest-environment jsdom
 import {afterEach, describe, expect, it, vi} from 'vitest'
-import {CLIP_OPTION_DRAG_MIME, LGS1920Timeline} from '../src/lgs1920-timeline/LGS1920Timeline'
-import {rippleResizedClips} from '../src/lgs1920-timeline/LGS1920TimelineEditing'
-import {formatRulerTime, resolveScale} from '../src/lgs1920-timeline/LGS1920TimelineUtils.js'
+import {CLIP_OPTION_DRAG_MIME, LGS1920Timeline} from '../src/LGS1920Timeline'
+import {rippleResizedClips} from '../src/timelineEditing'
+import {formatRulerTime, resolveScale} from '../src/timelineUtils.js'
 
 vi.mock('@awesome.me/webawesome/dist/components/button/button.js', () => ({}))
 vi.mock('@awesome.me/webawesome/dist/components/card/card.js', () => ({}))

@@ -14,7 +14,7 @@ intent and editing results.
 The specification applies to the package, its optional React adapter, and the
 reference demos. Values and names in this document refer to the current public
 API. The [package README](../README.md) provides the integration overview, and
-the [component reference](../src/lgs1920-timeline/README.md) provides the
+the [component reference](../src/README.md) provides the
 property, event, slot, method, and CSS details. The [live demos](https://lgs1920.github.io/timeline/)
 show the interaction model in a browser.
 
@@ -643,6 +643,13 @@ The software must keep responsibilities separated as follows:
 - **Clip scroll:** handles edge scrolling during clip drag operations.
 - **React adapter:** maps React properties and callbacks to the same Web
   Component contract without introducing a second state model.
+
+The repository keeps `src/LGS1920Timeline.js` as the public implementation
+coordinator. All other implementation modules are directly under `src/` and
+use unprefixed names. The main behavior test remains
+`test/LGS1920Timeline.test.js`; secondary tests use the corresponding
+unprefixed module names. This naming rule is internal and does not change the
+public package entry points.
 
 Internal modules may change, but a change must preserve the public element,
 data, event, slot, and method contracts unless it is explicitly treated as a

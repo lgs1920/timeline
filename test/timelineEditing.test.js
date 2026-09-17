@@ -2,20 +2,20 @@
  *
  * This file is part of the LGS1920/timeline project.
  *
- * File: LGS1920TimelineEditing.test.js
+ * File: timelineEditing.test.js
  *
  * Author : LGS1920 Team
  * email: studio@lgs1920.fr
  *
- * Created on: 2026-09-06
- * Last modified: 2026-09-14
+ * Created on: 2026-09-17
+ * Last modified: 2026-09-17
  *
  *
  * Copyright © 2026 LGS1920
  ******************************************************************************/
 
 import {describe, expect, it, vi} from 'vitest'
-import {createTimelineClipEditor, resolveClipExtension, rippleResizedClips, snapClipToTargets} from '../src/lgs1920-timeline/LGS1920TimelineEditing'
+import {createTimelineClipEditor, resolveClipExtension, rippleResizedClips, snapClipToTargets} from '../src/timelineEditing'
 
 /**
  * Create a deterministic controller fixture with mutable presentation state.

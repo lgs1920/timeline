@@ -38,6 +38,17 @@ Use this skill for the reusable timeline package. The public custom element is
 - Preserve the `lgs1920-timeline` element name when changing the package
   implementation.
 
+## Repository structure
+
+- Keep `src/LGS1920Timeline.js` as the public implementation coordinator.
+- Keep all other source modules directly under `src/` with unprefixed file
+  names. Do not recreate an intermediate source directory.
+- Keep `test/LGS1920Timeline.test.js` as the main behavior test.
+- Name secondary tests after their module or responsibility without the
+  `LGS1920` prefix.
+- Preserve public export names such as `LGS1920Timeline` and
+  `LGS1920TimelineReact`; the file naming rule does not rename public symbols.
+
 ## Testing
 
 1. Run the smallest affected Vitest file first.
