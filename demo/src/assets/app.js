@@ -90,8 +90,28 @@ const readonlyStatus = document.querySelector('#readonly-status')
 const rangeTimeline = document.querySelector('#range-timeline')
 
 // Attach the preview toggle before the heavier demo initialization starts.
+let readonlyPointerAction = false
+const toggleReadonlyPreview = () => {
+    if (readonlyTimeline.playing) {
+        readonlyClock.pause()
+        return
+    }
+    setReadonlyPlayback(true)
+}
+readonlyPlayButton.addEventListener('pointerdown', event => {
+    if (event.button !== 0) return
+    readonlyPointerAction = true
+    toggleReadonlyPreview()
+}, true)
+readonlyPlayButton.addEventListener('pointercancel', () => {
+    readonlyPointerAction = false
+}, true)
 readonlyPlayButton.addEventListener('click', () => {
-    setReadonlyPlayback(!readonlyTimeline.playing)
+    if (readonlyPointerAction) {
+        readonlyPointerAction = false
+        return
+    }
+    toggleReadonlyPreview()
 })
 readonlyPlayButton.disabled = false
 readonlyTimeSlider.addEventListener('input', event => readonlyClock.seek(event.currentTarget.value))
