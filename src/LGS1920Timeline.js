@@ -124,6 +124,8 @@ const normalizeTimelineOptions = options => {
         flattened.readonly = mode === 'readonly'
     }
     if (Object.prototype.hasOwnProperty.call(playback, 'loop')) flattened.noLoopMode = playback.loop === 'hidden'
+    if (Object.prototype.hasOwnProperty.call(playback, 'transport')) flattened.noTransport = playback.transport === 'hidden'
+    if (Object.prototype.hasOwnProperty.call(playback, 'time')) flattened.noPlaybackTime = playback.time === 'hidden'
     if (Object.prototype.hasOwnProperty.call(playback, 'timeSlider')) {
         flattened.noTimeSlider = playback.timeSlider === 'hidden'
         flattened.showTimeSlider = playback.timeSlider !== 'hidden'
@@ -158,6 +160,8 @@ const timelineOptionsFromConfig = config => {
         mode,
         playback: {
             loop: config.noLoopMode === true ? 'hidden' : 'toggle',
+            transport: config.noTransport === true ? 'hidden' : 'visible',
+            time: config.noPlaybackTime === true ? 'hidden' : 'visible',
             timeSlider: config.noTimeSlider === true || config.showTimeSlider === false ? 'hidden' : 'visible',
         },
         view: {
@@ -187,7 +191,7 @@ const timelineOptionsFromConfig = config => {
     }
     const groupedKeys = [
         'interactive', 'editable', 'readonly',
-        'noLoopMode', 'noTimeSlider', 'showTimeSlider',
+        'noLoopMode', 'noTransport', 'noPlaybackTime', 'noTimeSlider', 'showTimeSlider',
         'visible', 'showZoomSlider', 'noZoomControls', 'showBuildingOverlay',
         'initialRangeStartVisible', 'rangeStartMillis', 'rangeEndMillis',
         'legendMinWidth', 'legendWidth', 'legendMaxWidth',
@@ -200,6 +204,8 @@ const STRUCTURAL_CONFIG_KEYS = Object.freeze([
     'interactive',
     'readonly',
     'noLoopMode',
+    'noTransport',
+    'noPlaybackTime',
     'editable',
     'showClipMenu',
     'showTimeSlider',

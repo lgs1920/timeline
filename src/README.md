@@ -135,11 +135,11 @@ timeline.addEventListener('lgs1920-timeline-loop-change', event => {
 
 timeline.options = {
     ...timeline.options,
-    playback: {...timeline.options.playback, loop: 'hidden'},
+    playback: {...timeline.options.playback, loop: 'hidden', transport: 'hidden', time: 'hidden'},
 }
 ```
 
-Readonly mode keeps the standard playback controls, the fixed start/end range
+Readonly mode keeps the fixed start/end range
 handles, and the draggable playhead grip. Visible and enabled track names keep
 their normal text color while remaining non-editable. It removes ruler and surface
 scrubbing, range editing, view tools, clip editing, clip menus, drag targets,
@@ -220,7 +220,7 @@ separate controlled properties so applications can update them independently.
 | --- | --- | --- |
 | Root | `durationMillis`, `fps`, `frameCount`, `zoomPercent`, editing thresholds | Timeline geometry and frame settings. |
 | `mode` | `'passive' \| 'review' \| 'edit' \| 'readonly'` | Selects the interaction contract. |
-| `playback` | `loop: 'toggle' \| 'hidden'`, `timeSlider: 'visible' \| 'hidden'` | Controls playback toolbar features. |
+| `playback` | `loop: 'toggle' \| 'hidden'`, `transport: 'visible' \| 'hidden'`, `time: 'visible' \| 'hidden'`, `timeSlider: 'visible' \| 'hidden'` | Controls playback toolbar features and time labels. |
 | `view` | `visible`, `zoomSlider`, `zoomControls`, `buildingOverlay`, `initialRangeStartVisible` | Controls visible timeline tools and the initial overlay. |
 | `range` | `startMillis`, `endMillis` | Sets the active playback range. |
 | `layout.legend` | `minWidth`, `width`, `maxWidth` | Sets the track legend width bounds. |

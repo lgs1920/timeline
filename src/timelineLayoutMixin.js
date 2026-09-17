@@ -482,15 +482,23 @@ export const TimelineLayoutMixin = Base => class extends Base {
             const loopButton = this._loopButton()
             playbackTransport.append(loopButton, this._tooltip(loopButton.id, loopButton.getAttribute('aria-label')))
         }
-        playback.append(
+        const playbackTime = this._timelineConfig.noPlaybackTime === true
+            ? []
+            : [
+                this._slotWithFallback('playback-current', this._timeText(this._currentTimeMillis / 1000, 'current')),
+                this._slotWithFallback('playback-total', this._timeText(this._durationSeconds(), 'total')),
+            ]
+        const hasPlaybackSlots = ['time-slider', 'transport', 'playback-start', 'playback-current', 'playback-total', 'playback-end']
+            .some(name => [...this.children].some(element => element.slot === name))
+        const hasPlaybackContent = Boolean(timeSlider || playbackControls || playbackTime.length || hasPlaybackSlots)
+        if (hasPlaybackContent) playback.append(
             timeSliderSlot,
             playbackTransport,
             timelineUtils.createElement('slot', '', {name: 'playback-start'}),
-            this._slotWithFallback('playback-current', this._timeText(this._currentTimeMillis / 1000, 'current')),
-            this._slotWithFallback('playback-total', this._timeText(this._durationSeconds(), 'total')),
+            ...playbackTime,
             timelineUtils.createElement('slot', '', {name: 'playback-end'}),
         )
-        top.append(playback)
+        if (hasPlaybackContent) top.append(playback)
         section.append(top)
 
         const layout = timelineUtils.createElement('div', 'lgs1920-wa-timeline__layout', {
@@ -673,7 +681,7 @@ export const TimelineLayoutMixin = Base => class extends Base {
      */
     _playbackControls = () => {
         const readonly = this._isReadonlyMode()
-        if (this._timelineConfig.interactive === false && !readonly) return null
+        if ((this._timelineConfig.interactive === false && !readonly) || this._timelineConfig.noTransport === true) return null
         const controls = timelineUtils.createElement('div', `lgs1920-wa-timeline__transport${this._hostNoDragClasses()}`, {
             part: 'transport',
             'aria-label': 'Timeline transport controls',

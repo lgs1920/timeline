@@ -143,7 +143,7 @@ Use grouped `options` for configuration:
 timeline.options = {
     mode: 'edit',
     durationMillis: 60_000,
-    playback: {loop: 'toggle', timeSlider: 'visible'},
+    playback: {loop: 'toggle', transport: 'visible', time: 'visible', timeSlider: 'visible'},
     view: {visible: true, zoomSlider: true},
     range: {startMillis: 0, endMillis: 60_000},
     layout: {legend: {width: 150}},
@@ -266,6 +266,10 @@ The built-in time slider is displayed by default in the left playback area.
 Set `noTimeSlider: true` to hide it. Set `showZoomSlider` to display the component's built-in
 horizontal zoom control in the footer. The footer also contains the built-in
 horizontal-fit and vertical-zoom buttons unless `noZoomControls` is enabled.
+Set `playback.transport` to `'hidden'` to remove the built-in transport buttons
+and loop toggle. Set `playback.time` to `'hidden'` to remove the current and
+total time labels. This is useful when a host provides an external player and
+time slider.
 External controls can use the `timeline-ruler`, `timeline-controls`, and
 `footer` slots when the host needs a different layout.
 
@@ -273,7 +277,7 @@ External controls can use the `timeline-ruler`, `timeline-controls`, and
 timeline.options = {
     durationMillis: 60_000,
     range: {startMillis: 6_000, endMillis: 24_000},
-    playback: {timeSlider: 'visible'},
+    playback: {transport: 'hidden', time: 'hidden', timeSlider: 'visible'},
     view: {zoomSlider: true, zoomControls: 'visible'},
 }
 ```

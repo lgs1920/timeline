@@ -183,7 +183,11 @@ the host owns the clock and applies the accepted value. The `noloopmode` boolean
 attribute must remove the loop toggle while preserving the other transport
 controls. The playback time row must expose the `time-slider` slot on the left
 and `playback-total` without a `playback-separator` slot. The `noTimeSlider`
-option must hide the built-in slider and defaults to `false`.
+option must hide the built-in slider and defaults to `false`. The grouped
+`playback.transport: 'hidden'` option hides the built-in transport buttons and
+loop toggle, while `playback.time: 'hidden'` hides the current and total time
+labels. If both are hidden and no playback slots are provided, the playback row
+is omitted.
 
 The public `advance(durationMillis)` and `rewind(durationMillis)` methods must
 move the controlled current time by the requested duration while clamping to
@@ -414,6 +418,7 @@ The `options` object supports the following public configuration areas:
   `hostInteraction`, and `hostNoDragClass`;
 - zoom and layout: `zoomPercent`, legend width settings, and keyboard zoom;
 - overlays and controls: `showBuildingOverlay`, `noTimeSlider`,
+  `playback.transport`, `playback.time`,
   `showZoomSlider`, `noZoomControls`, and
   `showClipMenu`;
 - editing policies: `collisionPolicy`, `resizeCollisionPolicy`,

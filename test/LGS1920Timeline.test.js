@@ -2704,6 +2704,22 @@ describe('lgs1920-timeline Web Component', () => {
         expect(playheadX - surface.scrollLeft).toBeCloseTo(450, 5)
     })
 
+    it('can hide readonly transport controls and playback time labels', () => {
+        const timeline = new LGS1920Timeline()
+        timeline.options = {
+            mode: 'readonly',
+            durationMillis: 30_000,
+            playback: {transport: 'hidden', time: 'hidden'},
+        }
+        timeline.tracks = timelineState.tracks
+        document.body.append(timeline)
+
+        expect(timeline.shadowRoot.querySelector('[part="transport"]')).toBeNull()
+        expect(timeline.shadowRoot.querySelector('[data-current-time]')).toBeNull()
+        expect(timeline.shadowRoot.querySelector('[data-total-time]')).toBeNull()
+        expect(timeline.shadowRoot.querySelector('[part="playback-controls"]')).toBeNull()
+    })
+
     it('keeps a playing playhead visible after the viewport moves past it', () => {
         const timeline = new LGS1920Timeline()
         configureTimeline(timeline, {
