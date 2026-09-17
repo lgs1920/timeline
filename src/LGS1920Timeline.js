@@ -716,7 +716,7 @@ export class LGS1920Timeline extends TimelineBase {
             getRangeEndMillis: () => this._rangeEndMillis,
             getCurrentTimeMillis: () => this._currentTimeMillis,
             setCurrentTimeMillis: value => {
-                this._currentTimeMillis = value
+                this.setTime(value, {forcePlaybackFollow: true})
             },
             getFrameIntervalMillis: () => this._frameIntervalMillis(),
             getDurationMillis: () => this._durationMillis(),
@@ -1363,11 +1363,11 @@ export class LGS1920Timeline extends TimelineBase {
     /**
      * Synchronize the public properties with the internal editor projection.
      */
-    setTime(timeMillis) {
+    setTime(timeMillis, {forcePlaybackFollow = false} = {}) {
         const previousTimeMillis = this._currentTimeMillis
         this._currentTimeMillis = this._normalizeTime(timeMillis)
         this._updateDynamicState()
-        this._followPlaybackViewport(previousTimeMillis)
+        this._followPlaybackViewport(previousTimeMillis, forcePlaybackFollow)
     }
 
     /**

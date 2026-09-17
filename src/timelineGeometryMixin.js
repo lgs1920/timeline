@@ -124,10 +124,10 @@ export const TimelineGeometryMixin = Base => class extends Base {
      *
      * @param {number} previousTimeMillis - Time before the playback update.
      */
-    _followPlaybackViewport = (previousTimeMillis = this._currentTimeMillis) => {
+    _followPlaybackViewport = (previousTimeMillis = this._currentTimeMillis, force = false) => {
         if (!this._surface) return
         if (this._dragState?.type === 'playhead') return
-        if (!this._playing) {
+        if (!this._playing && !force) {
             this.ensureCurrentTimeVisible()
             return
         }

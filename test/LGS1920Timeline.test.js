@@ -672,6 +672,8 @@ describe('lgs1920-timeline Web Component', () => {
         expect(timeSlider.getAttribute('max')).toBe('10000')
         expect(timeSlider.getAttribute('step')).toBe('40')
         expect(timeSlider.value).toBe(1_000)
+        expect(timeSlider.withTooltip).toBe(true)
+        expect(timeSlider.tooltipPlacement).toBe('top')
         expect(typeof timeSlider.valueFormatter).toBe('function')
         expect(zoomSlider).not.toBeNull()
         expect(zoomSlider.closest('[part="footer-controls"]')).not.toBeNull()
@@ -2674,6 +2676,32 @@ describe('lgs1920-timeline Web Component', () => {
         playheadX = Number.parseFloat(timeline.shadowRoot.querySelector('[data-playhead]').style.getPropertyValue('--lgs-timeline-playhead-offset'))
         expect(surface.scrollLeft).toBe(1_900)
         expect(playheadX).toBeGreaterThan(playheadBeforeRangeEndVisible)
+    })
+
+    it('follows the playback viewport when the built-in time slider changes', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline, {
+            timeline: {durationMillis: 60_000, rangeEndMillis: 55_000},
+        })
+        document.body.append(timeline)
+
+        const surface = timeline.shadowRoot.querySelector('[data-surface]')
+        vi.spyOn(surface, 'getBoundingClientRect').mockReturnValue({left: 0, top: 0, right: 600, width: 600})
+        Object.defineProperties(surface, {
+            clientWidth: {configurable: true, value: 600},
+            scrollWidth: {configurable: true, value: 3_000},
+            scrollLeft: {configurable: true, writable: true, value: 0},
+        })
+
+        timeline.playing = true
+        const slider = timeline.shadowRoot.querySelector('[data-timeline-time-slider]')
+        slider.value = 11_000
+        slider.dispatchEvent(new Event('input', {bubbles: true}))
+
+        const playheadX = Number.parseFloat(timeline.shadowRoot.querySelector('[data-playhead]').style.getPropertyValue('--lgs-timeline-playhead-offset'))
+        expect(timeline.currentTimeMillis).toBe(11_000)
+        expect(surface.scrollLeft).toBeGreaterThan(0)
+        expect(playheadX - surface.scrollLeft).toBeCloseTo(450, 5)
     })
 
     it('keeps a playing playhead visible after the viewport moves past it', () => {

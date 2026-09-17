@@ -134,11 +134,9 @@ export const createTimelineControls = ({
             step: getFrameIntervalMillis(),
             value: getCurrentTimeMillis(),
         })
+        slider.withTooltip = true
+        slider.tooltipPlacement = 'top'
         slider.valueFormatter = value => `${formatRulerTime(Number(value) / 1000)} / ${formatRulerTime(getDurationSeconds())}`
-        const sliderTooltip = tooltip(slider.id, slider.valueFormatter(slider.value), 'top')
-        const updateTooltip = () => {
-            sliderTooltip.textContent = slider.valueFormatter(slider.value)
-        }
         const seekFromSlider = (event, settled) => {
             if (getConfig().interactive === false) return
             const value = event.target?.value ?? event.currentTarget?.value
@@ -161,14 +159,12 @@ export const createTimelineControls = ({
             if (settled) emitAfter('seek', detail)
         }
         slider.addEventListener('input', event => {
-            updateTooltip()
             seekFromSlider(event, false)
         })
         slider.addEventListener('change', event => {
-            updateTooltip()
             seekFromSlider(event, true)
         })
-        scrubber.append(slider, sliderTooltip)
+        scrubber.append(slider)
         stopTimelineControlPropagation(scrubber)
         return scrubber
     }

@@ -7,7 +7,7 @@
  * Author : LGS1920 Team
  * email: studio@lgs1920.fr
  *
- * Created on: 2026-09-17
+ * Created on: 2026-09-14
  * Last modified: 2026-09-17
  *
  *
@@ -424,6 +424,10 @@
         height: auto;
         min-height: 1.5rem;
         transform: none;
+    }
+
+    & .lgs1920-wa-timeline__timeline-scrubber > wa-slider::part(tooltip__body) {
+        font-size: var(--wa-font-size-s, 0.875rem);
     }
 
     & .lgs1920-wa-timeline__playback-transport > slot[name='transport'] {
