@@ -2148,6 +2148,86 @@ describe('lgs1920-timeline Web Component', () => {
         expect(timeline.hasAttribute('data-cut-mode')).toBe(false)
     })
 
+    it('undoes and redoes committed edits independently per timeline', () => {
+        const first = new LGS1920Timeline()
+        configureTimeline(first, {
+            tracks: [{
+                id: 'history-track',
+                label: 'History track',
+                clips: [{id: 'history-clip', label: 'History clip', start: 1, end: 3}],
+            }],
+        })
+        const second = new LGS1920Timeline()
+        configureTimeline(second, {
+            tracks: [{id: 'other-history-track', label: 'Other history track', clips: []}],
+        })
+        document.body.append(first, second)
+
+        const getFirstUndo = () => first.shadowRoot.querySelector('[data-testid="lgs1920-wa-tools-undo"]')
+        const getFirstRedo = () => first.shadowRoot.querySelector('[data-testid="lgs1920-wa-tools-redo"]')
+        const getSecondUndo = () => second.shadowRoot.querySelector('[data-testid="lgs1920-wa-tools-undo"]')
+        const firstUndo = getFirstUndo()
+        const firstRedo = getFirstRedo()
+        const secondUndo = getSecondUndo()
+        expect(firstUndo.getAttribute('aria-label')).toBe('Undo')
+        expect(firstRedo.getAttribute('aria-label')).toBe('Redo')
+        expect(firstUndo.hasAttribute('disabled')).toBe(true)
+        expect(firstRedo.hasAttribute('disabled')).toBe(true)
+        expect(secondUndo.hasAttribute('disabled')).toBe(true)
+
+        first._removeClip('history-clip', new Event('click'))
+        expect(first.tracks[0].clips).toHaveLength(0)
+        expect(getFirstUndo().hasAttribute('disabled')).toBe(false)
+
+        getFirstUndo().click()
+        expect(first.tracks[0].clips).toHaveLength(1)
+        expect(getFirstRedo().hasAttribute('disabled')).toBe(false)
+        expect(getSecondUndo().hasAttribute('disabled')).toBe(true)
+
+        getFirstRedo().click()
+        expect(first.tracks[0].clips).toHaveLength(0)
+        expect(getFirstRedo().hasAttribute('disabled')).toBe(true)
+    })
+
+    it('records move, trim, and cut operations in the edit history', () => {
+        const moveTimeline = new LGS1920Timeline()
+        configureTimeline(moveTimeline, {
+            tracks: [{
+                id: 'move-history-track',
+                label: 'Move history track',
+                clips: [{id: 'move-history-clip', label: 'Move history clip', start: 1, end: 3}],
+            }],
+        })
+        const trimTimeline = new LGS1920Timeline()
+        configureTimeline(trimTimeline, {
+            tracks: [{
+                id: 'trim-history-track',
+                label: 'Trim history track',
+                clips: [{id: 'trim-history-clip', label: 'Trim history clip', start: 1, end: 3}],
+            }],
+        })
+        const cutTimeline = new LGS1920Timeline()
+        configureTimeline(cutTimeline, {
+            tracks: [{
+                id: 'cut-history-track',
+                label: 'Cut history track',
+                clips: [{id: 'cut-history-clip', label: 'Cut history clip', start: 1, end: 3}],
+            }],
+        })
+        document.body.append(moveTimeline, trimTimeline, cutTimeline)
+
+        moveTimeline._clipEditor.moveByKeyboard('move-history-clip', new KeyboardEvent('keydown', {key: 'ArrowRight'}))
+        trimTimeline._clipEditor.resizeByKeyboard('trim-history-clip', 'end', new KeyboardEvent('keydown', {key: 'ArrowLeft'}))
+        cutTimeline._cutClipAtTime('cut-history-clip', 2, new Event('click'))
+
+        expect(moveTimeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-tools-undo"]')
+            .hasAttribute('disabled')).toBe(false)
+        expect(trimTimeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-tools-undo"]')
+            .hasAttribute('disabled')).toBe(false)
+        expect(cutTimeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-tools-undo"]')
+            .hasAttribute('disabled')).toBe(false)
+    })
+
     it('cancels the scissors tool with Escape and cuts at the playhead with Ctrl/Cmd+K', () => {
         const timeline = new LGS1920Timeline()
         configureTimeline(timeline, {

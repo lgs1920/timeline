@@ -361,6 +361,13 @@ duration, and the timeline position in brackets, all with millisecond
 precision. It uses a compact format such as `1s500ms/3s [2s500ms]`, with no
 spaces between units and with zero-valued units omitted.
 
+The editing tools also expose per-instance Undo and Redo controls. The history
+stores up to 200 accepted editing operations, excludes previews and canceled
+interactions, and clears its redo branch after a new edit. Undo and Redo emit
+cancelable `undo` and `redo` lifecycles with the resulting `tracks` snapshot;
+external controlled updates that replace the current timeline clear the local
+history so it cannot diverge from host state.
+
 ### 1.13 Reference demo requirements
 
 The reference demos must document the behavior they demonstrate in a

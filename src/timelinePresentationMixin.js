@@ -481,6 +481,7 @@ export const TimelinePresentationMixin = Base => class extends Base {
      * @param {Object} detail - Event detail payload.
      */
     _emit = (name, detail, options) => {
+        this._recordHistory?.(name, detail)
         const event = timelineUtils.createEvent(`lgs1920-timeline-${name}`, detail, options)
         this.dispatchEvent(event)
         return event

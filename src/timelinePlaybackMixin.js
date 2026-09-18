@@ -147,6 +147,27 @@ export const TimelinePlaybackMixin = Base => class extends Base {
             this._cutAtCurrentTime(event)
             return
         }
+        if ((event.ctrlKey || event.metaKey)
+            && !event.altKey
+            && (String(event.key).toLowerCase() === 'y'
+                || (String(event.key).toLowerCase() === 'z' && event.shiftKey))) {
+            if (!event.target?.closest?.(timelineInteraction.TIMELINE_KEYBOARD_EDITABLE_SELECTOR)) {
+                event.preventDefault()
+                event.stopImmediatePropagation()
+                this._redo(event)
+                return
+            }
+        }
+        if ((event.ctrlKey || event.metaKey)
+            && !event.altKey
+            && !event.shiftKey
+            && String(event.key).toLowerCase() === 'z'
+            && !event.target?.closest?.(timelineInteraction.TIMELINE_KEYBOARD_EDITABLE_SELECTOR)) {
+            event.preventDefault()
+            event.stopImmediatePropagation()
+            this._undo(event)
+            return
+        }
         if (event.key === 'Escape' && this._clipCopyState) {
             event.preventDefault()
             event.stopImmediatePropagation()

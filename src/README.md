@@ -651,6 +651,8 @@ has focus.
 | Editable clip | <kbd>Mod</kbd>+<kbd>C</kbd> | Start a copy placement ghost; click to place it. |
 | Editable clip | <kbd>Mod</kbd>+<kbd>D</kbd> | Duplicate the clip immediately after itself. |
 | Editable timeline | <kbd>Mod</kbd>+<kbd>K</kbd> | Cut every eligible clip at the current playhead. |
+| Editable timeline | <kbd>Mod</kbd>+<kbd>Z</kbd> | Undo the latest committed edit. |
+| Editable timeline | <kbd>Mod</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> / <kbd>Mod</kbd>+<kbd>Y</kbd> | Redo the latest undone edit. |
 | Editable clip | <kbd>M</kbd> | Mask or reveal the clip. |
 | Editable clip | <kbd>V</kbd> | Enable or disable the clip. |
 | Non-movable clip | <kbd>Enter</kbd> / <kbd>Space</kbd> | Select the clip. |
@@ -785,6 +787,13 @@ the clip followed by the timeline position in brackets, with millisecond
 precision. For example, `1s500ms/3s [2s500ms]` means 1.5 seconds into a
 3-second clip at timeline position 2.5 seconds; units are concatenated without
 spaces, and zero-valued units are omitted.
+
+The edit tools also provide per-timeline `Undo` and `Redo` buttons. They keep
+up to 200 accepted editing operations, including clip moves, trims, cuts,
+insertions, and removals. Preview and canceled interactions are excluded. A
+new edit after an undo clears the redo stack. The `undo` and `redo` events use
+the normal cancelable lifecycle and expose the resulting `tracks` snapshot for
+the host to accept.
 
 Custom context actions use the following shape:
 

@@ -60,6 +60,7 @@ import {
     TIMELINE_KEYBOARD_KEYS,
 } from './timelineInteraction.js'
 import {createTimelineRenderer} from './timelineRendering.js'
+import {createTimelineHistory} from './timelineHistory.js'
 import {
     applyTimelinePaletteStyles,
     createElement,
@@ -86,6 +87,21 @@ const normalizeTimelineEventName = name => {
 }
 
 let timelineAdditionalContentInstance = 0
+
+const HISTORY_EDIT_EVENTS = new Set([
+    'add-clip',
+    'add-track',
+    'clip-change',
+    'clip-color-change',
+    'clip-enabled-change',
+    'clip-extend',
+    'clip-visibility-change',
+    'remove-clip',
+    'remove-track',
+    'reorder',
+    'track-label-change',
+    'track-visibility-change',
+])
 
 const TimelineBase = TimelinePresentationMixin(
     TimelinePlaybackMixin(
@@ -305,6 +321,8 @@ export class LGS1920Timeline extends TimelineBase {
     _clipSnapGuideTimer = null
     _cutMode = false
     _cutGuide = null
+    _history = createTimelineHistory({limit: 200})
+    _historyApplying = false
     _scrubPointerId = null
     _autoScrollFrame = null
     _edgeDirection = null
@@ -755,6 +773,10 @@ export class LGS1920Timeline extends TimelineBase {
             getReadonly: () => this.readonly,
             getCutMode: () => this._cutMode === true,
             toggleCutMode: event => this._toggleCutMode(event),
+            getCanUndo: () => this._history.canUndo(),
+            getCanRedo: () => this._history.canRedo(),
+            undo: event => this._undo(event),
+            redo: event => this._redo(event),
             normalizeTime: (value, constrainToRange) => this._normalizeTime(value, constrainToRange),
             updateDynamicState: () => this._updateDynamicState(),
             emitBefore: (name, detail) => this._emitBefore(name, detail),
@@ -1158,6 +1180,143 @@ export class LGS1920Timeline extends TimelineBase {
     }
 
     /**
+     * Record one accepted editing operation in this timeline's local history.
+     *
+     * @param {string} name - Emitted editing event name.
+     * @param {Object} detail - Accepted editing detail.
+     */
+    _recordHistory = (name, detail) => {
+        if (this._historyApplying || !HISTORY_EDIT_EVENTS.has(name)) return
+        const recorded = this._history.record({
+            after: detail?.tracks,
+            before: detail?.previousTracks,
+            detail: {operation: detail?.operation, type: detail?.type ?? name},
+            type: detail?.type ?? name,
+        })
+        if (recorded) this._updateHistoryButtonPresentation()
+    }
+
+    /**
+     * Update undo and redo button state without rebuilding the timeline.
+     */
+    _updateHistoryButtonPresentation = () => {
+        const buttons = [
+            ['[data-testid="lgs1920-wa-tools-undo"]', this._history.canUndo()],
+            ['[data-testid="lgs1920-wa-tools-redo"]', this._history.canRedo()],
+        ]
+        buttons.forEach(([selector, enabled]) => {
+            const button = this._root?.querySelector(selector)
+            if (!button) return
+            button.toggleAttribute('disabled', !enabled)
+            button.setAttribute('aria-disabled', String(!enabled))
+        })
+    }
+
+    /**
+     * Resolve a duration that covers a history snapshot.
+     *
+     * @param {Array} rows - Public timeline rows.
+     * @returns {number} Snapshot duration in milliseconds.
+     */
+    _historyDuration = rows => {
+        const configured = Number(this._timelineConfig.durationMillis
+            ?? (Number(this._timelineConfig.durationSeconds) * 1000)) || 0
+        const maximumEnd = (Array.isArray(rows) ? rows : []).flatMap(row => row?.clips ?? row?.actions ?? [])
+            .reduce((maximum, clip) => Math.max(maximum, Number(clip?.end) || 0), 0)
+        return Math.max(configured, maximumEnd * 1000)
+    }
+
+    /**
+     * Restore a public history snapshot as local controlled state.
+     *
+     * @param {Array} rows - Public timeline rows to restore.
+     */
+    _restoreHistoryRows = rows => {
+        this._historyApplying = true
+        try {
+            this._rows = (Array.isArray(rows) ? rows : []).map(row => {
+                const {actions, clips, ...track} = row ?? {}
+                return {...track, actions: normalizeClipLayout(clips ?? actions)}
+            })
+            this._localRowsDirty = true
+            this._localDurationDirty = true
+            this._interactionDurationMillis = this._historyDuration(rows)
+            if (this._rangeEndFollowsDuration) this._rangeEndMillis = this._interactionDurationMillis
+        }
+        finally {
+            this._historyApplying = false
+        }
+    }
+
+    /**
+     * Apply one history direction and emit its controlled result.
+     *
+     * @param {'undo'|'redo'} direction - History direction.
+     * @param {Event} event - Triggering event.
+     * @returns {boolean} Whether a history entry was applied.
+     */
+    _applyHistory = (direction, event) => {
+        if (this._isReadonlyMode() || this._timelineConfig.interactive === false || this._timelineConfig.editable === false) return false
+        const entry = direction === 'undo' ? this._history.peekUndo() : this._history.peekRedo()
+        if (!entry) return false
+        const previousTracks = this.tracks
+        const tracks = direction === 'undo' ? entry.before : entry.after
+        const detail = {
+            operation: direction,
+            type: direction,
+            tracks,
+            previousTracks,
+            history: {
+                canRedo: this._history.canRedo(),
+                canUndo: this._history.canUndo(),
+            },
+            event,
+            data: this._publicSnapshot(),
+        }
+        if (this._emitBefore(direction, detail).defaultPrevented) return false
+        if (direction === 'undo') this._history.undo()
+        else this._history.redo()
+        this._restoreHistoryRows(tracks)
+        const committedDetail = {
+            ...detail,
+            tracks: this.tracks,
+            history: {
+                canRedo: this._history.canRedo(),
+                canUndo: this._history.canUndo(),
+            },
+            data: this._publicSnapshot(),
+        }
+        this._emit(direction, committedDetail)
+        this._render()
+        this._emitAfter(direction, committedDetail)
+        return true
+    }
+
+    /**
+     * Undo the latest committed timeline edit.
+     *
+     * @param {Event} event - Triggering event.
+     * @returns {boolean} Whether an edit was undone.
+     */
+    _undo = event => {
+        event?.preventDefault?.()
+        event?.stopPropagation?.()
+        return this._applyHistory('undo', event)
+    }
+
+    /**
+     * Redo the latest undone timeline edit.
+     *
+     * @param {Event} event - Triggering event.
+     * @returns {boolean} Whether an edit was redone.
+     */
+    _redo = event => {
+        event?.preventDefault?.()
+        event?.stopPropagation?.()
+        return this._applyHistory('redo', event)
+    }
+
+    /**
      * Get the identifier of the selected clip.
      *
      * @returns {string|number|null} Selected clip identifier.
@@ -1208,6 +1367,10 @@ export class LGS1920Timeline extends TimelineBase {
                 || (incomingUsesBaselineIds && localPlacementChanged
                     && this._stateSignatures.placementEqual(incoming, this._rows))
             )
+        if (controlledRowsChanged && !preserveLocalRows && !this._historyApplying) {
+            this._history.clear()
+            this._updateHistoryButtonPresentation()
+        }
         if (!preserveLocalRows) {
             this._localRowsDirty = false
             if (controlledRowsChanged) {

@@ -280,6 +280,9 @@ editing tool. The cut overlay uses the compact format
 `1s500ms/3s [2s500ms]`: elapsed time within the clip, clip duration, and
 timeline position. Units are concatenated without spaces, and zero-valued
 units are omitted.
+The same tools bar provides per-timeline Undo and Redo controls for up to 200
+accepted editing operations. Preview and canceled interactions do not enter
+history, and a new edit after Undo clears Redo.
 External controls can use the `timeline-ruler`, `timeline-controls`, and
 `footer` slots when the host needs a different layout.
 

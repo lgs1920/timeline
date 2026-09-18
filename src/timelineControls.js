@@ -53,6 +53,10 @@ export const createTimelineControls = ({
     getReadonly,
     getCutMode,
     toggleCutMode,
+    getCanUndo,
+    getCanRedo,
+    undo,
+    redo,
     normalizeTime,
     updateDynamicState,
     emitBefore,
@@ -86,7 +90,36 @@ export const createTimelineControls = ({
             event.stopPropagation()
             toggleCutMode(event)
         })
-        tools.append(cut, tooltip(cut.id, cutLabel))
+        const undoLabel = 'Undo'
+        const undoButton = button({
+            label: undoLabel,
+            testId: 'tools-undo',
+            iconSlotElement: createIcon('arrow-rotate-left', 'solid'),
+            disabled: !getCanUndo(),
+        })
+        undoButton.id = 'lgs1920-timeline-tools-undo'
+        undoButton.classList.add('lgs1920-wa-timeline__timeline-tool')
+        undoButton.setAttribute('aria-disabled', String(!getCanUndo()))
+        undoButton.addEventListener('click', event => undo(event))
+        const redoLabel = 'Redo'
+        const redoButton = button({
+            label: redoLabel,
+            testId: 'tools-redo',
+            iconSlotElement: createIcon('arrow-rotate-right', 'solid'),
+            disabled: !getCanRedo(),
+        })
+        redoButton.id = 'lgs1920-timeline-tools-redo'
+        redoButton.classList.add('lgs1920-wa-timeline__timeline-tool')
+        redoButton.setAttribute('aria-disabled', String(!getCanRedo()))
+        redoButton.addEventListener('click', event => redo(event))
+        tools.append(
+            cut,
+            tooltip(cut.id, cutLabel),
+            undoButton,
+            tooltip(undoButton.id, undoLabel),
+            redoButton,
+            tooltip(redoButton.id, redoLabel),
+        )
         stopTimelineControlPropagation(tools)
         return tools
     }
