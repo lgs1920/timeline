@@ -9,7 +9,9 @@ Read this shared baseline before the project-specific `PROJECT_RULES.md`.
 - Keep changes within the requested project scope and preserve unrelated work.
 - Make routine reversible decisions from repository conventions and evidence. Ask only when missing information materially changes behavior, scope, an external contract, or an approval requirement.
 - Never reset, discard, overwrite, or delete user work without explicit authorization.
-- Do not stage, commit, push, publish, deploy, or release unless explicitly requested.
+- Do not automatically stage or commit changes. Stage and create a commit only
+  when the user explicitly requests a commit. Push, publish, deploy, and
+  release actions also require an explicit request.
 - Do not use semicolons in new or modified source code.
 - Use arrow functions for functions, except class constructors.
 - Keep new files focused and below 1500 lines.

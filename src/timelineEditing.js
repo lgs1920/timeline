@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-17
+ * Last modified: 2026-09-18
  *
  *
  * Copyright © 2026 LGS1920
@@ -398,6 +398,22 @@ export const createTimelineClipEditor = ({
     const resizeRippleHistoryKey = (trackId, clipId, edge) => `${String(trackId)}:${String(clipId)}:${edge}`
 
     /**
+     * Resolve the retained baseline for a resize that can be reversed.
+     *
+     * @param {Array} rows - Current timeline rows.
+     * @param {string} trackId - Track identifier.
+     * @param {string} clipId - Clip identifier.
+     * @param {'start'|'end'} edge - Resized edge.
+     * @returns {Object|null} Retained resize history when it still matches the current layout.
+     */
+    const resolveResizeHistory = (rows, trackId, clipId, edge) => {
+        const history = resizeRippleHistory.get(resizeRippleHistoryKey(trackId, clipId, edge))
+        const row = rows.find(value => value.id === trackId)
+        if (!history || !row || !sameTimelineValue(history.resultLayout, clipLayout(row.actions))) return null
+        return history
+    }
+
+    /**
      * Retain a committed resize layout for a possible reverse resize.
      *
      * @param {Object} options - Resize result options.
@@ -411,7 +427,6 @@ export const createTimelineClipEditor = ({
         const before = findClipEntry(baseRows, clipId)
         const after = findClipEntry(result.rows, clipId)
         if (!before || !after || before.row.id !== after.row.id) return
-        if (resolveCollisionPolicy(getTimelineConfig(), before.row, 'resize') !== 'ripple') return
         const key = resizeRippleHistoryKey(before.row.id, clipId, edge)
         const currentLayout = clipLayout(before.row.actions)
         const previous = resizeRippleHistory.get(key)
@@ -426,6 +441,23 @@ export const createTimelineClipEditor = ({
             baselineClip: baseline.baselineClip,
             resultLayout: clipLayout(after.row.actions),
         })
+    }
+
+    /**
+     * Resolve the original edge boundary retained for a resize chain.
+     *
+     * @param {Object} options - Resize lookup options.
+     * @param {Array} options.rows - Current timeline rows.
+     * @param {string} options.trackId - Track identifier.
+     * @param {string} options.clipId - Clip identifier.
+     * @param {'start'|'end'} options.edge - Resized edge.
+     * @returns {{start: number, end: number, clip: Object}|null} Original resize boundary.
+     */
+    const getResizeBaseline = ({rows, trackId, clipId, edge}) => {
+        const history = resolveResizeHistory(rows, trackId, clipId, edge)
+        if (!history) return null
+        const interval = resolveClipInterval(history.baselineClip)
+        return {start: interval.start, end: interval.end, clip: Object.assign({}, history.baselineClip)}
     }
 
     /**
@@ -489,6 +521,53 @@ export const createTimelineClipEditor = ({
     }
 
     /**
+     * Snap a cut position to the same targets used by clip movement.
+     *
+     * @param {Object} options - Cut position and pointer state.
+     * @param {number} options.time - Proposed cut time in seconds.
+     * @param {string|number} options.clipId - Clip being cut.
+     * @param {PointerEvent} [options.event] - Pointer event controlling modifiers.
+     * @returns {{time: number, targetTime: number|null, kind: string|null}} Snapped cut position.
+     */
+    const snapCutTime = ({time, clipId, event} = {}) => {
+        const value = Number(time)
+        if (!Number.isFinite(value)) return {time: value, targetTime: null, kind: null}
+        const snap = resolveSnap({secondary: event?.shiftKey === true})
+        if (!snap || event?.altKey === true) return {time: value, targetTime: null, kind: null}
+        const targets = [
+            {time: 0, kind: 'target'},
+            {time: Number(getCurrentTimeMillis?.()) / 1000, kind: 'target'},
+        ]
+        getRows().forEach(row => (row.actions ?? []).forEach(clip => {
+            if (String(clip.id) === String(clipId)) return
+            const interval = resolveClipInterval(clip)
+            targets.push({time: interval.start, kind: 'clip', clipId: clip.id, edge: 'start'})
+            targets.push({time: interval.end, kind: 'clip', clipId: clip.id, edge: 'end'})
+        }))
+        const nearestTarget = targets
+            .filter(target => Number.isFinite(Number(target.time)) && Number(target.time) >= 0)
+            .map(target => ({...target, distance: Math.abs(Number(target.time) - value)}))
+            .filter(target => target.distance <= snap.thresholdSeconds + 1e-9)
+            .sort((left, right) => left.distance - right.distance)[0]
+        if (nearestTarget) {
+            return {
+                time: Number(Number(nearestTarget.time).toFixed(6)),
+                targetTime: Number(nearestTarget.time),
+                kind: nearestTarget.kind,
+            }
+        }
+        const rulerTime = Math.round(value / snap.majorSeconds) * snap.majorSeconds
+        if (Math.abs(rulerTime - value) <= snap.thresholdSeconds + 1e-9) {
+            return {
+                time: Number(rulerTime.toFixed(6)),
+                targetTime: Number(rulerTime.toFixed(6)),
+                kind: 'ruler',
+            }
+        }
+        return {time: value, targetTime: null, kind: null}
+    }
+
+    /**
      * Place a clip on a track and apply the track collision policy.
      *
      * @param {Object} options - Placement options.
@@ -537,9 +616,8 @@ export const createTimelineClipEditor = ({
             : proposedClip
         if (!placedClip) return null
         const targetClips = [...(targetAfterRemoval?.actions ?? []), placedClip]
-        const historyKey = resizeRippleHistoryKey(targetTrackId, clip.id, edge)
         const resizeHistory = mode === 'resize' && policy === 'ripple'
-            ? resizeRippleHistory.get(historyKey)
+            ? resolveResizeHistory(baseRows, targetTrackId, clip.id, edge)
             : null
         const useResizeHistory = Boolean(resizeHistory
             && sameTimelineValue(resizeHistory.resultLayout, clipLayout(target.actions)))
@@ -603,6 +681,9 @@ export const createTimelineClipEditor = ({
         const oldClip = initialEntry
             ? Object.assign({}, initialEntry.clip, {trackId: initialEntry.row.id})
             : null
+        const originalClip = state.resizeOriginalClip
+            ? Object.assign({}, state.resizeOriginalClip)
+            : oldClip
         const dragStart = state.dragStart ?? null
         const drag = event
             ? {
@@ -624,6 +705,7 @@ export const createTimelineClipEditor = ({
             end: clip?.end ?? null,
             clip,
             oldClip,
+            originalClip,
             oldTimeline: {
                 trackId: state.sourceTrackId,
                 clip: oldClip,
@@ -635,6 +717,12 @@ export const createTimelineClipEditor = ({
                 clip,
                 start: clip?.start ?? null,
                 end: clip?.end ?? null,
+            },
+            originalTimeline: {
+                trackId: state.sourceTrackId,
+                clip: originalClip,
+                start: originalClip?.start ?? null,
+                end: originalClip?.end ?? null,
             },
             dragStart,
             drag,
@@ -704,6 +792,16 @@ export const createTimelineClipEditor = ({
         let start = state.originalStart
         let end = state.originalEnd
 
+        const constrainResizeBoundary = () => {
+            if (state.mode !== 'resize') return
+            if (state.edge === 'start' && Number.isFinite(state.resizeMinimumStart)) {
+                start = Math.max(state.resizeMinimumStart, start)
+            }
+            if (state.edge === 'end' && Number.isFinite(state.resizeMaximumEnd)) {
+                end = Math.min(state.resizeMaximumEnd, end)
+            }
+        }
+
         if (state.mode === 'move') {
             start = Math.max(0, state.originalStart + delta - (state.pointerOffsetSeconds ?? 0))
             end = start + duration
@@ -717,6 +815,7 @@ export const createTimelineClipEditor = ({
             end = Math.max(state.originalStart + minimumDuration, state.originalEnd + delta)
             if (!extendsDuration) end = Math.min(end, baseDuration)
         }
+        constrainResizeBoundary()
 
         const unsnappedInterval = {start, end}
         const previousUnsnappedInterval = state.lastUnsnappedInterval
@@ -795,6 +894,7 @@ export const createTimelineClipEditor = ({
             end = Math.max(state.originalStart + minimumDuration, end)
             if (!extendsDuration) end = Math.min(end, baseDuration)
         }
+        constrainResizeBoundary()
 
         const preferredInterval = {start, end}
         const candidates = [preferredInterval]
@@ -930,9 +1030,12 @@ export const createTimelineClipEditor = ({
         const delta = (event.key === 'ArrowRight' ? 1 : -1) * step * (event.shiftKey ? 10 : 1)
         const interval = resolveClipInterval(entry.clip)
         const minimumDurationValue = minimumClipDuration(entry.row, entry.clip)
+        const resizeBaseline = getResizeBaseline({rows, trackId: entry.row.id, clipId, edge})
         const nextClip = edge === 'start'
             ? Object.assign({}, entry.clip, {start: Math.max(0, Math.min(interval.start + delta, interval.end - minimumDurationValue))})
             : Object.assign({}, entry.clip, {end: Math.max(interval.start + minimumDurationValue, interval.end + delta)})
+        if (edge === 'start' && resizeBaseline) nextClip.start = Math.max(resizeBaseline.start, nextClip.start)
+        if (edge === 'end' && resizeBaseline) nextClip.end = Math.min(resizeBaseline.end, nextClip.end)
         const state = {
             mode: 'resize',
             edge,
@@ -942,6 +1045,9 @@ export const createTimelineClipEditor = ({
             startTime: interval[edge === 'start' ? 'start' : 'end'],
             targetTime: interval[edge === 'start' ? 'start' : 'end'],
             baseRows: cloneRows(rows),
+            resizeOriginalClip: resizeBaseline?.clip ?? Object.assign({}, entry.clip),
+            resizeMinimumStart: resizeBaseline?.start,
+            resizeMaximumEnd: resizeBaseline?.end,
             dragStart: {
                 clientX: Number(event.clientX) || 0,
                 clientY: Number(event.clientY) || 0,
@@ -1096,5 +1202,5 @@ export const createTimelineClipEditor = ({
         emitAfter('clip-change', detail)
     }
 
-    return {changeDetail, extend, findClipEntry, moveByKeyboard, place, preview, recordResizeResult, resizeByKeyboard}
+    return {changeDetail, extend, findClipEntry, getResizeBaseline, moveByKeyboard, place, preview, recordResizeResult, resizeByKeyboard, snapCutTime}
 }

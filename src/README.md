@@ -868,7 +868,11 @@ track reorder.
 The component emits `clip-change-start` when an edit begins, `clip-changing`
 for live previews, and `clip-change` when the pointer or keyboard edit is
 committed. Clip drag events include `oldTimeline`, `newTimeline`,
-`dragStart`, `drag`, `resizeEdge`, and the complete `tracks` snapshot. The
+`originalTimeline`, `dragStart`, `drag`, `resizeEdge`, and the complete
+`tracks` snapshot. `oldClip` and `oldTimeline` describe the state immediately
+before the current edit. For a trim chain, `originalClip` and
+`originalTimeline` retain the first clip interval, so the host can restore
+content revealed by reducing a previous trim. The
 cut operation uses the same `clip-change` lifecycle and adds `cutTime`,
 `rightClipId`, and `clips` to its detail. The
 host applies the resulting `tracks` value to keep the model controlled. The

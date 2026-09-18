@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-17
- * Last modified: 2026-09-17
+ * Last modified: 2026-09-18
  *
  *
  * Copyright © 2026 LGS1920
@@ -66,6 +66,14 @@ export const TimelineSurfaceMixin = Base => class extends Base {
         if (!entry || (!this._isTrackEditable(entry.row) && !readOnlyResize) || entry.clip.editable === false
             || entry.clip.selectable === false || (mode === 'resize' && entry.clip.resizable === false)) return
         const interval = resolveClipInterval(entry.clip)
+        const resizeBaseline = mode === 'resize'
+            ? this._clipEditor.getResizeBaseline({
+                rows: this._rows,
+                trackId: entry.row.id,
+                clipId,
+                edge,
+            })
+            : null
         const startTime = this._timeAtClientX(event.clientX)
         const initialDurationMillis = this._durationMillis()
         this._dragState = {
@@ -85,6 +93,9 @@ export const TimelineSurfaceMixin = Base => class extends Base {
             targetTime: startTime,
             originalStart: interval.start,
             originalEnd: interval.end,
+            resizeOriginalClip: resizeBaseline?.clip ?? Object.assign({}, entry.clip),
+            resizeMinimumStart: resizeBaseline?.start,
+            resizeMaximumEnd: resizeBaseline?.end,
             initialDurationMillis,
             initialRangeEndMillis: this._rangeEndMillis,
             wasSelected: wasSelected === true,

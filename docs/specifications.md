@@ -271,7 +271,8 @@ configured threshold and release threshold so that a clip can be grabbed and
 released without oscillating between snapped and unsnapped positions.
 
 The editing result must include enough information for the host to understand
-the operation: the operation type, affected edge, original timeline, proposed
+the operation: the operation type, affected edge, the immediately previous
+timeline, the original timeline retained across a trim chain, the proposed
 timeline, drag origin, current drag values, duration, and resulting tracks.
 
 ### 1.9 Clip sources and drag and drop

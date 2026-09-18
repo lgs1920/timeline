@@ -3617,6 +3617,43 @@ describe('lgs1920-timeline Web Component', () => {
         expect(changes.mock.calls[0][0].detail.clip.end).toBe(5)
     })
 
+    it('keeps the initial clip boundary available when a trim is reduced later', () => {
+        const timeline = new LGS1920Timeline()
+        const changes = vi.fn()
+        configureTimeline(timeline, {
+            tracks: [{
+                id: 'main',
+                label: 'Main',
+                clips: [{id: 'clip', kind: 'video', start: 1, end: 4, metadata: {source: 'original'}}],
+            }],
+        })
+        timeline.addEventListener('lgs1920-timeline-clip-change', changes)
+        document.body.append(timeline)
+
+        const surface = timeline.shadowRoot.querySelector('[data-surface]')
+        vi.spyOn(surface, 'getBoundingClientRect').mockReturnValue({left: 0, top: 0, right: 600, width: 600})
+        let endHandle = timeline.shadowRoot.querySelector('[data-clip-handle="end"]')
+        endHandle.dispatchEvent(createPointerEvent('pointerdown', {clientX: 180, clientY: 50}))
+        window.dispatchEvent(createPointerEvent('pointermove', {clientX: 140, clientY: 50}))
+        window.dispatchEvent(createPointerEvent('pointerup', {clientX: 140, clientY: 50}))
+
+        const firstDetail = changes.mock.calls[0][0].detail
+        expect(firstDetail.clip).toMatchObject({start: 1, end: 3})
+        expect(firstDetail.originalClip).toMatchObject({start: 1, end: 4})
+        timeline.tracks = firstDetail.tracks
+
+        endHandle = timeline.shadowRoot.querySelector('[data-clip-handle="end"]')
+        endHandle.dispatchEvent(createPointerEvent('pointerdown', {clientX: 140, clientY: 50}))
+        window.dispatchEvent(createPointerEvent('pointermove', {clientX: 220, clientY: 50}))
+        window.dispatchEvent(createPointerEvent('pointerup', {clientX: 220, clientY: 50}))
+
+        const secondDetail = changes.mock.calls[1][0].detail
+        expect(secondDetail.oldClip).toMatchObject({start: 1, end: 3})
+        expect(secondDetail.originalClip).toMatchObject({start: 1, end: 4})
+        expect(secondDetail.clip).toMatchObject({start: 1, end: 4})
+        expect(timeline.tracks[0].clips[0]).toMatchObject({start: 1, end: 4})
+    })
+
     it('honors the public resizable clip setting', () => {
         const timeline = new LGS1920Timeline()
         const changes = vi.fn()
