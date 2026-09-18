@@ -1745,6 +1745,38 @@ describe('lgs1920-timeline Web Component', () => {
         expect(parentListener).not.toHaveBeenCalled()
     })
 
+    it('keeps native form and focus events inside the timeline host', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline)
+        const parentListener = vi.fn()
+        const parent = document.createElement('div')
+        const eventTypes = [
+            'beforeinput',
+            'change',
+            'compositionstart',
+            'focusin',
+            'focusout',
+            'input',
+            'invalid',
+            'reset',
+            'select',
+            'selectstart',
+            'submit',
+        ]
+        eventTypes.forEach(type => parent.addEventListener(type, parentListener))
+        parent.append(timeline)
+        document.body.append(parent)
+
+        const clip = timeline.shadowRoot.querySelector('[data-clip-id="clip-one"]')
+        eventTypes.forEach(type => clip.dispatchEvent(new Event(type, {
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+        })))
+
+        expect(parentListener).not.toHaveBeenCalled()
+    })
+
     it('prevents the native browser context menu inside the timeline', () => {
         const timeline = new LGS1920Timeline()
         configureTimeline(timeline)

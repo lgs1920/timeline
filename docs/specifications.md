@@ -88,6 +88,11 @@ must not shrink the track-title area or cause a layout flash. The native browser
 context menu must not replace the component menu where the component handles
 the interaction.
 
+Native input, pointer, drag, focus, and form events originating in the timeline
+surface must remain inside the component and must not bubble to its host page.
+Application-owned slotted content and the explicit `hostInteraction: selectable`
+mode retain their documented propagation behavior.
+
 The timeline must prevent accidental text selection across the interactive
 timeline surface while preserving text editing in editable track labels and
 other form controls.
