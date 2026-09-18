@@ -349,8 +349,9 @@ The editable playback area exposes a scissors tool immediately before the time
 slider. Cut mode previews a vertical dashed guide over eligible clips and
 splits a clip at the clicked position while preserving its source fields and
 metadata. The original clip keeps its identifier and the right segment gets a
-unique identifier. `Escape`, a second scissors activation, or a hidden/read-only
-state exits cut mode. `Ctrl+K` and `Command+K` apply the same operation at the
+unique identifier. A normal click exits cut mode after the cut; `Shift`-click
+keeps it active for consecutive cuts. `Escape`, a second scissors activation,
+or a hidden/read-only state exits cut mode. `Ctrl+K` and `Command+K` apply the same operation at the
 playhead and may split every eligible clip intersecting that time. The operation
 uses the normal cancelable `clip-change` lifecycle and reports `type: 'cut'`,
 `cutTime`, `rightClipId`, and the resulting `tracks` snapshot.

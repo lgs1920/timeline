@@ -2023,6 +2023,35 @@ describe('lgs1920-timeline Web Component', () => {
         expect(clips[1].id).toMatch(/^cut-clip-cut/)
         expect(lifecycle).toEqual(['before:cut', 'start:cut', 'change:cut', 'after:cut'])
         expect(timeline.shadowRoot.querySelector('[data-cut-guide]').hidden).toBe(true)
+        expect(timeline._cutMode).toBe(false)
+        expect(timeline.hasAttribute('data-cut-mode')).toBe(false)
+    })
+
+    it('keeps cut mode active when Shift-clicking a cut position', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline, {
+            tracks: [{
+                id: 'shift-track',
+                label: 'Shift track',
+                clips: [{id: 'shift-clip', label: 'Shift cut', start: 1, end: 4}],
+            }],
+        })
+        document.body.append(timeline)
+        const timeAtPointer = vi.fn(() => 2.5)
+        timeline._timeAtClientX = timeAtPointer
+        timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-tools-cut"]').click()
+
+        let clip = timeline.shadowRoot.querySelector('[data-clip-id="shift-clip"]')
+        clip.dispatchEvent(createPointerEvent('pointerdown', {clientX: 150, clientY: 50, shiftKey: true}))
+        expect(timeline.tracks[0].clips).toHaveLength(2)
+        expect(timeline._cutMode).toBe(true)
+
+        timeAtPointer.mockReturnValue(3.25)
+        clip = timeline.shadowRoot.querySelector('[data-clip-id^="shift-clip-cut"]')
+        clip.dispatchEvent(createPointerEvent('pointerdown', {clientX: 180, clientY: 50, shiftKey: true}))
+        expect(timeline.tracks[0].clips).toHaveLength(3)
+        expect(timeline._cutMode).toBe(true)
+        expect(timeline.hasAttribute('data-cut-mode')).toBe(true)
     })
 
     it('cancels the scissors tool with Escape and cuts at the playhead with Ctrl/Cmd+K', () => {

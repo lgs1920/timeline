@@ -273,7 +273,8 @@ time slider.
 Editable timelines place a scissors editing tool immediately to the left of
 the time slider. Hovering a clip in cut mode shows a dashed guide and clicking
 splits it at that position. `Ctrl/Cmd+K` cuts eligible clips at the playhead;
-`Escape` or clicking the scissors button exits cut mode. Set
+normal clicks exit cut mode, while `Shift`-click keeps it active for consecutive
+cuts. `Escape` or clicking the scissors button exits cut mode. Set
 `view.tools: 'hidden'` or the `tools-hidden` attribute/property to hide the
 editing tool.
 External controls can use the `timeline-ruler`, `timeline-controls`, and

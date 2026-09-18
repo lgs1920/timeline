@@ -774,7 +774,9 @@ application decides whether to connect those events to playback or persistence.
 The scissors tool enters cut mode. Moving over an eligible clip shows a vertical
 dashed guide and clicking splits the clip at the guide. The original clip keeps
 its identifier and source fields; the right segment receives a unique generated
-identifier. `Escape` or clicking the scissors button again exits cut mode.
+identifier. A normal click exits cut mode after the cut; `Shift`-click keeps
+the mode active for consecutive cuts. `Escape` or clicking the scissors button
+again exits cut mode.
 `Ctrl+K` or `Command+K` applies the same cut to every eligible clip at the
 current playhead. The accepted `clip-change` detail has `type: 'cut'`,
 `cutTime`, `rightClipId`, both resulting clips, and the controlled track

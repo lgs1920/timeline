@@ -813,7 +813,11 @@ export class LGS1920Timeline extends TimelineBase {
             isCutMode: () => this._cutMode === true,
             previewCut: (clipId, event) => this._previewCut(clipId, event),
             clearCutPreview: () => this._clearCutPreview(),
-            commitCut: (clipId, event) => this._cutClipAtTime(clipId, this._timeAtClientX(event.clientX), event),
+            commitCut: (clipId, event) => {
+                const committed = this._cutClipAtTime(clipId, this._timeAtClientX(event.clientX), event)
+                if (committed && event.shiftKey !== true) this._cancelCutMode()
+                return committed
+            },
             startRangeInteraction: (event, edge) => this._startRangeInteraction(event, edge),
             setRangeBoundaryToLimit: (edge, event) => this._setRangeBoundaryToLimit(edge, event),
             moveRangeByKeyboard: (edge, event) => this._moveRangeByKeyboard(edge, event),
