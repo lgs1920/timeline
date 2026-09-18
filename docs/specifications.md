@@ -317,6 +317,7 @@ the component must support:
 - keyboard activation of playback and range controls;
 - keyboard seeking by the documented step size;
 - keyboard zoom when enabled;
+- the accessible scissors cut tool and its `Ctrl/Cmd+K` shortcut;
 - visible focus indicators;
 - accessible names for icon-only buttons;
 - usable labels for tracks, clips, handles, and sliders;
@@ -343,6 +344,16 @@ Continuous interactions must expose a start event, zero or more changing
 events, and a final event. The host can use changing events for previews and
 the final event for persistence. Canceling a before event must not emit a
 committed result.
+
+The editable playback area exposes a scissors tool immediately before the time
+slider. Cut mode previews a vertical dashed guide over eligible clips and
+splits a clip at the clicked position while preserving its source fields and
+metadata. The original clip keeps its identifier and the right segment gets a
+unique identifier. `Escape`, a second scissors activation, or a hidden/read-only
+state exits cut mode. `Ctrl+K` and `Command+K` apply the same operation at the
+playhead and may split every eligible clip intersecting that time. The operation
+uses the normal cancelable `clip-change` lifecycle and reports `type: 'cut'`,
+`cutTime`, `rightClipId`, and the resulting `tracks` snapshot.
 
 ### 1.13 Reference demo requirements
 
@@ -419,7 +430,7 @@ The `options` object supports the following public configuration areas:
 - zoom and layout: `zoomPercent`, legend width settings, and keyboard zoom;
 - overlays and controls: `showBuildingOverlay`, `noTimeSlider`,
   `playback.transport`, `playback.time`,
-  `showZoomSlider`, `noZoomControls`, and
+  `showZoomSlider`, `noZoomControls`, `view.tools`, and
   `showClipMenu`;
 - editing policies: `collisionPolicy`, `resizeCollisionPolicy`,
   `snapThresholdPixels`, `snapReleaseThresholdPixels`,

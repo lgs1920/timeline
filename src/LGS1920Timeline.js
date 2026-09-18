@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-17
- * Last modified: 2026-09-17
+ * Last modified: 2026-09-18
  *
  *
  * Copyright © 2026 LGS1920
@@ -133,6 +133,7 @@ const normalizeTimelineOptions = options => {
     if (Object.prototype.hasOwnProperty.call(view, 'visible')) flattened.visible = view.visible
     if (Object.prototype.hasOwnProperty.call(view, 'zoomSlider')) flattened.showZoomSlider = view.zoomSlider
     if (Object.prototype.hasOwnProperty.call(view, 'zoomControls')) flattened.noZoomControls = view.zoomControls === 'hidden'
+    if (Object.prototype.hasOwnProperty.call(view, 'tools')) flattened.toolsHidden = view.tools === 'hidden'
     if (Object.prototype.hasOwnProperty.call(view, 'buildingOverlay')) flattened.showBuildingOverlay = view.buildingOverlay
     if (Object.prototype.hasOwnProperty.call(view, 'initialRangeStartVisible')) flattened.initialRangeStartVisible = view.initialRangeStartVisible
     if (Object.prototype.hasOwnProperty.call(range, 'startMillis')) flattened.rangeStartMillis = range.startMillis
@@ -168,6 +169,7 @@ const timelineOptionsFromConfig = config => {
             visible: config.visible !== false,
             zoomSlider: config.showZoomSlider === true,
             zoomControls: config.noZoomControls === true ? 'hidden' : 'visible',
+            tools: config.toolsHidden === true ? 'hidden' : 'visible',
             buildingOverlay: config.showBuildingOverlay !== false,
             initialRangeStartVisible: config.initialRangeStartVisible !== false,
         },
@@ -192,7 +194,7 @@ const timelineOptionsFromConfig = config => {
     const groupedKeys = [
         'interactive', 'editable', 'readonly',
         'noLoopMode', 'noTransport', 'noPlaybackTime', 'noTimeSlider', 'showTimeSlider',
-        'visible', 'showZoomSlider', 'noZoomControls', 'showBuildingOverlay',
+        'visible', 'showZoomSlider', 'noZoomControls', 'toolsHidden', 'showBuildingOverlay',
         'initialRangeStartVisible', 'rangeStartMillis', 'rangeEndMillis',
         'legendMinWidth', 'legendWidth', 'legendMaxWidth',
         'showClipMenu', 'collisionPolicy', 'resizeCollisionPolicy', 'durationPolicy',
@@ -212,6 +214,7 @@ const STRUCTURAL_CONFIG_KEYS = Object.freeze([
     'noTimeSlider',
     'showZoomSlider',
     'noZoomControls',
+    'toolsHidden',
     'legendMinWidth',
     'legendMaxWidth',
     'legendWidth',
@@ -300,6 +303,8 @@ export class LGS1920Timeline extends TimelineBase {
     _dragState = null
     _clipSnapGuide = null
     _clipSnapGuideTimer = null
+    _cutMode = false
+    _cutGuide = null
     _scrubPointerId = null
     _autoScrollFrame = null
     _edgeDirection = null
@@ -330,7 +335,7 @@ export class LGS1920Timeline extends TimelineBase {
     _isReadonlyMode = () => this.readonly || this._playing
 
     static get observedAttributes() {
-        return ['readonly', 'noloopmode', 'nozoomcontrols']
+        return ['readonly', 'noloopmode', 'nozoomcontrols', 'tools-hidden']
     }
 
     /**
@@ -341,11 +346,13 @@ export class LGS1920Timeline extends TimelineBase {
      * @param {string|null} nextValue - New attribute value.
      */
     attributeChangedCallback(name, previousValue, nextValue) {
-        if (!['readonly', 'noloopmode', 'nozoomcontrols'].includes(name) || previousValue === nextValue) return
+        if (!['readonly', 'noloopmode', 'nozoomcontrols', 'tools-hidden'].includes(name) || previousValue === nextValue) return
         if (name === 'noloopmode' && this.noLoopMode) this._looping = false
         const config = name === 'nozoomcontrols'
             ? {...this._timelineConfig, noZoomControls: this.hasAttribute('nozoomcontrols')}
-            : this._timelineConfig
+            : name === 'tools-hidden'
+                ? {...this._timelineConfig, toolsHidden: this.hasAttribute('tools-hidden')}
+                : this._timelineConfig
         this.timeline = config
     }
 
@@ -472,6 +479,24 @@ export class LGS1920Timeline extends TimelineBase {
      */
     set noZoomControls(value) {
         this.toggleAttribute('nozoomcontrols', value === true)
+    }
+
+    /**
+     * Whether the built-in timeline editing tools are hidden.
+     *
+     * @returns {boolean} Whether editing tools are disabled.
+     */
+    get toolsHidden() {
+        return this.hasAttribute('tools-hidden') || this._timelineConfig.toolsHidden === true
+    }
+
+    /**
+     * Toggle the built-in timeline editing tools.
+     *
+     * @param {boolean} value - Whether editing tools should be hidden.
+     */
+    set toolsHidden(value) {
+        this.toggleAttribute('tools-hidden', value === true)
     }
 
     /**
@@ -728,6 +753,8 @@ export class LGS1920Timeline extends TimelineBase {
             getDurationMillis: () => this._durationMillis(),
             getDurationSeconds: () => this._durationSeconds(),
             getReadonly: () => this.readonly,
+            getCutMode: () => this._cutMode === true,
+            toggleCutMode: event => this._toggleCutMode(event),
             normalizeTime: (value, constrainToRange) => this._normalizeTime(value, constrainToRange),
             updateDynamicState: () => this._updateDynamicState(),
             emitBefore: (name, detail) => this._emitBefore(name, detail),
@@ -783,6 +810,10 @@ export class LGS1920Timeline extends TimelineBase {
             startClipInteraction: (event, clipId, mode, edge, wasSelected) => this._startClipInteraction(event, clipId, mode, edge, wasSelected),
             moveClipByKeyboard: (clipId, event) => this._clipEditor.moveByKeyboard(clipId, event),
             resizeClipByKeyboard: (clipId, edge, event) => this._clipEditor.resizeByKeyboard(clipId, edge, event),
+            isCutMode: () => this._cutMode === true,
+            previewCut: (clipId, event) => this._previewCut(clipId, event),
+            clearCutPreview: () => this._clearCutPreview(),
+            commitCut: (clipId, event) => this._cutClipAtTime(clipId, this._timeAtClientX(event.clientX), event),
             startRangeInteraction: (event, edge) => this._startRangeInteraction(event, edge),
             setRangeBoundaryToLimit: (edge, event) => this._setRangeBoundaryToLimit(edge, event),
             moveRangeByKeyboard: (edge, event) => this._moveRangeByKeyboard(edge, event),
@@ -1096,7 +1127,9 @@ export class LGS1920Timeline extends TimelineBase {
             this._stopAutoScroll()
             this._closeClipContextMenu()
             this._closeTrackContextMenu()
+            this._cancelCutMode({render: false})
         }
+        if (this._timelineConfig.toolsHidden === true) this._cancelCutMode({render: false})
         this._visible = this._timelineConfig.visible !== false
         this._requestControlledSync({
             zoomPercent: applyControlledZoom ? requestedZoom : undefined,
@@ -1348,6 +1381,7 @@ export class LGS1920Timeline extends TimelineBase {
         this._scrollbarsInteractionActive = false
         this._clearScrollbarHideTimer()
         this._clearClipSnapGuide()
+        this._cancelCutMode({render: false})
         this._stopAutoScroll()
         this._cancelClipCopy()
         this._closeClipContextMenu()

@@ -1961,6 +1961,131 @@ describe('lgs1920-timeline Web Component', () => {
         expect(timeline.selectedClipId).toBeNull()
     })
 
+    it('renders the editable tools beside the time slider and hides them when requested', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline)
+        document.body.append(timeline)
+
+        const editTools = timeline.shadowRoot.querySelector('[part="edit-tools"]')
+        const timeSliderSlot = timeline.shadowRoot.querySelector('[part="playback-controls"] slot[name="time-slider"]')
+        const cut = editTools.querySelector('[data-testid="lgs1920-wa-tools-cut"]')
+        expect(editTools).not.toBeNull()
+        expect(editTools.nextElementSibling).toBe(timeSliderSlot)
+        expect(cut.getAttribute('aria-label')).toBe('Cut clip')
+        expect(cut.getAttribute('aria-pressed')).toBe('false')
+        expect(cut.querySelector('wa-icon').getAttribute('name')).toBe('scissors')
+
+        timeline.toolsHidden = true
+        expect(timeline.shadowRoot.querySelector('[part="edit-tools"]')).toBeNull()
+        timeline.toolsHidden = false
+        expect(timeline.shadowRoot.querySelector('[part="edit-tools"]')).not.toBeNull()
+
+        timeline.readonly = true
+        expect(timeline.shadowRoot.querySelector('[part="edit-tools"]')).toBeNull()
+    })
+
+    it('cuts a clip from the scissors tool and emits the standard clip-change lifecycle', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline, {
+            tracks: [{
+                id: 'editable-track',
+                label: 'Editable track',
+                clips: [{id: 'cut-clip', kind: 'video', label: 'Cut me', start: 1, end: 4, metadata: {source: 'camera'}}],
+            }],
+        })
+        document.body.append(timeline)
+        timeline._timeAtClientX = vi.fn(() => 2.5)
+        const lifecycle = []
+        timeline.on('clip-change', {
+            before: event => lifecycle.push(`before:${event.detail.type}`),
+            on: event => lifecycle.push(`change:${event.detail.type}`),
+            after: event => lifecycle.push(`after:${event.detail.type}`),
+        })
+        timeline.addEventListener('lgs1920-timeline-clip-change-start', event => lifecycle.push(`start:${event.detail.type}`))
+
+        const cut = timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-tools-cut"]')
+        cut.click()
+        expect(timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-tools-cut"]')
+            .getAttribute('aria-pressed')).toBe('true')
+        expect(timeline.hasAttribute('data-cut-mode')).toBe(true)
+
+        const clip = timeline.shadowRoot.querySelector('[data-clip-id="cut-clip"]')
+        clip.dispatchEvent(createPointerEvent('pointermove', {clientX: 150, clientY: 50}))
+        const guide = timeline.shadowRoot.querySelector('[data-cut-guide]')
+        expect(guide.hidden).toBe(false)
+        expect(guide.style.left).not.toBe('')
+
+        clip.dispatchEvent(createPointerEvent('pointerdown', {clientX: 150, clientY: 50}))
+        const clips = timeline.tracks[0].clips
+        expect(clips).toHaveLength(2)
+        expect(clips[0]).toMatchObject({id: 'cut-clip', start: 1, end: 2.5, metadata: {source: 'camera'}})
+        expect(clips[1]).toMatchObject({start: 2.5, end: 4, metadata: {source: 'camera'}})
+        expect(clips[1].id).toMatch(/^cut-clip-cut/)
+        expect(lifecycle).toEqual(['before:cut', 'start:cut', 'change:cut', 'after:cut'])
+        expect(timeline.shadowRoot.querySelector('[data-cut-guide]').hidden).toBe(true)
+    })
+
+    it('cancels the scissors tool with Escape and cuts at the playhead with Ctrl/Cmd+K', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline, {
+            currentTimeMillis: 2_500,
+            tracks: [{
+                id: 'keyboard-track',
+                label: 'Keyboard track',
+                clips: [{id: 'keyboard-clip', kind: 'video', label: 'Keyboard cut', start: 1, end: 4}],
+            }],
+        })
+        document.body.append(timeline)
+
+        const cut = timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-tools-cut"]')
+        cut.click()
+        expect(timeline._cutMode).toBe(true)
+        window.dispatchEvent(new KeyboardEvent('keydown', {bubbles: true, cancelable: true, key: 'Escape'}))
+        expect(timeline._cutMode).toBe(false)
+        expect(timeline.hasAttribute('data-cut-mode')).toBe(false)
+
+        const shortcut = new KeyboardEvent('keydown', {
+            bubbles: true,
+            cancelable: true,
+            ctrlKey: true,
+            key: 'k',
+        })
+        window.dispatchEvent(shortcut)
+        expect(timeline.tracks[0].clips).toHaveLength(2)
+        expect(timeline.tracks[0].clips[0].end).toBe(2.5)
+        expect(shortcut.defaultPrevented).toBe(true)
+    })
+
+    it('does not cut clips at their minimum-duration boundaries', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline, {
+            currentTimeMillis: 1_000,
+            tracks: [{
+                id: 'short-track',
+                label: 'Short track',
+                clips: [{id: 'short-clip', label: 'Short clip', start: 0, end: 2, minDuration: 1}],
+            }],
+        })
+        document.body.append(timeline)
+
+        window.dispatchEvent(new KeyboardEvent('keydown', {
+            bubbles: true,
+            cancelable: true,
+            metaKey: true,
+            key: 'k',
+        }))
+        expect(timeline.tracks[0].clips).toHaveLength(1)
+    })
+
+    it('keeps the edit tools out of readonly timelines', () => {
+        const timeline = new LGS1920Timeline()
+        timeline.readonly = true
+        configureTimeline(timeline)
+        document.body.append(timeline)
+
+        expect(timeline.shadowRoot.querySelector('[part="edit-tools"]')).toBeNull()
+    })
+
     it('keeps readonly track backgrounds on the standard surface color', () => {
         const timeline = new LGS1920Timeline()
         timeline.readonly = true

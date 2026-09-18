@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-17
- * Last modified: 2026-09-17
+ * Last modified: 2026-09-18
  *
  *
  * Copyright © 2026 LGS1920
@@ -199,6 +199,191 @@ export const TimelineClipEditingMixin = Base => class extends Base {
      */
     _removeClipCopyPresentation = () => {
         this._root.querySelectorAll('[data-clip-copy-ghost]').forEach(element => element.remove())
+    }
+
+    /**
+     * Resolve the minimum duration required by a clip cut.
+     *
+     * @param {Object} row - Track row containing the clip.
+     * @param {Object} clip - Clip to split.
+     * @returns {number} Minimum segment duration in seconds.
+     */
+    _cutMinimumDuration = (row, clip) => {
+        const configured = Number(clip?.minDuration ?? row?.minClipDuration ?? this._timelineConfig.minClipDuration)
+        if (Number.isFinite(configured) && configured > 0) return configured
+        const frameInterval = Number(this._frameIntervalMillis?.())
+        return frameInterval > 0 ? frameInterval / 1000 : 1 / 30
+    }
+
+    /**
+     * Resolve whether a clip can be split by the active cut tool.
+     *
+     * @param {Object|null} entry - Clip editor entry.
+     * @returns {boolean} Whether the entry can be cut.
+     */
+    _isCuttableEntry = entry => Boolean(entry
+        && this._isTrackEditable(entry.row)
+        && entry.clip.editable !== false
+        && this._timelineConfig.interactive !== false
+        && this._timelineConfig.editable !== false)
+
+    /**
+     * Toggle the timeline cut tool.
+     *
+     * @param {Event} event - Triggering control event.
+     */
+    _toggleCutMode = event => {
+        if (this._isReadonlyMode() || this._timelineConfig.interactive === false
+            || this._timelineConfig.editable === false || this.toolsHidden) return
+        event?.preventDefault?.()
+        event?.stopPropagation?.()
+        this._cancelClipCopy()
+        this._cutMode = !this._cutMode
+        if (!this._cutMode) this._cutGuide = null
+        this.toggleAttribute('data-cut-mode', this._cutMode)
+        this._render()
+    }
+
+    /**
+     * Leave cut mode and clear its transient pointer guide.
+     *
+     * @param {Object} [options] - Rendering options.
+     * @param {boolean} [options.render=true] - Whether to rerender the host.
+     */
+    _cancelCutMode = ({render = true} = {}) => {
+        const changed = this._cutMode || this._cutGuide
+        this._cutMode = false
+        this._cutGuide = null
+        this.removeAttribute('data-cut-mode')
+        if (changed && render) this._render()
+    }
+
+    /**
+     * Clear the current cut preview without leaving cut mode.
+     */
+    _clearCutPreview = () => {
+        if (!this._cutGuide) return
+        this._cutGuide = null
+        this._updateClipInteractionPresentation()
+    }
+
+    /**
+     * Preview a possible cut position under the pointer.
+     *
+     * @param {string|number} clipId - Clip identifier.
+     * @param {PointerEvent} event - Pointer movement event.
+     */
+    _previewCut = (clipId, event) => {
+        if (!this._cutMode) return
+        const entry = this._clipEditor.findClipEntry(this._rows, clipId)
+        if (!this._isCuttableEntry(entry)) {
+            this._clearCutPreview()
+            return
+        }
+        const interval = timelineEditing.resolveClipInterval(entry.clip)
+        const time = this._timeAtClientX(event.clientX)
+        const minimumDuration = this._cutMinimumDuration(entry.row, entry.clip)
+        const epsilon = 1e-9
+        if (time <= interval.start + minimumDuration - epsilon
+            || time >= interval.end - minimumDuration + epsilon) {
+            this._clearCutPreview()
+            return
+        }
+        this._cutGuide = {clipId, trackId: entry.row.id, time}
+        this._updateClipInteractionPresentation()
+    }
+
+    /**
+     * Split one clip at a requested timeline time.
+     *
+     * @param {string|number} clipId - Clip identifier.
+     * @param {number} time - Cut time in seconds.
+     * @param {Event} event - Triggering interaction event.
+     * @returns {boolean} Whether the clip was cut.
+     */
+    _cutClipAtTime = (clipId, time, event) => {
+        const entry = this._clipEditor.findClipEntry(this._rows, clipId)
+        if (!this._isCuttableEntry(entry)) return false
+        const interval = timelineEditing.resolveClipInterval(entry.clip)
+        const cutTime = Number(time)
+        const minimumDuration = this._cutMinimumDuration(entry.row, entry.clip)
+        if (!Number.isFinite(cutTime)
+            || cutTime <= interval.start + minimumDuration
+            || cutTime >= interval.end - minimumDuration) return false
+        const rightClipId = this._uniqueClipIdentifier(`${entry.clip.id}-cut`)
+        const leftClip = Object.assign({}, entry.clip, {start: interval.start, end: cutTime})
+        const rightClip = Object.assign({}, entry.clip, {id: rightClipId, start: cutTime, end: interval.end})
+        const nextRows = this._rows.map(row => row.id === entry.row.id
+            ? {...row, actions: (row.actions ?? []).flatMap(clip => String(clip.id) === String(clipId)
+                ? [leftClip, rightClip]
+                : [clip])}
+            : row)
+        const publicLeftClip = Object.assign({}, leftClip, {trackId: entry.row.id})
+        const publicRightClip = Object.assign({}, rightClip, {trackId: entry.row.id})
+        const detail = {
+            type: 'cut',
+            operation: 'cut',
+            clipId,
+            rightClipId,
+            trackId: entry.row.id,
+            cutTime,
+            cutTimeMillis: cutTime * 1000,
+            clip: publicLeftClip,
+            newClip: publicRightClip,
+            rightClip: publicRightClip,
+            clips: [publicLeftClip, publicRightClip],
+            oldClip: Object.assign({}, entry.clip, {trackId: entry.row.id}),
+            oldTimeline: {
+                trackId: entry.row.id,
+                clip: Object.assign({}, entry.clip, {trackId: entry.row.id}),
+                start: interval.start,
+                end: interval.end,
+            },
+            newTimeline: {
+                trackId: entry.row.id,
+                clips: [publicLeftClip, publicRightClip],
+                start: interval.start,
+                end: interval.end,
+            },
+            tracks: nextRows.map(row => this._publicTrack(row)),
+            previousTracks: this.tracks,
+            event,
+            data: this._publicSnapshot(),
+        }
+        if (this._emitBefore('clip-change', detail).defaultPrevented) return false
+        this._emit('clip-change-start', detail)
+        this._generatedClipIdentifiers.add(rightClipId)
+        this._rows = nextRows
+        this._localRowsDirty = true
+        this._selectedClipKey = this._clipSelectionKey(entry.row.id, leftClip.id)
+        this._cutGuide = null
+        this._emit('clip-change', {...detail, tracks: this.tracks, data: this._publicSnapshot()})
+        this._render()
+        this._emitAfter('clip-change', {...detail, tracks: this.tracks, data: this._publicSnapshot()})
+        return true
+    }
+
+    /**
+     * Cut every eligible clip intersecting the current playhead.
+     *
+     * @param {KeyboardEvent} event - Triggering keyboard event.
+     * @returns {boolean} Whether at least one clip was cut.
+     */
+    _cutAtCurrentTime = event => {
+        if (this._isReadonlyMode() || this._timelineConfig.interactive === false
+            || this._timelineConfig.editable === false) return false
+        event?.preventDefault?.()
+        event?.stopImmediatePropagation?.()
+        const time = this._currentTimeMillis / 1000
+        const clipIds = this._rows.flatMap(row => (row.actions ?? [])
+            .filter(clip => this._isCuttableEntry({row, clip}))
+            .filter(clip => {
+                const interval = timelineEditing.resolveClipInterval(clip)
+                const minimumDuration = this._cutMinimumDuration(row, clip)
+                return time > interval.start + minimumDuration && time < interval.end - minimumDuration
+            })
+            .map(clip => clip.id))
+        return clipIds.reduce((cut, clipId) => this._cutClipAtTime(clipId, time, event) || cut, false)
     }
 
     /**

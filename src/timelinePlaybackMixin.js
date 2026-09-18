@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-17
- * Last modified: 2026-09-17
+ * Last modified: 2026-09-18
  *
  *
  * Copyright © 2026 LGS1920
@@ -131,6 +131,22 @@ export const TimelinePlaybackMixin = Base => class extends Base {
      */
     _handleWindowKeyDown = event => {
         if (this._isReadonlyMode()) return
+        if (event.key === 'Escape' && this._cutMode) {
+            event.preventDefault()
+            event.stopImmediatePropagation()
+            this._cancelCutMode()
+            return
+        }
+        if ((event.ctrlKey || event.metaKey)
+            && !event.altKey
+            && !event.shiftKey
+            && String(event.key).toLowerCase() === 'k'
+            && !event.target?.closest?.(timelineInteraction.TIMELINE_KEYBOARD_EDITABLE_SELECTOR)) {
+            event.preventDefault()
+            event.stopImmediatePropagation()
+            this._cutAtCurrentTime(event)
+            return
+        }
         if (event.key === 'Escape' && this._clipCopyState) {
             event.preventDefault()
             event.stopImmediatePropagation()

@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-17
- * Last modified: 2026-09-17
+ * Last modified: 2026-09-18
  *
  *
  * Copyright © 2026 LGS1920
@@ -51,12 +51,46 @@ export const createTimelineControls = ({
     getDurationMillis,
     getDurationSeconds,
     getReadonly,
+    getCutMode,
+    toggleCutMode,
     normalizeTime,
     updateDynamicState,
     emitBefore,
     emit,
     emitAfter,
 }) => {
+    const timelineEditTools = () => {
+        const config = getConfig()
+        if (getReadonly()
+            || config.interactive === false
+            || config.editable === false
+            || config.toolsHidden === true) return null
+        const tools = createElement('span', `lgs1920-wa-timeline__edit-tools${getHostNoDragClasses()}`, {
+            part: 'edit-tools',
+            'data-testid': 'lgs1920-wa-timeline-edit-tools',
+            'aria-label': 'Timeline editing tools',
+        })
+        const cutLabel = 'Cut clip'
+        const cut = button({
+            label: cutLabel,
+            testId: 'tools-cut',
+            iconSlotElement: createIcon('scissors', 'solid'),
+            variant: getCutMode() ? 'brand' : 'neutral',
+        })
+        cut.id = 'lgs1920-timeline-tools-cut'
+        cut.classList.add('lgs1920-wa-timeline__timeline-tool')
+        cut.setAttribute('aria-pressed', String(getCutMode()))
+        cut.toggleAttribute('data-active', getCutMode())
+        cut.addEventListener('click', event => {
+            event.preventDefault()
+            event.stopPropagation()
+            toggleCutMode(event)
+        })
+        tools.append(cut, tooltip(cut.id, cutLabel))
+        stopTimelineControlPropagation(tools)
+        return tools
+    }
+
     const timelineTools = () => {
         const config = getConfig()
         if (getReadonly() || config.noZoomControls === true) return null
@@ -236,6 +270,7 @@ export const createTimelineControls = ({
     }
 
     return {
+        timelineEditTools,
         timelineTools,
         timelineScrubber,
         timelineZoomControl,

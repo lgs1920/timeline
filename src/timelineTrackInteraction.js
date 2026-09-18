@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-17
- * Last modified: 2026-09-17
+ * Last modified: 2026-09-18
  *
  *
  * Copyright © 2026 LGS1920
@@ -40,6 +40,10 @@ export const installTimelineTrackEventDelegation = ({
     startClipInteraction,
     moveClipByKeyboard,
     resizeClipByKeyboard,
+    isCutMode,
+    previewCut,
+    clearCutPreview,
+    commitCut,
     emit,
     emitBefore,
     emitAfter,
@@ -63,6 +67,7 @@ export const installTimelineTrackEventDelegation = ({
             movable: selectable && clipEditable && row.editable !== false,
             resizable: selectable && clipEditable && value.resizable !== false
                 && (row.editable !== false || row.clipResizable === true),
+            cuttable: selectable && clipEditable && row.editable !== false,
         }
     }
 
@@ -107,6 +112,14 @@ export const installTimelineTrackEventDelegation = ({
         })
     }
     tracks.addEventListener('pointerdown', event => {
+        if (isCutMode()) {
+            const context = clipContext(event.target?.closest?.('[data-clip-id]'))
+            event.preventDefault()
+            event.stopPropagation()
+            if (context?.cuttable) commitCut(context.value.id, event)
+            else clearCutPreview()
+            return
+        }
         const handle = event.target?.closest?.('[data-clip-handle]')
         const clip = clipContext(handle?.closest?.('[data-clip-id]'))
         if (handle && clip?.resizable) {
@@ -122,7 +135,21 @@ export const installTimelineTrackEventDelegation = ({
         if (context.movable) startClipInteraction(event, context.value.id, 'move', null, wasSelected)
     })
     tracks.addEventListener('click', event => {
+        if (isCutMode()) {
+            event.preventDefault()
+            event.stopPropagation()
+            return
+        }
         if (event.target?.closest?.('[data-clip-id]')) event.stopPropagation()
+    })
+    tracks.addEventListener('pointermove', event => {
+        if (!isCutMode()) return
+        const context = clipContext(event.target?.closest?.('[data-clip-id]'))
+        if (context?.cuttable) previewCut(context.value.id, event)
+        else clearCutPreview()
+    })
+    tracks.addEventListener('pointerleave', () => {
+        if (isCutMode()) clearCutPreview()
     })
     tracks.addEventListener('dblclick', event => {
         const context = clipContext(event.target?.closest?.('[data-clip-id]'))

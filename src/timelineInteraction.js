@@ -7,8 +7,8 @@
  * Author : LGS1920 Team
  * email: studio@lgs1920.fr
  *
- * Created on: 2026-09-17
- * Last modified: 2026-09-17
+ * Created on: 2026-09-14
+ * Last modified: 2026-09-18
  *
  *
  * Copyright © 2026 LGS1920
@@ -70,6 +70,8 @@ export const TIMELINE_KEYBOARD_KEYS = Object.freeze([
     'C',
     'End',
     'Home',
+    'k',
+    'K',
     'm',
     'M',
     'Spacebar',

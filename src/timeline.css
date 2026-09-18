@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-17
+ * Last modified: 2026-09-18
  *
  *
  * Copyright © 2026 LGS1920
@@ -1212,6 +1212,20 @@
         background-color: var(--lgs-timeline-clip-snap-guide-color);
         box-shadow: var(--wa-shadow-s);
         pointer-events: none;
+    }
+
+    & .lgs1920-wa-timeline__cut-guide {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        z-index: 18;
+        width: 0;
+        border-inline-start: 2px dashed var(--wa-color-danger-border-normal, var(--wa-color-red-600, #dc2626));
+        pointer-events: none;
+    }
+
+    &[data-cut-mode] .lgs1920-wa-timeline__clip {
+        cursor: crosshair;
     }
 
     & .lgs1920-wa-timeline__tick {

@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-17
- * Last modified: 2026-09-17
+ * Last modified: 2026-09-18
  *
  *
  * Copyright © 2026 LGS1920
@@ -475,6 +475,7 @@ export const TimelineLayoutMixin = Base => class extends Base {
         const timeSliderSlot = timelineUtils.createElement('slot', '', {name: 'time-slider'})
         const timeSlider = this._controls.timelineScrubber()
         if (timeSlider) timeSliderSlot.append(timeSlider)
+        const editTools = this._controls.timelineEditTools()
         const playbackTransport = timelineUtils.createElement('span', 'lgs1920-wa-timeline__playback-transport', {part: 'playback-transport'})
         if (playbackControls) playbackTransport.append(playbackControls)
         playbackTransport.append(timelineUtils.createElement('slot', '', {name: 'transport'}))
@@ -492,6 +493,7 @@ export const TimelineLayoutMixin = Base => class extends Base {
             .some(name => [...this.children].some(element => element.slot === name))
         const hasPlaybackContent = Boolean(timeSlider || playbackControls || playbackTime.length || hasPlaybackSlots)
         if (hasPlaybackContent) playback.append(
+            ...(editTools ? [editTools] : []),
             timeSliderSlot,
             playbackTransport,
             timelineUtils.createElement('slot', '', {name: 'playback-start'}),

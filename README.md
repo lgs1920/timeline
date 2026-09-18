@@ -270,6 +270,12 @@ Set `playback.transport` to `'hidden'` to remove the built-in transport buttons
 and loop toggle. Set `playback.time` to `'hidden'` to remove the current and
 total time labels. This is useful when a host provides an external player and
 time slider.
+Editable timelines place a scissors editing tool immediately to the left of
+the time slider. Hovering a clip in cut mode shows a dashed guide and clicking
+splits it at that position. `Ctrl/Cmd+K` cuts eligible clips at the playhead;
+`Escape` or clicking the scissors button exits cut mode. Set
+`view.tools: 'hidden'` or the `tools-hidden` attribute/property to hide the
+editing tool.
 External controls can use the `timeline-ruler`, `timeline-controls`, and
 `footer` slots when the host needs a different layout.
 

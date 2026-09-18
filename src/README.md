@@ -221,7 +221,7 @@ separate controlled properties so applications can update them independently.
 | Root | `durationMillis`, `fps`, `frameCount`, `zoomPercent`, editing thresholds | Timeline geometry and frame settings. |
 | `mode` | `'passive' \| 'review' \| 'edit' \| 'readonly'` | Selects the interaction contract. |
 | `playback` | `loop: 'toggle' \| 'hidden'`, `transport: 'visible' \| 'hidden'`, `time: 'visible' \| 'hidden'`, `timeSlider: 'visible' \| 'hidden'` | Controls playback toolbar features and time labels. |
-| `view` | `visible`, `zoomSlider`, `zoomControls`, `buildingOverlay`, `initialRangeStartVisible` | Controls visible timeline tools and the initial overlay. |
+| `view` | `visible`, `zoomSlider`, `zoomControls`, `tools`, `buildingOverlay`, `initialRangeStartVisible` | Controls visible timeline tools, editing tools, and the initial overlay. `tools` accepts `'visible'` or `'hidden'`. |
 | `range` | `startMillis`, `endMillis` | Sets the active playback range. |
 | `layout.legend` | `minWidth`, `width`, `maxWidth` | Sets the track legend width bounds. |
 | `editing` | `clipMenu`, `collisionPolicy`, `resizeCollisionPolicy`, `durationPolicy` | Controls editing features and collision behavior. |
@@ -343,6 +343,10 @@ The built-in time slider is the fallback content of the `time-slider` slot in
 the left side of the playback row. It uses the Studio-compatible
 `label-at-start` and `width-auto` layout attributes so its label and track stay
 aligned in compact timelines.
+The scissors editing tool is rendered immediately before that slot for editable
+timelines. Set `view.tools` to `'hidden'`, or set the `tools-hidden`
+attribute/property, to hide it. Readonly, non-interactive, and non-editable
+timelines do not render the tool.
 
 The icon transport controls are, in order, go to start, previous frame,
 play/pause, stop, next frame, and go to end. The start and end buttons update the
@@ -368,8 +372,16 @@ These commands only change the transient timeline view and do not modify the
 controlled projection.
 
 The header places the view tools on the left, an application-owned menu in the
-center, and the transport controls on the right. The application-owned menu
-must be provided through the `custom-menu` slot. The Web Component only
+center, and the transport controls on the right. The left playback area also
+contains the built-in editing tools when the timeline is editable. Its scissors
+button activates a Premiere-style cut mode: move over a clip to preview a
+vertical dashed cut guide, then click to split the clip. Press `Escape` or
+click the scissors button again to leave the mode. `Ctrl+K` on Windows/Linux
+and `Command+K` on macOS split eligible clips at the current playhead.
+
+Set `view.tools` to `'hidden'`, or use the `tools-hidden` attribute/property, to
+hide the editing tools. The application-owned menu must be provided through
+the `custom-menu` slot. The Web Component only
 exposes the controlled `fps` value used for frame navigation; it does not
 modify the application's frame rate or emit an FPS-change event.
 
@@ -638,12 +650,13 @@ has focus.
 | Editable clip | <kbd>Delete</kbd> / <kbd>Backspace</kbd> | Delete the focused clip. |
 | Editable clip | <kbd>Mod</kbd>+<kbd>C</kbd> | Start a copy placement ghost; click to place it. |
 | Editable clip | <kbd>Mod</kbd>+<kbd>D</kbd> | Duplicate the clip immediately after itself. |
+| Editable timeline | <kbd>Mod</kbd>+<kbd>K</kbd> | Cut every eligible clip at the current playhead. |
 | Editable clip | <kbd>M</kbd> | Mask or reveal the clip. |
 | Editable clip | <kbd>V</kbd> | Enable or disable the clip. |
 | Non-movable clip | <kbd>Enter</kbd> / <kbd>Space</kbd> | Select the clip. |
 | Clip trim handle | <kbd>ArrowLeft</kbd> / <kbd>ArrowRight</kbd> | Trim the focused edge by one keyboard step. |
 | Clip trim handle | <kbd>Shift</kbd>+<kbd>ArrowLeft</kbd> / <kbd>Shift</kbd>+<kbd>ArrowRight</kbd> | Trim the focused edge by ten keyboard steps. |
-| Any active edit | <kbd>Escape</kbd> | Cancel a copy, drag, trim, or context menu; clear clip selection. |
+| Any active edit | <kbd>Escape</kbd> | Cancel a copy, drag, trim, cut mode, or context menu; clear clip selection. |
 | Legend divider | <kbd>ArrowLeft</kbd> / <kbd>ArrowRight</kbd> | Resize the track legend. |
 | Legend divider | <kbd>Shift</kbd> + <kbd>ArrowLeft</kbd> / <kbd>ArrowRight</kbd>, <kbd>Home</kbd>, <kbd>End</kbd>, <kbd>Enter</kbd> | Change the resize step, select the minimum or maximum, or collapse and restore the legend. |
 | Track label editor | <kbd>Enter</kbd> / <kbd>Escape</kbd> | Commit or cancel the label edit. |
@@ -758,6 +771,15 @@ local playhead to the selected range boundaries. These keyboard actions update
 the component projection and emit their normal events; an embedding
 application decides whether to connect those events to playback or persistence.
 
+The scissors tool enters cut mode. Moving over an eligible clip shows a vertical
+dashed guide and clicking splits the clip at the guide. The original clip keeps
+its identifier and source fields; the right segment receives a unique generated
+identifier. `Escape` or clicking the scissors button again exits cut mode.
+`Ctrl+K` or `Command+K` applies the same cut to every eligible clip at the
+current playhead. The accepted `clip-change` detail has `type: 'cut'`,
+`cutTime`, `rightClipId`, both resulting clips, and the controlled track
+snapshot.
+
 Custom context actions use the following shape:
 
 ```js
@@ -845,6 +867,8 @@ The component emits `clip-change-start` when an edit begins, `clip-changing`
 for live previews, and `clip-change` when the pointer or keyboard edit is
 committed. Clip drag events include `oldTimeline`, `newTimeline`,
 `dragStart`, `drag`, `resizeEdge`, and the complete `tracks` snapshot. The
+cut operation uses the same `clip-change` lifecycle and adds `cutTime`,
+`rightClipId`, and `clips` to its detail. The
 host applies the resulting `tracks` value to keep the model controlled. The
 final `clip-change` detail includes `committed: false` when the gesture is
 cancelled or rejected.

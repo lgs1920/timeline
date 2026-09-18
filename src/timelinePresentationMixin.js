@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-17
- * Last modified: 2026-09-17
+ * Last modified: 2026-09-18
  *
  *
  * Copyright © 2026 LGS1920
@@ -160,6 +160,14 @@ export const TimelinePresentationMixin = Base => class extends Base {
         const {majorSeconds} = this._resolveScale()
         const scaleWidth = this._scaleWidth()
         const scaleOffset = this._numericToken('scale-offset', timelineUtils.START_LEFT)
+        const cutGuide = this._root.querySelector('[data-cut-guide]')
+        const cutGuideState = this._cutMode === true ? this._cutGuide : null
+        if (cutGuide) {
+            cutGuide.hidden = !cutGuideState
+            if (cutGuideState) {
+                cutGuide.style.left = `${scaleOffset + ((cutGuideState.time / Math.max(Number.EPSILON, majorSeconds)) * scaleWidth)}px`
+            }
+        }
         const dragState = this._dragState
         const activeSnapGuide = dragState?.type === 'clip'
             && dragState.snapTargetTime !== null
