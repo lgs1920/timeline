@@ -696,6 +696,8 @@ describe('lgs1920-timeline Web Component', () => {
         expect(zoomSlider.getAttribute('max')).toBe('500')
         expect(zoomSlider.getAttribute('step')).toBe('1')
         expect(zoomSlider.value).toBe(0)
+        expect(zoomSlider.withTooltip).toBe(true)
+        expect(zoomSlider.tooltipPlacement).toBe('top')
         expect(typeof zoomSlider.valueFormatter).toBe('function')
 
         const documentPointerMove = vi.fn()

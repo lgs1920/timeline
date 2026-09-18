@@ -262,11 +262,9 @@ export const createTimelineControls = ({
             step: 1,
             value: getZoom(),
         })
+        slider.withTooltip = true
+        slider.tooltipPlacement = 'top'
         slider.valueFormatter = value => `${Math.round(Number(value))}%`
-        const sliderTooltip = tooltip(slider.id, slider.valueFormatter(slider.value), 'top')
-        const updateTooltip = () => {
-            sliderTooltip.textContent = slider.valueFormatter(slider.value)
-        }
         const zoomFromSlider = (event, settled) => {
             if (getConfig().interactive === false) return
             const value = event.target?.value ?? event.currentTarget?.value
@@ -290,14 +288,12 @@ export const createTimelineControls = ({
             }
         }
         slider.addEventListener('input', event => {
-            updateTooltip()
             zoomFromSlider(event, false)
         })
         slider.addEventListener('change', event => {
-            updateTooltip()
             zoomFromSlider(event, true)
         })
-        control.append(icon, slider, sliderTooltip)
+        control.append(icon, slider)
         stopTimelineControlPropagation(control)
         return control
     }
