@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-17
+ * Last modified: 2026-09-18
  *
  *
  * Copyright © 2026 LGS1920
@@ -238,7 +238,7 @@ export const createTimelineRenderer = ({
         const handle = createElement('span', `lgs1920-wa-timeline__clip-handle lgs1920-wa-timeline__clip-handle--${edge}`, {
             part: `clip-${edge}-handle`,
             'data-clip-handle': edge,
-            'aria-label': `${edge === 'start' ? 'Start' : 'End'} of ${resolveClipLabel(value)}`,
+            'aria-label': `${edge === 'start' ? 'Trim start' : 'Trim end'} of ${resolveClipLabel(value)}`,
             role: 'slider',
             tabindex: enabled ? 0 : -1,
             'aria-hidden': enabled ? null : 'true',

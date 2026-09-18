@@ -26,7 +26,7 @@ The current release is `1.0.0`.
 | Timeline editing | Host integration |
 | --- | --- |
 | Multiple tracks with video, audio, marker, or custom clip kinds | Controlled timeline, tracks, playhead, and playback state |
-| Move, resize, snap, reorder, extend, mask, and duplicate clips | Namespaced events with optional cancelable `before` and `after` hooks |
+| Move, trim, snap, reorder, extend, mask, and duplicate clips | Namespaced events with optional cancelable `before` and `after` hooks |
 | Range handles, frame stepping, keyboard shortcuts, and zoom | Web Component slots, external controls, and a React adapter |
 | Read-only projections for compact sequence summaries | Collision policies and application-defined clip actions |
 

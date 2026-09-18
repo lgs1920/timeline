@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-17
+ * Last modified: 2026-09-18
  *
  *
  * Copyright © 2026 LGS1920
@@ -359,12 +359,14 @@ describe('lgs1920-timeline Web Component', () => {
         const startHandle = timeline.shadowRoot.querySelector('[data-clip-id="clip-one"] [data-clip-handle="start"]')
         const endHandle = timeline.shadowRoot.querySelector('[data-clip-id="clip-one"] [data-clip-handle="end"]')
         expect(startHandle.getAttribute('role')).toBe('slider')
+        expect(startHandle.getAttribute('aria-label')).toBe('Trim start of Opening clip')
         expect(startHandle.getAttribute('aria-valuemin')).toBe('0')
         expect(startHandle.getAttribute('aria-valuemax')).toBe('4000')
         expect(startHandle.getAttribute('aria-valuenow')).toBe('1000')
         expect(startHandle.getAttribute('aria-keyshortcuts'))
             .toBe('ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight')
         expect(endHandle.getAttribute('aria-valuemin')).toBe('1000')
+        expect(endHandle.getAttribute('aria-label')).toBe('Trim end of Opening clip')
         expect(endHandle.getAttribute('aria-valuemax')).toBe('10000')
         expect(endHandle.getAttribute('aria-valuenow')).toBe('4000')
         expect(timeline.style.getPropertyValue('--lgs-timeline-playhead-color')).toBe('rebeccapurple')

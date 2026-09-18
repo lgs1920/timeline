@@ -240,12 +240,12 @@ are the complete public configuration surface.
 | `colorClasses` | `string[]` | Web Awesome color classes. |
 | `visible` | `boolean` | Track visibility state. |
 | `canHide` | `boolean` | Enables the track visibility action. |
-| `editable` | `boolean` | Enables drag, title editing, clip insertion/movement/resizing, and removal for this track. Defaults to `true`. |
+| `editable` | `boolean` | Enables drag, title editing, clip insertion/movement/trimming, and removal for this track. Defaults to `true`. |
 | `autoNumbered` | `boolean` | Internal marker preserved on tracks created by the generic add action so numbering can restart after all generated tracks are renamed or removed. |
 | `droppable` | `boolean` | Allows clips to be moved or inserted on the track. Defaults to `true`. |
 | `accepts` | `string[]` | Clip kinds accepted by the track. An empty value accepts every kind. |
 | `collisionPolicy` | `'allow' \| 'prevent' \| 'ripple'` | Collision behavior for clip edits on this track. |
-| `resizeCollisionPolicy` | `'allow' \| 'prevent' \| 'ripple'` | Collision behavior for clip resizes on this track. Defaults to `prevent`. |
+| `resizeCollisionPolicy` | `'allow' \| 'prevent' \| 'ripple'` | Collision behavior for clip trimming on this track. Defaults to `prevent`. |
 | `minClipDuration` | `number` | Minimum duration applied to clips on this track, in seconds. |
 | `clips` | `array` | Clips displayed on the track. |
 
@@ -274,7 +274,7 @@ Each clip supports:
 | `timelineColor` | `string` | Optional CSS color selected with the clip color picker. |
 | `visible` | `boolean` | Clip visibility state. |
 | `enabled` | `boolean` | Whether the clip participates in timeline playback. Defaults to `true`. |
-| `editable` | `boolean` | Enables movement and resizing for this clip. Defaults to `true`. |
+| `editable` | `boolean` | Enables movement and trimming for this clip. Defaults to `true`. |
 | `resizable` | `boolean` | Enables the start and end handles. Defaults to `true`. |
 | `minDuration` | `number` | Minimum clip duration in seconds. |
 | `metadata` | `object` | Optional application metadata. |
@@ -543,8 +543,8 @@ rendered there.
 | `clip-icon` | `clip-icon-{clipId}` | Clip icon. |
 | `clip-label` | `clip-label-{clipId}` | Clip label. |
 | `clip-content` | `clip-content-{clipId}` | Complete clip content. |
-| `clip-start-handle` | `clip-start-handle-{clipId}` | Start resize handle content. |
-| `clip-end-handle` | `clip-end-handle-{clipId}` | End resize handle content. |
+| `clip-start-handle` | `clip-start-handle-{clipId}` | Start trim handle content. |
+| `clip-end-handle` | `clip-end-handle-{clipId}` | End trim handle content. |
 
 Clip content can be arbitrary HTML or Web Awesome components:
 
@@ -580,8 +580,8 @@ maximum.
 
 When a range handle has keyboard focus, `ArrowLeft` and `ArrowRight` move the
 selected boundary by `keyboardStepSeconds`; `Shift` multiplies the step by ten.
-When a clip resize handle has focus, the same keys resize the corresponding
-clip edge with the same step rules. The split-panel divider is a native
+When a clip trim handle has focus, the same keys trim the corresponding clip
+edge with the same step rules. The split-panel divider is a native
 Web Awesome separator: its horizontal arrow keys resize the track legend,
 `Shift` changes the step, `Home` and `End` select the minimum and maximum, and
 `Enter` collapses or restores the panel.
@@ -641,9 +641,9 @@ has focus.
 | Editable clip | <kbd>M</kbd> | Mask or reveal the clip. |
 | Editable clip | <kbd>V</kbd> | Enable or disable the clip. |
 | Non-movable clip | <kbd>Enter</kbd> / <kbd>Space</kbd> | Select the clip. |
-| Clip resize handle | <kbd>ArrowLeft</kbd> / <kbd>ArrowRight</kbd> | Resize the focused edge by one keyboard step. |
-| Clip resize handle | <kbd>Shift</kbd>+<kbd>ArrowLeft</kbd> / <kbd>Shift</kbd>+<kbd>ArrowRight</kbd> | Resize the focused edge by ten keyboard steps. |
-| Any active edit | <kbd>Escape</kbd> | Cancel a copy, drag, resize, or context menu; clear clip selection. |
+| Clip trim handle | <kbd>ArrowLeft</kbd> / <kbd>ArrowRight</kbd> | Trim the focused edge by one keyboard step. |
+| Clip trim handle | <kbd>Shift</kbd>+<kbd>ArrowLeft</kbd> / <kbd>Shift</kbd>+<kbd>ArrowRight</kbd> | Trim the focused edge by ten keyboard steps. |
+| Any active edit | <kbd>Escape</kbd> | Cancel a copy, drag, trim, or context menu; clear clip selection. |
 | Legend divider | <kbd>ArrowLeft</kbd> / <kbd>ArrowRight</kbd> | Resize the track legend. |
 | Legend divider | <kbd>Shift</kbd> + <kbd>ArrowLeft</kbd> / <kbd>ArrowRight</kbd>, <kbd>Home</kbd>, <kbd>End</kbd>, <kbd>Enter</kbd> | Change the resize step, select the minimum or maximum, or collapse and restore the legend. |
 | Track label editor | <kbd>Enter</kbd> / <kbd>Escape</kbd> | Commit or cancel the label edit. |
@@ -691,7 +691,7 @@ the corresponding flat branded red tint.
 ## Clip and track editing
 
 The timeline supports controlled clip editing. The component renders a start
-and end handle on every resizable clip, moves clips horizontally when their
+and end trim handle on every resizable clip, moves clips horizontally when their
 body is dragged, and accepts a clip on another compatible track while it is
 being dragged. A clip is selected by clicking it or starting its drag, and the
 selection stays inside the timeline. Clips on noneditable tracks or clips can
@@ -704,8 +704,8 @@ context menu does not expose `Extend max` when `resizable` is `false`.
 
 Clip movement preserves its duration and shows a diamond centered on each
 endpoint of the ruler's lower border while the clip is being moved; each marker
-protrudes halfway into the track area. Resizing the start handle changes
-`start` while keeping `end` stable. Resizing the end handle changes `end` while
+protrudes halfway into the track area. Trimming the start handle changes
+`start` while keeping `end` stable. Trimming the end handle changes `end` while
 keeping `start` stable. Both handles respect the timeline bounds and the
 configured minimum duration.
 
@@ -714,14 +714,14 @@ the proposed placement follows the pointer. A valid placement uses a
 translucent Web Awesome success color; a rejected placement uses the
 corresponding danger color.
 
-While a clip edge is being resized, a blue diamond follows the edge's current
+While a clip edge is being trimmed, a blue diamond follows the edge's current
 time position centered on the ruler's lower border. It is transient and
 disappears when the gesture ends or is cancelled.
 
-During pointer movement and resizing, the edited clip edge snaps to the nearest
+During pointer movement and trimming, the edited clip edge snaps to the nearest
 major ruler unit when it enters the configured magnetic threshold. Nearby clip
 boundaries on any track and the playhead take precedence over ruler ticks. Holding
-`Shift` while moving or resizing a clip uses the currently rendered secondary
+`Shift` while moving or trimming a clip uses the currently rendered secondary
 ruler units instead. A clip move uses whichever of its two edges is closest, so
 the duration remains unchanged when the clip stays on its current track or is
 moved to another compatible track. The moving ghost follows the pointer freely
@@ -735,7 +735,7 @@ remains active without rendering a guide line. Set `snap: false` on the timeline
 configuration to disable this behavior. Hold `Alt` during the gesture to bypass
 all magnets temporarily. Once a snap is acquired, it remains magnetized until
 the clip passes `snapReleaseThresholdPixels`, which prevents jitter at the
-boundary. `Escape` cancels an active drag or resize and restores
+boundary. `Escape` cancels an active drag or trim and restores
 the original clips, duration, and playback range.
 
 An editable clip can be focused and removed with `Delete` or `Backspace`. A clip
@@ -780,19 +780,19 @@ validation or completion handling. Calling `event.preventDefault()` in the
 removed clip and updated track snapshot after the action is accepted.
 
 Track collision behavior for movement and insertion is selected with
-`collisionPolicy`; resize behavior is selected independently with
+`collisionPolicy`; trim behavior is selected independently with
 `resizeCollisionPolicy`. With the default `prevent` policy, clips never
 overlap. A moved or inserted clip must fit at its complete duration. A drop into a
-smaller gap is rejected without trimming the clip or replacing existing content. A resize
+smaller gap is rejected without trimming the clip or replacing existing content. A trim
 stops at the neighboring clip and leaves that clip in place.
 
 | Policy | Behavior |
 | --- | --- |
-| `prevent` | Clips cannot overlap. A moved or inserted clip must fit completely in the available gap; a resize stops at the neighboring clip. |
+| `prevent` | Clips cannot overlap. A moved or inserted clip must fit completely in the available gap; a trim stops at the neighboring clip. |
 | `ripple` | The inserted or moved clip stays at the requested time. Overlapping clips and subsequent clips shift right while preserving their durations. Read-only clips block ripples that would move them. |
 
-Resize ripple shifts all clips on the same track on the edited side: a start
-resize shifts clips to the left of the edited clip, while an end resize shifts
+Trim ripple shifts all clips on the same track on the edited side: a start
+trim shifts clips to the left of the edited clip, while an end trim shifts
 clips to its right. The clips keep their durations and relative spacing. The
 While a clip is dragged over an occupied or otherwise invalid drop zone, it
 continues following the pointer and displays the `not-allowed` cursor. The
@@ -801,18 +801,18 @@ outside the tracks, or in an occupied interval restores the complete pre-gesture
 state, even after an earlier valid preview. The final pointer position determines
 the drop, and another pointer cannot end the gesture.
 
-An end resize or a move to the right can increase the total duration when it
+An end trim or a move to the right can increase the total duration when it
 reaches the current end; the committed event contains the resulting
 `durationMillis` and the complete `tracks` snapshot. Set
-`resizeExtendsDuration: false` to reject an end-resize extension.
+`resizeExtendsDuration: false` to reject an end-trim extension.
 `durationPolicy: 'extend'` is the default. Explicit `durationPolicy: 'fixed'`
 prevents extension for every collision policy and insertion. Previously committed
 extensions remain available during later edits and cancellations. A playback range
 that covered the entire duration follows an extension; a deliberately shorter
 range remains unchanged. Placement checks and vetoed insertions or keyboard
-resizes never mutate the playback range.
+trims never mutate the playback range.
 
-During the resize preview, the ruler and every track surface grow with the
+During the trim preview, the ruler and every track surface grow with the
 duration. Horizontal edge scrolling creates temporary workspace beyond the last
 clip and continues while the pointer stays near the edge. Vertical edge scrolling
 reveals tracks above and below the visible area. Scrolling speed depends on edge
@@ -1043,10 +1043,10 @@ small lateral margin so the resize target remains easy to see.
 | `--lgs-timeline-range-handle-focus-ring` | Video range handle focus ring. |
 | `--lgs-timeline-clip-padding` | Clip horizontal padding. |
 | `--lgs-timeline-clip-min-width` | Minimum clip width. |
-| `--lgs-timeline-clip-handle-width` | Clip resize handle width. |
-| `--lgs-timeline-clip-resize-grab-color` | Light overlay shown across the full clip height while resizing. |
-| `--lgs-timeline-clip-handle-color` | Clip resize handle color. |
-| `--lgs-timeline-clip-handle-focus-ring` | Clip resize handle focus ring. |
+| `--lgs-timeline-clip-handle-width` | Clip trim handle width. |
+| `--lgs-timeline-clip-resize-grab-color` | Light overlay shown across the full clip height while trimming. |
+| `--lgs-timeline-clip-handle-color` | Clip trim handle color. |
+| `--lgs-timeline-clip-handle-focus-ring` | Clip trim handle focus ring. |
 | `--lgs-timeline-track-drop-indicator-color` | Drag-target accent color used by track and clip feedback. |
 | `--lgs-timeline-popup-background` | Popup background. |
 | `--lgs-timeline-popup-border-color` | Popup border color. |

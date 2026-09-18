@@ -294,9 +294,9 @@ const updatePacman = (timeMillis, playing) =&gt; {
             </div>
             <span id="event-status" class="event-status" role="status" aria-live="polite">Ready</span>
         </div>
-        <p class="section-intro">Drag or resize a clip, double-click a track label, or use the playback toolbar. Right-click a track to open its context menu. The host advances the clock after a <code>play</code> event, so this demo shows the same integration pattern as the Studio example. Every interaction emits a namespaced event; this demo writes accepted track changes back to the element.</p>
+        <p class="section-intro">Drag or trim a clip, double-click a track label, or use the playback toolbar. Right-click a track to open its context menu. The host advances the clock after a <code>play</code> event, so this demo shows the same integration pattern as the Studio example. Every interaction emits a namespaced event; this demo writes accepted track changes back to the element.</p>
         <wa-details class="demo-details" summary="What this demo shows" appearance="filled-outlined">
-            <p>This example focuses on editing and event handling. Move or resize a clip, edit a track name, open the track context menu, change visibility, and inspect the serialized event detail in the fixed-height event panel.</p>
+            <p>This example focuses on editing and event handling. Move or trim a clip, edit a track name, open the track context menu, change visibility, and inspect the serialized event detail in the fixed-height event panel.</p>
             <ul>
                 <li>Apply <code>event.detail.tracks</code> when a clip or track edit is accepted.</li>
                 <li>Use <code>timeline.on(name, {before, on, after})</code> when an action needs validation or persistence.</li>
@@ -411,13 +411,13 @@ timeline.addEventListener('lgs1920-timeline-range-change', event =&gt; {
     <section class="demo-panel api-demo keyboard-reference" aria-labelledby="keyboard-title">
         <p class="eyebrow">Demo 06 · Keyboard shortcuts</p>
         <h2 id="keyboard-title">Keep editing within reach of the keyboard</h2>
-        <p class="section-intro">Focus the timeline surface, a range handle, a clip, a clip resize handle, or the legend divider, then use the matching shortcuts below. The divider shows the brand state while it is focused or being resized. The live status line records the last key pressed inside the Studio-style timeline.</p>
+        <p class="section-intro">Focus the timeline surface, a range handle, a clip, a clip trim handle, or the legend divider, then use the matching shortcuts below. The divider shows the brand state while it is focused or being resized. The live status line records the last key pressed inside the Studio-style timeline.</p>
         <wa-details class="demo-details" summary="What this demo shows" appearance="filled-outlined">
             <p>The keyboard model follows the same controlled event flow as pointer interaction. Focus determines the target, and the timeline reports the resulting action through its namespaced events.</p>
             <ul>
                 <li>Use the timeline surface for playback, range navigation, scrolling, and zoom.</li>
                 <li>Focus a playhead or range handle for frame-sized movement.</li>
-                <li>Focus a clip to move, resize, duplicate, mask, enable, or delete it.</li>
+                <li>Focus a clip to move, trim, duplicate, mask, enable, or delete it.</li>
             </ul>
         </wa-details>
         <p id="keyboard-status" class="keyboard-status" role="status" aria-live="polite">Click the Studio timeline, then press a shortcut.</p>
@@ -452,9 +452,9 @@ timeline.addEventListener('lgs1920-timeline-range-change', event =&gt; {
                     <tr><th scope="row">Clip</th><td><kbd>M</kbd></td><td>Mask or reveal the clip.</td></tr>
                     <tr><th scope="row">Clip</th><td><kbd>V</kbd></td><td>Enable or disable the clip.</td></tr>
                     <tr><th scope="row">Non-movable clip</th><td><kbd>Enter</kbd> · <kbd>Space</kbd></td><td>Select the clip.</td></tr>
-                    <tr><th scope="row">Clip resize handle</th><td><kbd>←</kbd> / <kbd>→</kbd></td><td>Resize the focused edge by one keyboard step.</td></tr>
-                    <tr><th scope="row">Clip resize handle</th><td><kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd></td><td>Resize the focused edge by ten keyboard steps.</td></tr>
-                    <tr><th scope="row">Any active edit</th><td><kbd>Escape</kbd></td><td>Cancel a copy, drag, resize, or context menu; clear clip selection.</td></tr>
+                    <tr><th scope="row">Clip trim handle</th><td><kbd>←</kbd> / <kbd>→</kbd></td><td>Trim the focused edge by one keyboard step.</td></tr>
+                    <tr><th scope="row">Clip trim handle</th><td><kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd></td><td>Trim the focused edge by ten keyboard steps.</td></tr>
+                    <tr><th scope="row">Any active edit</th><td><kbd>Escape</kbd></td><td>Cancel a copy, drag, trim, or context menu; clear clip selection.</td></tr>
                     <tr><th scope="row">Legend divider</th><td><kbd>←</kbd> / <kbd>→</kbd></td><td>Resize the track legend.</td></tr>
                     <tr><th scope="row">Legend divider</th><td><kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd> · <kbd>Home</kbd> · <kbd>End</kbd> · <kbd>Enter</kbd></td><td>Change the resize step, select the minimum or maximum, or collapse and restore the legend.</td></tr>
                     <tr><th scope="row">Track label editor</th><td><kbd>Enter</kbd> · <kbd>Escape</kbd></td><td>Commit or cancel the label edit.</td></tr>

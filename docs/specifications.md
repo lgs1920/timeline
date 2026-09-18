@@ -33,7 +33,7 @@ composition. A host application must be able to:
 - display clips with a start time, end time, label, kind, color, icon, and
   application-defined metadata;
 - show a time ruler, current playback position, and selected recording range;
-- move and resize clips when editing is enabled;
+- move and trim clips when editing is enabled;
 - add clips and tracks from the built-in controls or external clip sources;
 - control playback and seeking from the host application;
 - expose a read-only projection for review or playback contexts;
@@ -238,15 +238,15 @@ timeline policies:
 - trigger a configured clip action;
 - double-click a clip and report the context to the host;
 - move a clip along its track;
-- resize the start edge;
-- resize the end edge;
+- trim the start edge;
+- trim the end edge;
 - add a clip from a built-in option or external drag source;
 - remove a clip;
 - enable or disable a clip;
 - change the clip color through the configured menu where available;
 - reorder clips or tracks when the interaction is configured to allow it.
 
-During clip resizing, the complete clip grab zone must receive a clear,
+During clip trimming, the complete clip grab zone must receive a clear,
 theme-aware highlight across the full height of the clip. The highlight must
 make the active edge understandable without changing the clip's duration until
 the interaction is accepted.
@@ -265,7 +265,7 @@ The component must support the configured collision policies:
   neighboring clip;
 - `ripple` moves affected neighboring clips to preserve the edit.
 
-Move and resize operations may use separate policies. A track-level policy has
+Move and trim operations may use separate policies. A track-level policy has
 precedence over the timeline-level policy for that track. Snapping must use the
 configured threshold and release threshold so that a clip can be grabbed and
 released without oscillating between snapped and unsnapped positions.
@@ -356,7 +356,7 @@ The demos must cover, at minimum:
 - a basic timeline with multiple colored clip types;
 - playback and range selection;
 - controlled seeking and visible playhead following;
-- clip dragging, resizing, snapping, and collision behavior;
+- clip dragging, trimming, snapping, and collision behavior;
 - external clip sources and track operations;
 - code examples with real syntax highlighting for HTML and JavaScript.
 
@@ -530,7 +530,7 @@ The component must use a single authoritative geometry calculation for:
 ### 2.6 Interaction and pointer handling
 
 Pointer interaction must distinguish between selection, scrubbing, clip move,
-clip resize, track reorder, scrollbar movement, and host-owned interaction.
+clip trim, track reorder, scrollbar movement, and host-owned interaction.
 Pointer capture must be released on completion, cancellation, lost focus, and
 component disconnection.
 
@@ -543,7 +543,7 @@ Native browser context menus must be suppressed only for interactions owned by
 the component. Menu selection must close the menu without resetting the
 timeline height or changing unrelated legend geometry. The timeline height
 interaction may use the context-menu gesture to reset to its minimum and then
-grow to the requested size according to the documented resize behavior.
+grow to the requested size according to the documented trim behavior.
 
 ### 2.7 Range and playhead layering
 
@@ -635,7 +635,7 @@ The software must keep responsibilities separated as follows:
   controlled-state application, and coordination of child responsibilities.
 - **Rendering:** builds and updates the visual structure, ruler, tracks, clips,
   handles, playhead, controls, and overlays.
-- **Editing:** calculates move, resize, snapping, collision, ripple, and
+- **Editing:** calculates move, trim, snapping, collision, ripple, and
   duration-extension results.
 - **Clip data:** performs serializable clip and track transformations and
   optimized interval checks.
@@ -708,7 +708,7 @@ position, and configuration. The algorithm must:
 2. convert the input position into the canonical time unit;
 3. apply frame or pixel snapping when configured;
 4. apply minimum duration and timeline bounds;
-5. evaluate the move or resize collision policy;
+5. evaluate the move or trim collision policy;
 6. construct a serializable proposed result;
 7. expose the result through the canonical event and optional hooks;
 8. commit only after the operation is accepted.
@@ -719,7 +719,7 @@ accepted, rejected, canceled, or committed.
 
 ### 3.5 Performance requirements
 
-The timeline must remain responsive while scrubbing, dragging, resizing,
+The timeline must remain responsive while scrubbing, dragging, trimming,
 scrolling, and updating the current time. Rendering work should be limited to
 the affected geometry and controls. High-frequency pointer and playback work
 should be coalesced when possible and scheduled consistently with browser
@@ -766,7 +766,7 @@ should include:
 - range ordering, handle colors, range visibility, and playhead layering;
 - viewport following when the target time is initially off screen;
 - pointer drag origin and no-jump behavior;
-- clip move and resize calculations;
+- clip move and trim calculations;
 - minimum duration, snapping, collision, and ripple policies;
 - add, remove, select, enable, label, visibility, and reorder events;
 - context-menu behavior and preservation of timeline height and labels;
