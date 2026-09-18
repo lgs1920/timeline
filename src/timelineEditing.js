@@ -737,6 +737,15 @@ export const createTimelineClipEditor = ({
                 delete track.fixed
                 return {...track, clips: actions}
             }),
+            previousTracks: state.baseRows.map(row => {
+                const track = Object.assign({}, row)
+                const actions = track.actions ?? []
+                delete track.actions
+                delete track.locked
+                delete track.movable
+                delete track.fixed
+                return {...track, clips: actions}
+            }),
             event,
         }
     }
