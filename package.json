@@ -1,6 +1,6 @@
 {
   "name": "@lgs1920/timeline",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A controlled timeline Web Component with an optional React adapter.",
   "license": "MIT",
   "author": "LGS1920 Team <studio@lgs1920.fr>",
