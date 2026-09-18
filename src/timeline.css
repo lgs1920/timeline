@@ -1216,7 +1216,7 @@
 
     & .lgs1920-wa-timeline__cut-guide {
         position: absolute;
-        top: 0;
+        top: var(--lgs-timeline-header-height);
         bottom: 0;
         z-index: 18;
         width: 0;
