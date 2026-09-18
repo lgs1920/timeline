@@ -276,7 +276,10 @@ splits it at that position. `Ctrl/Cmd+K` cuts eligible clips at the playhead;
 normal clicks exit cut mode, while `Shift`-click keeps it active for consecutive
 cuts. `Escape` or clicking the scissors button exits cut mode. Set
 `view.tools: 'hidden'` or the `tools-hidden` attribute/property to hide the
-editing tool.
+editing tool. The cut overlay uses the compact format
+`1s500ms/3s [2s500ms]`: elapsed time within the clip, clip duration, and
+timeline position. Units are concatenated without spaces, and zero-valued
+units are omitted.
 External controls can use the `timeline-ruler`, `timeline-controls`, and
 `footer` slots when the host needs a different layout.
 

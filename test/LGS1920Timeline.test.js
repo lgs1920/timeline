@@ -18,7 +18,7 @@
 import {afterEach, describe, expect, it, vi} from 'vitest'
 import {CLIP_OPTION_DRAG_MIME, LGS1920Timeline} from '../src/LGS1920Timeline'
 import {rippleResizedClips} from '../src/timelineEditing'
-import {formatRulerTime, resolveScale} from '../src/timelineUtils.js'
+import {formatDuration, formatRulerTime, resolveScale} from '../src/timelineUtils.js'
 
 vi.mock('@awesome.me/webawesome/dist/components/button/button.js', () => ({}))
 vi.mock('@awesome.me/webawesome/dist/components/card/card.js', () => ({}))
@@ -175,6 +175,16 @@ describe('lgs1920-timeline Web Component', () => {
         expect(formatRulerTime(3723)).toBe('1h02')
         expect(formatRulerTime(5_403, 30)).toBe('1h30:03')
         expect(formatRulerTime(5_403.5, 0.5)).toBe('1h30:03.5')
+    })
+
+    it('formats duration overlays with milliseconds and adaptive units', () => {
+        expect(formatDuration(0)).toBe('0ms')
+        expect(formatDuration(500)).toBe('500ms')
+        expect(formatDuration(3_000)).toBe('3s')
+        expect(formatDuration(12_345)).toBe('12s345ms')
+        expect(formatDuration(120_500)).toBe('2mn500ms')
+        expect(formatDuration(123_456)).toBe('2mn3s456ms')
+        expect(formatDuration(3_723_004)).toBe('1h2mn3s4ms')
     })
 
     it('keeps secondary ruler graduations at or above 50 milliseconds', () => {
@@ -2007,6 +2017,7 @@ describe('lgs1920-timeline Web Component', () => {
         cut.click()
         expect(timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-tools-cut"]')
             .getAttribute('aria-pressed')).toBe('true')
+        expect(cut.getAttribute('variant')).toBe('brand')
         expect(timeline.hasAttribute('data-cut-mode')).toBe(true)
 
         const clip = timeline.shadowRoot.querySelector('[data-clip-id="cut-clip"]')
@@ -2014,6 +2025,9 @@ describe('lgs1920-timeline Web Component', () => {
         const guide = timeline.shadowRoot.querySelector('[data-cut-guide]')
         expect(guide.hidden).toBe(false)
         expect(guide.style.left).not.toBe('')
+        const label = timeline.shadowRoot.querySelector('[data-cut-label]')
+        expect(label.hidden).toBe(false)
+        expect(label.textContent).toBe('1s500ms/3s [2s500ms]')
 
         clip.dispatchEvent(createPointerEvent('pointerdown', {clientX: 150, clientY: 50}))
         const clips = timeline.tracks[0].clips
@@ -2052,6 +2066,86 @@ describe('lgs1920-timeline Web Component', () => {
         expect(timeline.tracks[0].clips).toHaveLength(3)
         expect(timeline._cutMode).toBe(true)
         expect(timeline.hasAttribute('data-cut-mode')).toBe(true)
+    })
+
+    it('snaps the cut guide and committed cut to the timeline ruler', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline, {
+            timeline: {snap: true, snapThresholdPixels: 100},
+            tracks: [{
+                id: 'snap-track',
+                label: 'Snap track',
+                clips: [{id: 'snap-clip', label: 'Snap cut', start: 1, end: 4}],
+            }],
+        })
+        document.body.append(timeline)
+        timeline._resolveScale = vi.fn(() => ({majorSeconds: 1, scaleSplitCount: 1}))
+        timeline._scaleWidth = vi.fn(() => 100)
+        timeline._timeAtClientX = vi.fn(() => 2.4)
+        timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-tools-cut"]').click()
+
+        const clip = timeline.shadowRoot.querySelector('[data-clip-id="snap-clip"]')
+        clip.dispatchEvent(createPointerEvent('pointermove', {clientX: 150, clientY: 50}))
+        expect(timeline._cutGuide.time).toBe(2)
+
+        clip.dispatchEvent(createPointerEvent('pointerdown', {clientX: 150, clientY: 50}))
+        expect(timeline.tracks[0].clips[0].end).toBe(2)
+    })
+
+    it('cancels cut mode when clicking an empty track area', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline, {
+            tracks: [{
+                id: 'empty-track',
+                label: 'Empty area track',
+                clips: [{id: 'empty-area-clip', label: 'Clip', start: 1, end: 2}],
+            }],
+        })
+        document.body.append(timeline)
+
+        timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-tools-cut"]').click()
+        expect(timeline._cutMode).toBe(true)
+
+        const track = timeline.shadowRoot.querySelector('[part="track"]')
+        track.dispatchEvent(createPointerEvent('pointerdown', {clientX: 300, clientY: 50}))
+
+        expect(timeline._cutMode).toBe(false)
+        expect(timeline.hasAttribute('data-cut-mode')).toBe(false)
+    })
+
+    it('cancels cut mode when clicking outside the timeline', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline, {
+            tracks: [{id: 'outside-track', label: 'Outside track', clips: []}],
+        })
+        document.body.append(timeline)
+        timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-tools-cut"]').click()
+        expect(timeline._cutMode).toBe(true)
+
+        document.body.dispatchEvent(createPointerEvent('pointerdown', {clientX: 800, clientY: 600}))
+
+        expect(timeline._cutMode).toBe(false)
+        expect(timeline.hasAttribute('data-cut-mode')).toBe(false)
+    })
+
+    it('cancels cut mode when clicking a neutral area inside the timeline', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline, {
+            tracks: [{
+                id: 'neutral-track',
+                label: 'Neutral area track',
+                clips: [{id: 'neutral-clip', label: 'Clip', start: 1, end: 2}],
+            }],
+        })
+        document.body.append(timeline)
+        timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-tools-cut"]').click()
+        expect(timeline._cutMode).toBe(true)
+
+        timeline.shadowRoot.querySelector('[part="ruler"]')
+            .dispatchEvent(createPointerEvent('pointerdown', {clientX: 200, clientY: 10}))
+
+        expect(timeline._cutMode).toBe(false)
+        expect(timeline.hasAttribute('data-cut-mode')).toBe(false)
     })
 
     it('cancels the scissors tool with Escape and cuts at the playhead with Ctrl/Cmd+K', () => {
@@ -5221,7 +5315,7 @@ describe('lgs1920-timeline Web Component', () => {
         window.dispatchEvent(createPointerEvent('pointermove', {clientX: 260, clientY: 50}))
         const durationOverlay = timeline.shadowRoot.querySelector('[data-clip-id="resizing"] [data-clip-duration-overlay]')
         expect(durationOverlay.hidden).toBe(false)
-        expect(durationOverlay.textContent).toBe('0:05 / 0:10')
+        expect(durationOverlay.textContent).toBe('5s / 10s')
         window.dispatchEvent(createPointerEvent('pointerup', {clientX: 260, clientY: 50}))
 
         expect(changes).toHaveBeenCalledOnce()

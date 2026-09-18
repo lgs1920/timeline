@@ -69,6 +69,7 @@ export const createTimelineRenderer = ({
     isCutMode,
     previewCut,
     clearCutPreview,
+    cancelCutMode,
     commitCut,
     startRangeInteraction,
     setRangeBoundaryToLimit,
@@ -550,6 +551,7 @@ export const createTimelineRenderer = ({
             isCutMode,
             previewCut,
             clearCutPreview,
+            cancelCutMode,
             commitCut,
             emit,
             emitBefore,
@@ -590,6 +592,12 @@ export const createTimelineRenderer = ({
             createElement('div', 'lgs1920-wa-timeline__cut-guide', {
                 part: 'cut-guide',
                 'data-cut-guide': '',
+                'aria-hidden': 'true',
+                hidden: true,
+            }),
+            createElement('div', 'lgs1920-wa-timeline__cut-label', {
+                part: 'cut-label',
+                'data-cut-label': '',
                 'aria-hidden': 'true',
                 hidden: true,
             }),

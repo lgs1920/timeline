@@ -8,20 +8,40 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-17
+ * Last modified: 2026-09-18
  *
  *
  * Copyright © 2026 LGS1920
  ******************************************************************************/
 
-import {rm} from 'node:fs/promises'
+import {mkdir, rm} from 'node:fs/promises'
 import {resolve} from 'node:path'
 import {fileURLToPath} from 'node:url'
 
 const projectRoot = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const entryRoot = resolve(projectRoot, 'entries')
 const outputRoot = resolve(projectRoot, 'dist')
+const assetRoot = resolve(projectRoot, 'src/assets')
+const cursorAssetName = 'scissors-solid.png'
+const cursorAssetPath = resolve(assetRoot, cursorAssetName)
 const inlineCssPaths = new Map()
+
+/**
+ * Inline package assets used by the component stylesheet.
+ *
+ * The component injects its stylesheet into Shadow DOM, where relative URLs
+ * resolve against the host document. Embedding the cursor keeps the bundled
+ * JavaScript entry self-contained while styles.css keeps a package asset URL.
+ *
+ * @param {string} filePath - Stylesheet source path.
+ * @returns {Promise<string>} Stylesheet with package assets inlined.
+ */
+const inlineCssAssets = async filePath => {
+    const source = await Bun.file(filePath).text()
+    const asset = await Bun.file(cursorAssetPath).arrayBuffer()
+    const dataUrl = `data:image/png;base64,${Buffer.from(asset).toString('base64')}`
+    return source.replaceAll(`url('./assets/${cursorAssetName}')`, `url('${dataUrl}')`)
+}
 
 /**
  * Load Vite-style inline CSS imports as JavaScript strings for Bun bundling.
@@ -38,7 +58,7 @@ const inlineCssPlugin = {
             }
         })
         build.onLoad({filter: /.*/, namespace: 'inline-css'}, async argumentsValue => ({
-            contents: `export default ${JSON.stringify(await Bun.file(inlineCssPaths.get(argumentsValue.path)).text())}`,
+            contents: `export default ${JSON.stringify(await inlineCssAssets(inlineCssPaths.get(argumentsValue.path)))}`,
             loader: 'js',
         }))
     },
@@ -81,6 +101,8 @@ const buildEntry = async (entryPoint, outputName) => {
 await rm(outputRoot, {recursive: true, force: true})
 await buildEntry(resolve(entryRoot, 'index.js'), 'index.js')
 await buildEntry(resolve(entryRoot, 'react.jsx'), 'react.js')
+await mkdir(resolve(outputRoot, 'assets'), {recursive: true})
+await Bun.write(resolve(outputRoot, 'assets', cursorAssetName), Bun.file(cursorAssetPath))
 await Bun.write(
     resolve(outputRoot, 'styles.css'),
     Bun.file(resolve(projectRoot, 'src/timeline.css')),

@@ -7,8 +7,8 @@
  * Author : LGS1920 Team
  * email: studio@lgs1920.fr
  *
- * Created on: 2026-09-17
- * Last modified: 2026-09-17
+ * Created on: 2026-09-14
+ * Last modified: 2026-09-18
  *
  *
  * Copyright © 2026 LGS1920
@@ -138,6 +138,28 @@ export const createEvent = (name, detail, options = {}) => new CustomEvent(name,
 export const formatTime = seconds => {
     const totalSeconds = Math.max(0, Math.round(Number(seconds) || 0))
     return `${Math.floor(totalSeconds / 60)}:${`${totalSeconds % 60}`.padStart(2, '0')}`
+}
+
+/**
+ * Format a duration with the smallest useful unit and millisecond precision.
+ *
+ * @param {number} milliseconds - Duration in milliseconds.
+ * @returns {string} Human-readable duration.
+ */
+export const formatDuration = milliseconds => {
+    const totalMilliseconds = Math.max(0, Math.round(Number(milliseconds) || 0))
+    const millisecondsPart = totalMilliseconds % 1000
+    const totalSeconds = Math.floor(totalMilliseconds / 1000)
+    const secondsPart = totalSeconds % 60
+    const totalMinutes = Math.floor(totalSeconds / 60)
+    const minutesPart = totalMinutes % 60
+    const hoursPart = Math.floor(totalMinutes / 60)
+    const parts = []
+    if (hoursPart > 0) parts.push(`${hoursPart}h`)
+    if (minutesPart > 0) parts.push(`${minutesPart}mn`)
+    if (secondsPart > 0) parts.push(`${secondsPart}s`)
+    if (millisecondsPart > 0) parts.push(`${millisecondsPart}ms`)
+    return parts.join('') || '0ms'
 }
 
 /**

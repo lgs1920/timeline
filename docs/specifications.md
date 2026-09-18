@@ -356,6 +356,10 @@ or a hidden/read-only state exits cut mode. `Ctrl+K` and `Command+K` apply the s
 playhead and may split every eligible clip intersecting that time. The operation
 uses the normal cancelable `clip-change` lifecycle and reports `type: 'cut'`,
 `cutTime`, `rightClipId`, and the resulting `tracks` snapshot.
+The cut guide label shows the elapsed position within the clip, the clip
+duration, and the timeline position in brackets, all with millisecond
+precision. It uses a compact format such as `1s500ms/3s [2s500ms]`, with no
+spaces between units and with zero-valued units omitted.
 
 ### 1.13 Reference demo requirements
 

@@ -43,6 +43,7 @@ export const installTimelineTrackEventDelegation = ({
     isCutMode,
     previewCut,
     clearCutPreview,
+    cancelCutMode,
     commitCut,
     emit,
     emitBefore,
@@ -117,7 +118,10 @@ export const installTimelineTrackEventDelegation = ({
             event.preventDefault()
             event.stopPropagation()
             if (context?.cuttable) commitCut(context.value.id, event)
-            else clearCutPreview()
+            else if (!context) {
+                clearCutPreview()
+                cancelCutMode()
+            } else clearCutPreview()
             return
         }
         const handle = event.target?.closest?.('[data-clip-handle]')

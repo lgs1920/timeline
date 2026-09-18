@@ -813,8 +813,9 @@ export class LGS1920Timeline extends TimelineBase {
             isCutMode: () => this._cutMode === true,
             previewCut: (clipId, event) => this._previewCut(clipId, event),
             clearCutPreview: () => this._clearCutPreview(),
+            cancelCutMode: () => this._cancelCutMode(),
             commitCut: (clipId, event) => {
-                const committed = this._cutClipAtTime(clipId, this._timeAtClientX(event.clientX), event)
+                const committed = this._cutClipAtTime(clipId, this._cutTimeAtPointer(clipId, event), event)
                 if (committed && event.shiftKey !== true) this._cancelCutMode()
                 return committed
             },
@@ -857,6 +858,7 @@ export class LGS1920Timeline extends TimelineBase {
         if (!this.getAttribute('aria-label')) this.setAttribute('aria-label', 'Timeline')
         this._installInputPropagationBlockers()
         window.addEventListener('keydown', this._handleWindowKeyDown, true)
+        window.addEventListener('pointerdown', this._handleCutModeOutsidePointerDown, true)
         window.addEventListener('dragstart', this._handleWindowClipOptionDragStart)
         window.addEventListener('drag', this._handleWindowClipOptionDrag)
         window.addEventListener('dragover', this._handleWindowClipOptionDragOver, true)
@@ -1051,6 +1053,7 @@ export class LGS1920Timeline extends TimelineBase {
             this._root.addEventListener(eventType, this._stopInputPropagation)
         }
         this._root.addEventListener('contextmenu', this._preventNativeContextMenu, true)
+        this._root.addEventListener('pointerdown', this._handleCutModeNeutralPointerDown, true)
         this._root.addEventListener('pointerdown', this._handleClipSelectionPointerDown, true)
         this._root.addEventListener('keydown', this._handleTrackLabelKeyDown, true)
         this._inputPropagationBlockersInstalled = true
@@ -1066,6 +1069,7 @@ export class LGS1920Timeline extends TimelineBase {
             this._root.removeEventListener(eventType, this._stopInputPropagation)
         }
         this._root.removeEventListener('contextmenu', this._preventNativeContextMenu, true)
+        this._root.removeEventListener('pointerdown', this._handleCutModeNeutralPointerDown, true)
         this._root.removeEventListener('pointerdown', this._handleClipSelectionPointerDown, true)
         this._root.removeEventListener('keydown', this._handleTrackLabelKeyDown, true)
         this._inputPropagationBlockersInstalled = false
@@ -1362,6 +1366,7 @@ export class LGS1920Timeline extends TimelineBase {
         this._additionalContentToggle?.removeEventListener('click', this._toggleAdditionalContent)
         this._additionalContentToggle = null
         window.removeEventListener('keydown', this._handleWindowKeyDown, true)
+        window.removeEventListener('pointerdown', this._handleCutModeOutsidePointerDown, true)
         window.removeEventListener('dragstart', this._handleWindowClipOptionDragStart)
         window.removeEventListener('drag', this._handleWindowClipOptionDrag)
         window.removeEventListener('dragover', this._handleWindowClipOptionDragOver, true)

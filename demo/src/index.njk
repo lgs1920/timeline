@@ -296,12 +296,13 @@ const updatePacman = (timeMillis, playing) =&gt; {
         </div>
         <p class="section-intro">Drag or trim a clip, double-click a track label, or use the playback toolbar. Right-click a track to open its context menu. The host advances the clock after a <code>play</code> event, so this demo shows the same integration pattern as the Studio example. Every interaction emits a namespaced event; this demo writes accepted track changes back to the element.</p>
         <wa-details class="demo-details" summary="What this demo shows" appearance="filled-outlined">
-            <p>This example focuses on editing and event handling. Move or trim a clip, edit a track name, open the track context menu, change visibility, and inspect the serialized event detail in the fixed-height event panel.</p>
+            <p>This example focuses on editing and event handling. Move or trim a clip, use the scissors tool to preview and commit a cut, edit a track name, open the track context menu, change visibility, and inspect the serialized event detail in the fixed-height event panel.</p>
             <ul>
                 <li>Apply <code>event.detail.tracks</code> when a clip or track edit is accepted.</li>
                 <li>Use <code>timeline.on(name, {before, on, after})</code> when an action needs validation or persistence.</li>
                 <li>The host playback clock continues to own <code>currentTimeMillis</code>.</li>
                 <li>Track actions are contextual: <code>Edit</code> applies to visible editable rows, while <code>Hide</code>/<code>Show</code> and <code>Remove</code> follow the track configuration.</li>
+                <li>In cut mode, hover an eligible clip to see the dashed guide and compact duration overlay, such as <code>1s500ms/3s [2s500ms]</code>, then click to split it; use <kbd>Shift</kbd> + click for consecutive cuts.</li>
             </ul>
         </wa-details>
         <lgs1920-timeline id="interactive-timeline" aria-label="Interactive editing timeline"></lgs1920-timeline>

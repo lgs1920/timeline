@@ -241,7 +241,19 @@ export const TimelineClipEditingMixin = Base => class extends Base {
         this._cutMode = !this._cutMode
         if (!this._cutMode) this._cutGuide = null
         this.toggleAttribute('data-cut-mode', this._cutMode)
+        this._updateCutButton()
         this._render()
+    }
+
+    /**
+     * Keep the scissors tool button synchronized with cut mode.
+     */
+    _updateCutButton = () => {
+        const button = this._root?.querySelector('[data-testid="lgs1920-wa-tools-cut"]')
+        if (!button) return
+        button.setAttribute('variant', this._cutMode ? 'brand' : 'neutral')
+        button.setAttribute('aria-pressed', String(this._cutMode))
+        button.toggleAttribute('data-active', this._cutMode)
     }
 
     /**
@@ -255,7 +267,36 @@ export const TimelineClipEditingMixin = Base => class extends Base {
         this._cutMode = false
         this._cutGuide = null
         this.removeAttribute('data-cut-mode')
+        this._updateCutButton()
         if (changed && render) this._render()
+    }
+
+    /**
+     * Leave cut mode when a pointer interaction starts outside this timeline.
+     *
+     * @param {PointerEvent} event - Pointer event received by the document window.
+     */
+    _handleCutModeOutsidePointerDown = event => {
+        if (!this._cutMode) return
+        const path = typeof event.composedPath === 'function' ? event.composedPath() : []
+        if (path.includes(this)) return
+        this._cancelCutMode()
+    }
+
+    /**
+     * Leave cut mode when a pointer interaction starts in a neutral timeline area.
+     *
+     * @param {PointerEvent} event - Pointer event received by the Shadow DOM root.
+     */
+    _handleCutModeNeutralPointerDown = event => {
+        if (!this._cutMode) return
+        const path = typeof event.composedPath === 'function' ? event.composedPath() : []
+        if (path.some(target => {
+            const clipId = target?.getAttribute?.('data-clip-id')
+            return clipId !== null && clipId !== undefined
+        })) return
+        if (path.some(target => target?.getAttribute?.('data-testid') === 'lgs1920-wa-tools-cut')) return
+        this._cancelCutMode()
     }
 
     /**
@@ -265,6 +306,19 @@ export const TimelineClipEditingMixin = Base => class extends Base {
         if (!this._cutGuide) return
         this._cutGuide = null
         this._updateClipInteractionPresentation()
+    }
+
+    /**
+     * Resolve a pointer cut time using the clip editor snap targets.
+     *
+     * @param {string|number} clipId - Clip being cut.
+     * @param {PointerEvent} event - Pointer event controlling the cut.
+     * @returns {number} Snapped or unsnapped cut time in seconds.
+     */
+    _cutTimeAtPointer = (clipId, event) => {
+        const time = this._timeAtClientX(event.clientX)
+        if (typeof this._clipEditor.snapCutTime !== 'function') return time
+        return this._clipEditor.snapCutTime({time, clipId, event}).time
     }
 
     /**
@@ -281,7 +335,7 @@ export const TimelineClipEditingMixin = Base => class extends Base {
             return
         }
         const interval = timelineEditing.resolveClipInterval(entry.clip)
-        const time = this._timeAtClientX(event.clientX)
+        const time = this._cutTimeAtPointer(clipId, event)
         const minimumDuration = this._cutMinimumDuration(entry.row, entry.clip)
         const epsilon = 1e-9
         if (time <= interval.start + minimumDuration - epsilon
@@ -289,7 +343,7 @@ export const TimelineClipEditingMixin = Base => class extends Base {
             this._clearCutPreview()
             return
         }
-        this._cutGuide = {clipId, trackId: entry.row.id, time}
+        this._cutGuide = {clipId, trackId: entry.row.id, time, clientY: event.clientY}
         this._updateClipInteractionPresentation()
     }
 

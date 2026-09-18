@@ -161,11 +161,28 @@ export const TimelinePresentationMixin = Base => class extends Base {
         const scaleWidth = this._scaleWidth()
         const scaleOffset = this._numericToken('scale-offset', timelineUtils.START_LEFT)
         const cutGuide = this._root.querySelector('[data-cut-guide]')
+        const cutLabel = this._root.querySelector('[data-cut-label]')
         const cutGuideState = this._cutMode === true ? this._cutGuide : null
         if (cutGuide) {
             cutGuide.hidden = !cutGuideState
             if (cutGuideState) {
                 cutGuide.style.left = `${scaleOffset + ((cutGuideState.time / Math.max(Number.EPSILON, majorSeconds)) * scaleWidth)}px`
+            }
+        }
+        if (cutLabel) {
+            cutLabel.hidden = !cutGuideState
+            if (cutGuideState) {
+                const entry = this._clipEditor.findClipEntry(this._rows, cutGuideState.clipId)
+                const interval = entry ? resolveClipInterval(entry.clip) : null
+                const clipOffset = interval ? Math.max(0, cutGuideState.time - interval.start) : 0
+                const clipDuration = interval ? Math.max(0, interval.end - interval.start) : 0
+                cutLabel.textContent = `${timelineUtils.formatDuration(clipOffset * 1000)}/${timelineUtils.formatDuration(clipDuration * 1000)} [${timelineUtils.formatDuration(cutGuideState.time * 1000)}]`
+                cutLabel.style.left = `${scaleOffset + ((cutGuideState.time / Math.max(Number.EPSILON, majorSeconds)) * scaleWidth)}px`
+                const overlay = cutLabel.parentElement
+                const overlayRect = overlay?.getBoundingClientRect?.()
+                if (Number.isFinite(cutGuideState.clientY) && Number.isFinite(overlayRect?.top)) {
+                    cutLabel.style.top = `${cutGuideState.clientY - overlayRect.top - 8}px`
+                }
             }
         }
         const dragState = this._dragState
@@ -292,7 +309,7 @@ export const TimelinePresentationMixin = Base => class extends Base {
                 if (durationOverlay) {
                     durationOverlay.hidden = !isResizing
                     if (isResizing) {
-                        durationOverlay.textContent = `${timelineUtils.formatTime(end - start)} / ${timelineUtils.formatTime(this._durationMillis() / 1000)}`
+                        durationOverlay.textContent = `${timelineUtils.formatDuration((end - start) * 1000)} / ${timelineUtils.formatDuration(this._durationMillis())}`
                     }
                 }
                 element.classList.toggle('lgs1920-wa-timeline__clip--drop-rejected', dragState?.type === 'clip'

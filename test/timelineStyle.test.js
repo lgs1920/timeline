@@ -7,8 +7,8 @@
  * Author : LGS1920 Team
  * email: studio@lgs1920.fr
  *
- * Created on: 2026-09-17
- * Last modified: 2026-09-17
+ * Created on: 2026-09-14
+ * Last modified: 2026-09-18
  *
  *
  * Copyright © 2026 LGS1920
@@ -71,6 +71,9 @@ describe('lgs1920-timeline styles', () => {
         expect(styleSource).toContain('bottom: 0;')
         expect(styleSource).toContain('border: 1px solid var(--lgs-timeline-quiet-border-color);')
         expect(styleSource).toContain('z-index: 3;')
+        expect(styleSource).toContain(':host([data-cut-mode]) .lgs1920-wa-timeline__clip,')
+        expect(styleSource).toContain("cursor: url('./assets/scissors-solid.png') 10 10, crosshair !important;")
+        expect(styleSource).toContain('& .lgs1920-wa-timeline__cut-label {')
         expect(styleSource).toContain('& .lgs1920-wa-timeline__clip {')
         expect(styleSource).toContain('& .lgs1920-wa-timeline__playhead {')
         expect(styleSource).toMatch(/& \.lgs1920-wa-timeline__playhead \{[\s\S]*?z-index: 22;/)

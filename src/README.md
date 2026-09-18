@@ -780,7 +780,11 @@ again exits cut mode.
 `Ctrl+K` or `Command+K` applies the same cut to every eligible clip at the
 current playhead. The accepted `clip-change` detail has `type: 'cut'`,
 `cutTime`, `rightClipId`, both resulting clips, and the controlled track
-snapshot.
+snapshot. While hovering a cut position, the label shows the position within
+the clip followed by the timeline position in brackets, with millisecond
+precision. For example, `1s500ms/3s [2s500ms]` means 1.5 seconds into a
+3-second clip at timeline position 2.5 seconds; units are concatenated without
+spaces, and zero-valued units are omitted.
 
 Custom context actions use the following shape:
 
