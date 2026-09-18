@@ -170,6 +170,14 @@ export const createTimelineRenderer = ({
                 hidden: true,
             }),
         )
+        element.addEventListener('pointerleave', () => {
+            if (isCutMode()) clearCutPreview()
+        })
+        element.addEventListener('pointerout', event => {
+            if (!isCutMode()) return
+            const relatedClip = event.relatedTarget?.closest?.('[data-clip-id]')
+            if (relatedClip !== element) clearCutPreview()
+        })
         return element
     }
 

@@ -152,6 +152,12 @@ export const installTimelineTrackEventDelegation = ({
         if (context?.cuttable) previewCut(context.value.id, event)
         else clearCutPreview()
     })
+    tracks.addEventListener('pointerout', event => {
+        if (!isCutMode()) return
+        const clip = event.target?.closest?.('[data-clip-id]')
+        const relatedClip = event.relatedTarget?.closest?.('[data-clip-id]')
+        if (clip && relatedClip !== clip) clearCutPreview()
+    })
     tracks.addEventListener('pointerleave', () => {
         if (isCutMode()) clearCutPreview()
     })

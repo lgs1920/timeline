@@ -2150,6 +2150,59 @@ describe('lgs1920-timeline Web Component', () => {
         expect(timeline.hasAttribute('data-cut-mode')).toBe(false)
     })
 
+    it('hides the cut overlay when the pointer leaves a clip', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline, {
+            tracks: [{
+                id: 'hover-track',
+                label: 'Hover track',
+                clips: [{id: 'hover-clip', label: 'Hover clip', start: 1, end: 4}],
+            }],
+        })
+        document.body.append(timeline)
+
+        timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-tools-cut"]').click()
+        const clip = timeline.shadowRoot.querySelector('[data-clip-id="hover-clip"]')
+        const track = timeline.shadowRoot.querySelector('[part="track"]')
+        clip.dispatchEvent(createPointerEvent('pointermove', {clientX: 150, clientY: 50}))
+        const label = timeline.shadowRoot.querySelector('[data-cut-label]')
+        expect(label.hidden).toBe(false)
+
+        clip.dispatchEvent(createPointerEvent('pointerleave', {relatedTarget: track}))
+        expect(label.hidden).toBe(true)
+    })
+
+    it('hides the cut overlay when the pointer moves through an inter-clip area', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline, {
+            tracks: [{
+                id: 'gap-track',
+                label: 'Gap track',
+                clips: [{id: 'gap-clip', label: 'Gap clip', start: 1, end: 4}],
+            }],
+        })
+        document.body.append(timeline)
+
+        timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-tools-cut"]').click()
+        const clip = timeline.shadowRoot.querySelector('[data-clip-id="gap-clip"]')
+        clip.dispatchEvent(createPointerEvent('pointermove', {
+            clientX: 150,
+            clientY: 50,
+            composed: true,
+        }))
+        const label = timeline.shadowRoot.querySelector('[data-cut-label]')
+        expect(label.hidden).toBe(false)
+
+        const tracksViewport = timeline.shadowRoot.querySelector('[part="tracks-viewport"]')
+        tracksViewport.dispatchEvent(createPointerEvent('pointermove', {
+            clientX: 250,
+            clientY: 50,
+            composed: true,
+        }))
+        expect(label.hidden).toBe(true)
+        expect(timeline._cutMode).toBe(true)
+    })
+
     it('undoes and redoes committed edits independently per timeline', () => {
         const first = new LGS1920Timeline()
         configureTimeline(first, {

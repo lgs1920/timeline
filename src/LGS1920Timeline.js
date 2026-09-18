@@ -881,6 +881,7 @@ export class LGS1920Timeline extends TimelineBase {
         this._installInputPropagationBlockers()
         window.addEventListener('keydown', this._handleWindowKeyDown, true)
         window.addEventListener('pointerdown', this._handleCutModeOutsidePointerDown, true)
+        window.addEventListener('pointermove', this._handleCutModePointerMove, true)
         window.addEventListener('dragstart', this._handleWindowClipOptionDragStart)
         window.addEventListener('drag', this._handleWindowClipOptionDrag)
         window.addEventListener('dragover', this._handleWindowClipOptionDragOver, true)
@@ -1075,6 +1076,7 @@ export class LGS1920Timeline extends TimelineBase {
             this._root.addEventListener(eventType, this._stopInputPropagation)
         }
         this._root.addEventListener('contextmenu', this._preventNativeContextMenu, true)
+        this._root.addEventListener('pointermove', this._handleCutModePointerMove, true)
         this._root.addEventListener('pointerdown', this._handleCutModeNeutralPointerDown, true)
         this._root.addEventListener('pointerdown', this._handleClipSelectionPointerDown, true)
         this._root.addEventListener('keydown', this._handleTrackLabelKeyDown, true)
@@ -1091,6 +1093,7 @@ export class LGS1920Timeline extends TimelineBase {
             this._root.removeEventListener(eventType, this._stopInputPropagation)
         }
         this._root.removeEventListener('contextmenu', this._preventNativeContextMenu, true)
+        this._root.removeEventListener('pointermove', this._handleCutModePointerMove, true)
         this._root.removeEventListener('pointerdown', this._handleCutModeNeutralPointerDown, true)
         this._root.removeEventListener('pointerdown', this._handleClipSelectionPointerDown, true)
         this._root.removeEventListener('keydown', this._handleTrackLabelKeyDown, true)
@@ -1530,6 +1533,7 @@ export class LGS1920Timeline extends TimelineBase {
         this._additionalContentToggle = null
         window.removeEventListener('keydown', this._handleWindowKeyDown, true)
         window.removeEventListener('pointerdown', this._handleCutModeOutsidePointerDown, true)
+        window.removeEventListener('pointermove', this._handleCutModePointerMove, true)
         window.removeEventListener('dragstart', this._handleWindowClipOptionDragStart)
         window.removeEventListener('drag', this._handleWindowClipOptionDrag)
         window.removeEventListener('dragover', this._handleWindowClipOptionDragOver, true)

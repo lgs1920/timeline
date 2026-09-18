@@ -284,6 +284,24 @@ export const TimelineClipEditingMixin = Base => class extends Base {
     }
 
     /**
+     * Clear the cut preview when the pointer moves through a neutral area.
+     *
+     * The inter-clip gap may be rendered outside the delegated tracks node,
+     * so its pointermove event is not always handled by track interaction.
+     *
+     * @param {PointerEvent} event - Pointer movement received by the window.
+     */
+    _handleCutModePointerMove = event => {
+        if (!this._cutMode) return
+        const path = typeof event.composedPath === 'function' ? event.composedPath() : []
+        const overClip = path.some(target => {
+            const clipId = target?.getAttribute?.('data-clip-id')
+            return clipId !== null && clipId !== undefined
+        })
+        if (!overClip) this._clearCutPreview()
+    }
+
+    /**
      * Leave cut mode when a pointer interaction starts in a neutral timeline area.
      *
      * @param {PointerEvent} event - Pointer event received by the Shadow DOM root.
