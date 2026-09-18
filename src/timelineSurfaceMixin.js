@@ -24,6 +24,16 @@ import {cloneRows, resolveClipInterval} from './timelineEditing.js'
  * @returns {typeof HTMLElement} Extended host class.
  */
 export const TimelineSurfaceMixin = Base => class extends Base {
+    /**
+     * Resolve the window that owns this timeline element.
+     *
+     * Detached Studio widgets live in another document. Pointer completion
+     * events must be observed by that document's window.
+     *
+     * @returns {Window|null} Window owning the timeline, when available.
+     */
+    _interactionWindow = () => this.ownerDocument?.defaultView ?? globalThis.window ?? null
+
     _timeAtClientX = clientX => {
         const rect = this._surface?.getBoundingClientRect()
         if (!rect) return 0

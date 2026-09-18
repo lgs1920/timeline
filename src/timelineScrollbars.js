@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-17
- * Last modified: 2026-09-17
+ * Last modified: 2026-09-18
  *
  *
  * Copyright © 2026 LGS1920
@@ -28,6 +28,7 @@ export const createTimelineScrollbars = options => {
         capturePointer,
         clearScrollbarHideTimer,
         getNumericToken,
+        getWindow,
         releasePointerCapture,
         scheduleScrollbarHide,
         showScrollbars,
@@ -161,13 +162,13 @@ export const createTimelineScrollbars = options => {
         capturePointer(event)
         drag = {view, axis, track, thumb, offset}
         dragCleanup = () => {
-            window.removeEventListener('pointermove', pointerMove, true)
-            window.removeEventListener('pointerup', pointerUp, true)
-            window.removeEventListener('pointercancel', pointerUp, true)
+            getWindow()?.removeEventListener('pointermove', pointerMove, true)
+            getWindow()?.removeEventListener('pointerup', pointerUp, true)
+            getWindow()?.removeEventListener('pointercancel', pointerUp, true)
         }
-        window.addEventListener('pointermove', pointerMove, {passive: false, capture: true})
-        window.addEventListener('pointerup', pointerUp, true)
-        window.addEventListener('pointercancel', pointerUp, true)
+        getWindow()?.addEventListener('pointermove', pointerMove, {passive: false, capture: true})
+        getWindow()?.addEventListener('pointerup', pointerUp, true)
+        getWindow()?.addEventListener('pointercancel', pointerUp, true)
     }
 
     const handleKeyDown = (event, view, axis) => {

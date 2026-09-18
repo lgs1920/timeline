@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-17
- * Last modified: 2026-09-17
+ * Last modified: 2026-09-18
  *
  *
  * Copyright © 2026 LGS1920
@@ -383,20 +383,22 @@ export const TimelineDragMixin = Base => class extends Base {
      * Install global pointer listeners for scrubbing, resizing, or row drag.
      */
     _addPointerListeners = () => {
-        window.addEventListener('pointermove', this._pointerMove, {passive: false, capture: true})
-        window.addEventListener('pointerup', this._pointerUp, true)
-        window.addEventListener('pointercancel', this._pointerUp, true)
+        const interactionWindow = this._interactionWindow()
+        interactionWindow?.addEventListener('pointermove', this._pointerMove, {passive: false, capture: true})
+        interactionWindow?.addEventListener('pointerup', this._pointerUp, true)
+        interactionWindow?.addEventListener('pointercancel', this._pointerUp, true)
     }
 
     /**
      * Remove global pointer listeners and reset transient pointer state.
      */
     _removePointerListeners = () => {
+        const interactionWindow = this._interactionWindow()
         this._clipScroll?.stop()
         this._clipWorkspaceWidth = 0
-        window.removeEventListener('pointermove', this._pointerMove, true)
-        window.removeEventListener('pointerup', this._pointerUp, true)
-        window.removeEventListener('pointercancel', this._pointerUp, true)
+        interactionWindow?.removeEventListener('pointermove', this._pointerMove, true)
+        interactionWindow?.removeEventListener('pointerup', this._pointerUp, true)
+        interactionWindow?.removeEventListener('pointercancel', this._pointerUp, true)
         this.removeAttribute('data-row-drop-rejected')
         this._dragState = null
         this._scrubPointerId = null

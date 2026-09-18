@@ -8,8 +8,8 @@
  * Author : LGS1920 Team
  * email: studio@lgs1920.fr
  *
- * Created on: 2026-09-17
- * Last modified: 2026-09-17
+ * Created on: 2026-09-14
+ * Last modified: 2026-09-18
  *
  *
  * Copyright © 2026 LGS1920
@@ -96,6 +96,11 @@ const pointer = (type, x, y = 50, pointerId = 1) => window.dispatchEvent(
     createPointerEvent(type, {clientX: x, clientY: y, pointerId}),
 )
 
+/** Dispatch a pointer gesture step in a specific owner window. */
+const pointerInWindow = (ownerWindow, type, x, y = 50, pointerId = 1) => ownerWindow.dispatchEvent(
+    createPointerEvent(type, {clientX: x, clientY: y, pointerId}),
+)
+
 /** Begin a clip-body drag at its current visual start. */
 const begin = (timeline, x = 60) => timeline.shadowRoot.querySelector('[data-clip-id="clip"]')
     .dispatchEvent(createPointerEvent('pointerdown', {clientX: x, clientY: 50}))
@@ -161,6 +166,21 @@ describe('timeline gesture integrity', () => {
         pointer('pointerup', 140)
         expect(changes).toHaveBeenCalledOnce()
         expect(timeline.tracks[0].clips[0]).toMatchObject({start: 3, end: 6})
+    })
+
+    it('finishes a clip drag in the window that owns a detached timeline', () => {
+        const frame = document.createElement('iframe')
+        document.body.append(frame)
+        const ownerWindow = frame.contentWindow
+        const timeline = mount()
+        ownerWindow.document.body.append(timeline)
+
+        timeline.shadowRoot.querySelector('[data-clip-id="clip"]')
+            .dispatchEvent(createPointerEvent('pointerdown', {clientX: 60, clientY: 50}))
+        pointerInWindow(ownerWindow, 'pointermove', 100)
+        pointerInWindow(ownerWindow, 'pointerup', 100)
+
+        expect(timeline.tracks[0].clips[0]).toMatchObject({id: 'clip', start: 2, end: 5})
     })
 
     it('reorders tracks against their content positions in a scrolled legend', () => {

@@ -550,6 +550,7 @@ export class LGS1920Timeline extends TimelineBase {
             capturePointer: event => this._capturePointer(event),
             clearScrollbarHideTimer: () => this._clearScrollbarHideTimer(),
             getNumericToken: (name, fallback) => this._numericToken(name, fallback),
+            getWindow: () => this._interactionWindow(),
             releasePointerCapture: () => this._releasePointerCapture(),
             scheduleScrollbarHide: () => this._scheduleScrollbarHide(),
             showScrollbars: () => this._showScrollbars(),
