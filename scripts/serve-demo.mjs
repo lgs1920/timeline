@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-16
- * Last modified: 2026-09-16
+ * Last modified: 2026-09-20
  *
  *
  * Copyright © 2026 LGS1920
@@ -16,6 +16,8 @@
 
 import {spawn, spawnSync} from 'node:child_process'
 
+// This port is assigned permanently to timeline in the LGS1920 package demo
+// sequence. New packages receive the next number instead of changing it.
 const port = 4174
 
 const readPids = (command, argumentsList, parse) => {
