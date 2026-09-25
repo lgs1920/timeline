@@ -1,3 +1,19 @@
+/*******************************************************************************
+ *
+ * This file is part of the LGS1920/timeline project.
+ *
+ * File: changelog.mjs
+ *
+ * Author : LGS1920 Team
+ * email: studio@lgs1920.fr
+ *
+ * Created on: 2026-09-14
+ * Last modified: 2026-09-25
+ *
+ *
+ * Copyright © 2026 LGS1920
+ ******************************************************************************/
+
 const escapeHtml = value => String(value)
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
@@ -17,6 +33,12 @@ const formatReleaseDate = publishedAt => {
         dateTime: datePart,
         label: new Intl.DateTimeFormat('en-US', {dateStyle: 'long', timeZone: 'UTC'}).format(date),
     }
+}
+
+const releaseHighlights = {
+    'v1.2.0': [
+        'Added a dedicated marker rail below the time ruler with API-driven markers, custom icons, and marker actions.',
+    ],
 }
 
 /**
@@ -42,12 +64,13 @@ export const parseReleaseTags = raw => {
         const changesStart = messageLines.indexOf('Changes:')
         const compareLine = messageLines.find(line => line.startsWith('Changes between releases:'))
         const changesEnd = compareLine ? messageLines.indexOf(compareLine) : messageLines.length
-        const changes = changesStart === -1
+        const parsedChanges = changesStart === -1
             ? []
             : messageLines
                 .slice(changesStart + 1, changesEnd)
                 .filter(line => line.startsWith('- '))
                 .map(line => line.slice(2))
+        const changes = [...new Set([...(releaseHighlights[tag] ?? []), ...parsedChanges])]
 
         releases.push({
             tag,
