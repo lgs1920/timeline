@@ -283,6 +283,174 @@ Each clip supports:
 
 The controlled playhead position in milliseconds.
 
+### `markers`
+
+Controlled global markers rendered in the optional rail directly below the
+time ruler. Marker positions use milliseconds. String and image-descriptor
+markers remain serializable; DOM/SVG node icons can be supplied when the host
+needs an inline element:
+
+```js
+timeline.markers = [
+    {id: 'intro', timeMillis: 4_000, label: 'Intro', icon: 'diamond'},
+    {id: 'chapter', timeMillis: 15_000, label: 'Chapter', icon: 'bookmark'},
+    {
+        id: 'review',
+        timeMillis: 24_000,
+        label: 'Review point',
+        icon: {type: 'image', src: '/markers/review.svg', alt: 'Review point'},
+        editable: false,
+        removable: false,
+    },
+]
+```
+
+Marker properties are:
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `id` | `string \| number` | required | Stable marker identifier. |
+| `timeMillis` | `number` | `0` | Position on the timeline, in milliseconds. |
+| `label` | `string` | `''` | Label shown by an expanded marker and used by its tooltip. |
+| `title` | `string` | `label` | Optional tooltip and accessible name override. |
+| `icon` | `string \| object \| Node` | `diamond` | Icon name, `{type: 'image', src, alt}`, or a DOM/SVG node cloned for rendering. |
+| `color` | `string` | brand fill | CSS color for the marker background. |
+| `editable` | `boolean` | `true` | Enables `Edit`, subject to the timeline mode. |
+| `movable` | `boolean` | `true` | Enables `Move`, subject to `editable` and the timeline mode. |
+| `removable` | `boolean` | `true` | Enables `Remove`, subject to the timeline mode. |
+| `expanded` | `boolean` | `true` | Shows the label tag when true, or the compact icon when false. |
+| `snap` | `boolean` | `true` | Allows this marker to be used as a snap target. |
+
+The default icon is `diamond`. The `icon` property also accepts a DOM/SVG node,
+or an image descriptor such as `{type: 'image', src: '/markers/review.svg'}`.
+A marker-specific DOM element or inline SVG can alternatively be supplied with
+the `marker-icon-{id}` contextual slot. `editable` and
+`removable` independently control marker actions. `movable` controls the
+Move action. `expanded: false` uses the compact icon and centered snap guide;
+the default expanded state uses an icon and label tag with a snap-zone bar.
+The rail grows to its rendered marker or slot content and the title column
+reserves the same measured height. The rail has a subtle branded background.
+Markers participate in the timeline snap targets unless `snap: false` is set
+on the marker. Read-only mode keeps marker presentation visible while
+disabling mutation.
+Moving a marker uses a ghost preview. The ghost snaps to visible ruler ticks
+and other marker targets; a fixed marker target receives a short flash only
+after the ghost remains magnetized for a moment. `Escape` cancels the move.
+
+Marker actions emit these controlled events:
+
+| Event | Detail | Host action |
+| --- | --- | --- |
+| `lgs1920-timeline-add-marker` | `marker`, `markers`, `event`, `data` | Assign `event.detail.markers` to `timeline.markers`. |
+| `lgs1920-timeline-remove-marker` | `marker`, `previousMarkers`, `markers`, `event`, `data` | Assign the returned marker list. |
+| `lgs1920-timeline-marker-display-change` | `marker`, `previousMarker`, `markers`, `event`, `data` | Assign the returned marker list. |
+| `lgs1920-timeline-edit-marker` | `marker`, `previousMarker`, `markers`, `event`, `data` | Assign the returned marker list. |
+| `lgs1920-timeline-move-marker` | `marker`, `previousMarker`, `markers`, `event`, `data` | Assign the returned marker list after the second click. |
+
+The component does not mutate controlled marker state on its own. The marker
+rail context menu emits `Add`; a marker context menu emits the actions allowed
+by its permissions. `event.detail.data` contains the public timeline snapshot.
+
+#### Create markers from the application
+
+Markers are controlled data. Add one by creating a new array and assigning it
+back to the component:
+
+```js
+const marker = {
+    id: 'api-chapter-2',
+    timeMillis: 18_500,
+    label: 'Chapter 2',
+    icon: 'bookmark',
+    color: 'var(--wa-color-purple-60)',
+    editable: true,
+    movable: true,
+    removable: true,
+}
+
+timeline.markers = [...timeline.markers, marker]
+```
+
+The same assignment pattern handles updates and removal:
+
+```js
+timeline.markers = timeline.markers.map(marker => marker.id === 'api-chapter-2'
+    ? {...marker, label: 'Chapter 2 — revised', expanded: false}
+    : marker)
+
+timeline.markers = timeline.markers.filter(marker => marker.id !== 'api-chapter-2')
+```
+
+#### Accept marker actions from the component
+
+The context menus emit proposed marker arrays. The application accepts an
+action by assigning that array back to the component:
+
+```js
+const acceptMarkerChange = event => {
+    timeline.markers = event.detail.markers
+}
+
+for (const name of [
+    'add-marker',
+    'remove-marker',
+    'marker-display-change',
+    'edit-marker',
+    'move-marker',
+]) {
+    timeline.addEventListener(`lgs1920-timeline-${name}`, acceptMarkerChange)
+}
+```
+
+Each event also exposes the affected `marker`, `previousMarker` for edit,
+display, and move actions, `previousMarkers` for removal, the triggering
+`event`, and the public `data` snapshot. Use the component's lifecycle API
+when the application needs to validate an action before accepting it:
+
+```js
+timeline.on('edit-marker', {
+    before: event => {
+        if (!event.detail.marker.label.trim()) event.preventDefault()
+    },
+    on: event => {
+        timeline.markers = event.detail.markers
+    },
+    after: event => console.log('Marker saved', event.detail.marker.id),
+})
+```
+
+#### Provide a custom marker icon
+
+Use a serializable image descriptor for a PNG or SVG URL:
+
+```js
+timeline.markers = [{
+    id: 'review',
+    timeMillis: 24_000,
+    label: 'Review point',
+    icon: {type: 'image', src: '/markers/review.svg', alt: 'Review point'},
+}]
+```
+
+For an inline DOM or SVG node, pass the node in the marker definition or use
+the targeted contextual slot:
+
+```js
+const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+icon.setAttribute('viewBox', '0 0 16 16')
+icon.innerHTML = '<circle cx="8" cy="8" r="6"></circle>'
+
+timeline.markers = [{id: 'review', timeMillis: 24_000, label: 'Review', icon}]
+```
+
+```html
+<lgs1920-timeline>
+    <svg slot="marker-icon-review" viewBox="0 0 16 16" aria-label="Review point">
+        <circle cx="8" cy="8" r="6"></circle>
+    </svg>
+</lgs1920-timeline>
+```
+
 ### `playing`
 
 The controlled playback state. The component emits `play` and `pause`; the
@@ -424,10 +592,27 @@ slotted actions can sit beside them without an extra frame.
 | `timeline-toolbar` | Toolbar content beside the clip menu. |
 | `legend-ruler` | Replacement content for the title-column ruler area. The default fallback contains `timeline-toolbar`, the direct track button, and the optional clip-menu button. |
 | `timeline-ruler` | Additional content over the time ruler. |
+| `marker-rail` | Optional application-owned content in the dedicated marker rail below the time ruler. The rail has no fallback content and collapses when empty. |
 | `timeline-controls` | Application controls displayed in the timeline footer alongside the built-in zoom controls. |
 | `overlay-text` | Initial construction-overlay label. Falls back to `Building...`. |
 | `footer` | Application content displayed in the timeline footer. The footer also contains the built-in view tools and optional zoom slider. |
 | `empty-state` | Content displayed when the clip menu has no options. |
+
+Marker icons can be overridden for one marker with a contextual slot:
+
+```html
+<lgs1920-timeline>
+    <svg slot="marker-icon-review" viewBox="0 0 16 16" aria-label="Review point">
+        <circle cx="8" cy="8" r="6"></circle>
+    </svg>
+</lgs1920-timeline>
+```
+
+Right-clicking the marker rail opens an `Add` context menu. Right-clicking a
+marker opens `Edit`, `Move`, and `Remove` actions according to its permissions.
+`Edit` opens an aligned popup for the marker label and color. The actions emit
+namespaced marker events; the host accepts a request by assigning the resulting
+controlled state back to `timeline.markers`.
 
 ```html
 <lgs1920-timeline>

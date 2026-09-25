@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-17
+ * Last modified: 2026-09-25
  *
  *
  * Copyright © 2026 LGS1920
@@ -66,20 +66,56 @@ const banner = (currentPage, basePath = './') => `
 </nav>`
 
 const themeScript = `<script type="module">
-const config = {theme: 'default', mode: 'dark', color: 'blue'}
 const themes = {
     default: ['wa-theme-default', 'wa-palette-default'],
     awesome: ['wa-theme-awesome', 'wa-palette-bright'],
     shoelace: ['wa-theme-shoelace', 'wa-palette-shoelace'],
 }
+const defaults = {theme: 'default', mode: 'dark', color: 'blue'}
+const choices = {
+    theme: Object.keys(themes),
+    mode: ['dark', 'light'],
+    color: ['blue', 'red', 'orange', 'green', 'cyan', 'purple', 'pink'],
+}
+const storageKey = 'lgs1920-timeline-display-settings'
+/* Validate values before applying classes or restoring them from storage. */
+const isValid = (key, value) => choices[key]?.includes(value) === true
+/* Restore the shared display preferences for every generated site page. */
+const readConfig = () => {
+    try {
+        const stored = JSON.parse(localStorage.getItem(storageKey) ?? '{}')
+        return Object.fromEntries(Object.keys(defaults).map(key => [key, isValid(key, stored[key]) ? stored[key] : defaults[key]]))
+    } catch {
+        return {...defaults}
+    }
+}
+const config = readConfig()
+/* Keep the preference across visits without making storage a requirement. */
+const saveConfig = () => {
+    try {
+        localStorage.setItem(storageKey, JSON.stringify(config))
+    } catch {
+        // Preferences remain available for the current page when storage is blocked.
+    }
+}
+/* Apply the selected theme, palette, brand, and light/dark mode. */
 const apply = () => {
     document.documentElement.className = [...themes[config.theme], 'wa-brand-' + config.color, config.mode === 'light' ? 'wa-light' : 'wa-dark'].join(' ')
 }
+/* Keep Web Awesome controls synchronized after custom elements upgrade. */
+const syncControls = () => document.querySelectorAll('[data-theme-control]').forEach(control => {
+    control.value = config[control.dataset.themeControl]
+})
 document.querySelectorAll('[data-theme-control]').forEach(control => control.addEventListener('change', event => {
-    config[event.target.dataset.themeControl] = event.target.value
+    const key = event.target.dataset.themeControl
+    if (!isValid(key, event.target.value)) return
+    config[key] = event.target.value
     apply()
+    saveConfig()
 }))
 apply()
+syncControls()
+customElements.whenDefined('wa-select').then(syncControls)
 </script>`
 
 const controls = `<div class="site-banner-controls" aria-label="Display settings">

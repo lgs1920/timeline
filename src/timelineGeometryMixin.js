@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-17
- * Last modified: 2026-09-17
+ * Last modified: 2026-09-25
  *
  *
  * Copyright © 2026 LGS1920
@@ -315,6 +315,7 @@ export const TimelineGeometryMixin = Base => class extends Base {
             rangeEndMillis: this._rangeEndMillis,
         },
         tracks: this._rows.map(row => this._publicTrack(row)),
+        markers: this._markers,
     })
 
     /**

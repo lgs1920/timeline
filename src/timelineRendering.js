@@ -8,13 +8,14 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-18
+ * Last modified: 2026-09-25
  *
  *
  * Copyright © 2026 LGS1920
  ******************************************************************************/
 
 import {installTimelineTrackEventDelegation} from './timelineTrackInteraction.js'
+import {normalizeTimelineColorSwatches} from './timelineUtils.js'
 
 /**
  * Create the timeline visual renderer.
@@ -35,6 +36,11 @@ export const createTimelineRenderer = ({
     getTimelineConfig,
     allowsHostInteraction,
     getRows,
+    getMarkers,
+    getMarkerMoveState,
+    commitMarkerMove,
+    snapMarkerMove,
+    hasMarkerRailContent,
     getDragState,
     getEditingRowId,
     getEditingLabelValue,
@@ -42,6 +48,7 @@ export const createTimelineRenderer = ({
     getRangeStartMillis,
     getRangeEndMillis,
     getCurrentTimeMillis,
+    getTimeAtClientX,
     getDurationMillis,
     getContentWidth,
     getZoom,
@@ -83,6 +90,8 @@ export const createTimelineRenderer = ({
     handleKeyDown,
     handleRulerPointerDown,
     handleRulerClick,
+    openMarkerContextMenu,
+    openMarkerRailContextMenu,
     emit,
     emitBefore = () => ({defaultPrevented: false}),
     emitAfter = () => {},
@@ -476,6 +485,204 @@ export const createTimelineRenderer = ({
     }
 
     /**
+     * Create one marker icon from a serializable descriptor or a contextual slot.
+     *
+     * @param {Object} marker - Controlled marker data.
+     * @returns {Node} Marker icon content.
+     */
+    const markerIcon = marker => {
+        const icon = marker?.icon
+        if (icon && typeof icon.cloneNode === 'function') return icon.cloneNode(true)
+        if (icon && typeof icon === 'object' && icon.type === 'image' && icon.src) {
+            return createElement('img', 'lgs1920-wa-timeline__marker-icon', {
+                src: icon.src,
+                alt: icon.alt ?? marker.label ?? '',
+            })
+        }
+        return createIcon(typeof icon === 'string' && icon.trim() ? icon : 'diamond', 'solid')
+    }
+
+    const markerContentColor = marker => {
+        const swatches = normalizeTimelineColorSwatches(getTimelineConfig().swatches)
+        const rawColor = String(marker?.color ?? '').trim()
+        if (!rawColor) return 'var(--wa-color-brand-on-normal, #fff)'
+        const swatch = swatches.find(value => rawColor === value.color
+            || rawColor === value.palette
+            || rawColor.includes(`-${value.palette}-`))
+        const color = swatch?.color ?? rawColor
+        const match = color.match(/^#([\da-f]{3}|[\da-f]{6})$/i)
+        if (!match) return 'var(--wa-color-brand-on-normal, #fff)'
+        const hex = match[1].length === 3 ? match[1].split('').map(value => `${value}${value}`).join('') : match[1]
+        const channels = [0, 2, 4].map(index => Number.parseInt(hex.slice(index, index + 2), 16) / 255)
+            .map(value => value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4)
+        const luminance = (0.2126 * channels[0]) + (0.7152 * channels[1]) + (0.0722 * channels[2])
+        const whiteContrast = 1.05 / (luminance + 0.05)
+        const blackContrast = (luminance + 0.05) / 0.05
+        return blackContrast > whiteContrast ? '#111' : '#fff'
+    }
+
+    /**
+     * Create the optional marker rail below the time ruler.
+     *
+     * @returns {HTMLElement} Marker rail.
+     */
+    const markerRail = majorSeconds => {
+        const markers = Array.isArray(getMarkers?.()) ? getMarkers() : []
+        const markerMoveState = getMarkerMoveState?.()
+        const hasSlottedContent = hasMarkerRailContent?.() === true
+        const rail = createElement('div', 'lgs1920-wa-timeline__marker-rail', {
+            part: 'marker-rail',
+            'data-marker-rail': '',
+            hidden: markers.length === 0 && !hasSlottedContent,
+        })
+        rail.addEventListener('contextmenu', event => {
+            if (event.target.closest?.('[data-marker-id]')) return
+            event.preventDefault()
+            openMarkerRailContextMenu?.(event, getTimeAtClientX?.(event.clientX) * 1000)
+        })
+        rail.style.width = `${getContentWidth()}px`
+        if (markers.length > 0) rail.style.minHeight = '2rem'
+        const layer = createElement('div', 'lgs1920-wa-timeline__marker-layer', {
+            part: 'marker-layer',
+            'data-marker-layer': '',
+            'aria-label': 'Timeline markers',
+        })
+        layer.style.width = `${getContentWidth()}px`
+        const resolvedMajorSeconds = Number(majorSeconds) || 1
+        const scale = Number(scaleWidth()) || 40
+        const offset = Number(scaleOffset()) || 20
+        const markerPosition = timeMillis => offset + ((Math.max(0, Number(timeMillis) || 0) / 1000) / resolvedMajorSeconds * scale)
+        const markerTimeAtPointer = event => {
+            const timeMillis = Number(getTimeAtClientX?.(event.clientX)) * 1000
+            return Number.isFinite(timeMillis) ? Math.max(0, timeMillis) : null
+        }
+        let snapFlashTimer = null
+        const clearSnapFlashTimer = () => {
+            if (snapFlashTimer !== null) globalThis.clearTimeout?.(snapFlashTimer)
+            snapFlashTimer = null
+        }
+        const resetSnapPreview = () => {
+            clearSnapFlashTimer()
+            layer.querySelectorAll('[data-marker-snap-flash]').forEach(element => {
+                element.removeAttribute('data-marker-snap-flash')
+            })
+        }
+        const previewMarkerMove = event => {
+            const state = getMarkerMoveState?.()
+            if (!state?.id) return null
+            const timeMillis = markerTimeAtPointer(event)
+            if (timeMillis === null) return null
+            const snap = snapMarkerMove?.(timeMillis, state.id, event) ?? {timeMillis}
+            const snappedTimeMillis = typeof snap === 'number' ? snap : snap.timeMillis
+            const element = [...layer.querySelectorAll('[data-marker-id]')]
+                .find(value => String(value.dataset.markerId) === String(state.id))
+            const ghost = [...layer.querySelectorAll('[data-marker-ghost]')]
+                .find(value => String(value.dataset.markerId) === String(state.id))
+            if (ghost) ghost.style.left = `${markerPosition(snappedTimeMillis)}px`
+            if (element) element.style.left = `${markerPosition(state.timeMillis)}px`
+            state.pointerTimeMillis = timeMillis
+            const snapKey = typeof snap === 'object' && snap.targetKind === 'marker'
+                ? `${snap.targetKind}:${String(snap.targetMarkerId)}`
+                : null
+            if (snapKey !== state.snapKey) {
+                resetSnapPreview()
+                state.snapKey = snapKey
+                state.snapFlashed = false
+            }
+            if (snapKey && state.snapFlashed !== true && snapFlashTimer === null) {
+                snapFlashTimer = globalThis.setTimeout?.(() => {
+                    snapFlashTimer = null
+                    const currentState = getMarkerMoveState?.()
+                    if (currentState?.id && currentState.snapKey === snapKey && currentState.snapFlashed !== true) {
+                        const targetMarker = [...layer.querySelectorAll('[data-marker-id]')]
+                            .find(element => String(element.dataset.markerId) === String(snap.targetMarkerId))
+                        if (targetMarker) {
+                            targetMarker.setAttribute('data-marker-snap-flash', '')
+                            globalThis.setTimeout?.(() => targetMarker.removeAttribute('data-marker-snap-flash'), 360)
+                        }
+                        currentState.snapFlashed = true
+                    }
+                }, 1200) ?? null
+            }
+            state.previewTimeMillis = snappedTimeMillis
+            return snappedTimeMillis
+        }
+        rail.addEventListener('pointermove', event => {
+            if (!getMarkerMoveState?.()?.id) return
+            event.stopPropagation()
+            previewMarkerMove(event)
+        })
+        rail.addEventListener('click', event => {
+            const state = getMarkerMoveState?.()
+            if (!state?.id) return
+            event.preventDefault()
+            event.stopPropagation()
+            const timeMillis = previewMarkerMove(event) ?? state.previewTimeMillis ?? state.timeMillis
+            commitMarkerMove?.(state.id, timeMillis, event)
+        })
+        rail.addEventListener('pointerdown', event => {
+            if (!getMarkerMoveState?.()?.id) return
+            event.stopPropagation()
+        })
+        markers.forEach(marker => {
+            const timeMillis = Math.max(0, Number(marker?.timeMillis) || 0)
+            const isMoving = String(marker?.id) === String(markerMoveState?.id)
+            const expanded = marker?.expanded !== false
+            const markerTitle = marker?.title ?? marker?.label ?? `Marker at ${formatRulerTime(timeMillis / 1000)}`
+            const element = createElement('button', 'lgs1920-wa-timeline__marker', {
+                type: 'button',
+                part: 'marker',
+                id: `lgs1920-timeline-marker-${String(marker.id)}`,
+                'data-marker-id': marker.id,
+                'data-marker-expanded': expanded,
+                'data-marker-moving': isMoving ? '' : null,
+                'aria-label': markerTitle,
+            })
+            element.style.left = `${markerPosition(timeMillis)}px`
+            const snapThresholdPixels = Number(getTimelineConfig().snapThresholdPixels)
+            element.style.setProperty('--lgs-timeline-marker-snap-zone-width', `${(Number.isFinite(snapThresholdPixels) ? snapThresholdPixels : 8) * 2}px`)
+            if (marker.color) element.style.setProperty('--lgs-timeline-marker-color', marker.color)
+            element.style.setProperty('--lgs-timeline-marker-content-color', markerContentColor(marker))
+            const label = expanded && marker.label
+                ? createElement('span', 'lgs1920-wa-timeline__marker-label')
+                : null
+            if (label) label.textContent = marker.label
+            const tooltip = createElement('wa-tooltip', '', {for: `lgs1920-timeline-marker-${String(marker.id)}`})
+            tooltip.textContent = markerTitle
+            const icon = hasContextualSlot?.('marker-icon', marker.id)
+                ? contextualSlot('marker-icon', marker.id, null, markerIcon(marker))
+                : markerIcon(marker)
+            element.append(icon, ...(label ? [label] : []))
+            element.disabled = !isMoving && (getTimelineConfig().readonly === true
+                || marker.editable === false
+                || marker.movable === false)
+            element.addEventListener('contextmenu', event => {
+                event.preventDefault()
+                event.stopPropagation()
+                openMarkerContextMenu?.(marker, event, timeMillis)
+            })
+            layer.append(element)
+            if (isMoving) {
+                const ghost = element.cloneNode(true)
+                ghost.id = `${element.id}-ghost`
+                ghost.removeAttribute('data-marker-moving')
+                ghost.setAttribute('data-marker-ghost', '')
+                ghost.setAttribute('aria-hidden', 'true')
+                ghost.tabIndex = -1
+                ghost.disabled = true
+                ghost.style.left = `${markerPosition(markerMoveState.previewTimeMillis ?? timeMillis)}px`
+                layer.append(ghost)
+            }
+            if (tooltip) layer.append(tooltip)
+        })
+        rail.append(
+            createElement('slot', 'lgs1920-wa-timeline__marker-rail-slot', {name: 'marker-rail'}),
+            layer,
+        )
+        return rail
+    }
+
+    /**
      * Create the ruler, tracks, playhead, and end marker surface.
      *
      * @param {number} scaleCount - Number of major ruler units.
@@ -615,7 +822,7 @@ export const createTimelineRenderer = ({
             createElement('div', 'lgs1920-wa-timeline__end-marker', {part: 'end-marker', 'data-end-marker': ''}),
         )
         tracksViewport.append(tracks)
-        canvas.append(ruler, tracksViewport, overlay)
+        canvas.append(ruler, markerRail(majorSeconds), tracksViewport, overlay)
         surface.append(createElement('slot', '', {name: 'timeline-ruler'}), canvas)
         if (interactive) {
             ruler.addEventListener('pointerdown', event => handleRulerPointerDown(event))

@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-18
+ * Last modified: 2026-09-25
  *
  *
  * Copyright © 2026 LGS1920
@@ -168,6 +168,10 @@
     --lgs-timeline-popup-border-color: var(--wa-color-border-normal);
     /* Timeline popup shadow. */
     --lgs-timeline-popup-shadow: var(--wa-shadow-l);
+    /* Subtle shared background for the marker rail and its legend spacer. */
+    --lgs-timeline-marker-rail-background: color-mix(in srgb, var(--wa-color-brand-fill-normal) 26%, var(--lgs-timeline-surface-color));
+    /* Shared marker rail boundary, visible in both light and dark themes. */
+    --lgs-timeline-marker-rail-border: color-mix(in srgb, var(--wa-color-brand-border-normal) 68%, var(--lgs-timeline-quiet-border-color));
 
     &[hidden] {
         display: none;
@@ -572,6 +576,19 @@
         box-shadow: var(--wa-shadow-m);
         container-name: lgs1920-timeline-legend-ruler;
         container-type: inline-size;
+    }
+
+    & .lgs1920-wa-timeline__legend-marker-rail {
+        display: block;
+        box-sizing: border-box;
+        width: 100%;
+        min-height: 0;
+        background: var(--lgs-timeline-marker-rail-background);
+        border-bottom: 1px solid var(--lgs-timeline-marker-rail-border);
+    }
+
+    & .lgs1920-wa-timeline__legend-marker-rail[hidden] {
+        display: none;
     }
 
     & .lgs1920-wa-timeline__legend-viewport {
@@ -1033,6 +1050,8 @@
     }
 
     & .lgs1920-wa-timeline__canvas {
+        display: flex;
+        flex-direction: column;
         height: 100%;
         min-width: 100%;
         min-height: 100%;
@@ -1046,6 +1065,147 @@
         background: var(--lgs-timeline-surface-color);
         border-bottom: 1px solid var(--lgs-timeline-quiet-border-color);
         box-shadow: var(--wa-shadow-m);
+    }
+
+    & .lgs1920-wa-timeline__marker-rail {
+        position: relative;
+        flex: 0 0 auto;
+        box-sizing: border-box;
+        min-width: 100%;
+        min-height: var(--lgs-timeline-marker-rail-height, 0px);
+        overflow: visible;
+        background: var(--lgs-timeline-marker-rail-background);
+        border-bottom: 1px solid var(--lgs-timeline-marker-rail-border);
+    }
+
+    & .lgs1920-wa-timeline__marker-rail[hidden] {
+        display: none;
+    }
+
+    & .lgs1920-wa-timeline__marker-rail-slot {
+        position: relative;
+        z-index: 1;
+        display: block;
+        min-height: inherit;
+    }
+
+    & .lgs1920-wa-timeline__marker-rail-slot::slotted(*) {
+        display: block;
+        box-sizing: border-box;
+        min-height: 2rem;
+    }
+
+    & .lgs1920-wa-timeline__marker-layer {
+        position: absolute;
+        z-index: 2;
+        inset: 0;
+        pointer-events: none;
+    }
+
+    & .lgs1920-wa-timeline__marker {
+        position: absolute;
+        top: 50%;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        box-sizing: border-box;
+        min-height: 1.5rem;
+        padding: 0.15rem 0.35rem;
+        color: var(--lgs-timeline-marker-content-color, var(--wa-color-brand-on-normal, #fff));
+        background: var(--lgs-timeline-marker-color, var(--wa-color-brand-fill-normal, #2563eb));
+        border: 0;
+        border-radius: var(--wa-border-radius-s);
+        box-shadow: var(--wa-shadow-s);
+        cursor: pointer;
+        pointer-events: auto;
+        transform: translate(-50%, -50%);
+        white-space: nowrap;
+    }
+
+    & .lgs1920-wa-timeline__marker::after {
+        position: absolute;
+        z-index: -1;
+        bottom: -1px;
+        left: 50%;
+        width: max(50%, var(--lgs-timeline-marker-snap-zone-width, 16px));
+        height: 1px;
+        content: '';
+        background: color-mix(in srgb, var(--lgs-timeline-quiet-border-color) 68%, transparent);
+        transform: translateX(-50%);
+    }
+
+    & .lgs1920-wa-timeline__marker[data-marker-expanded='false'] {
+        width: 1.5rem;
+        height: 1.5rem;
+        padding: 0;
+        border-radius: 50%;
+    }
+
+    & .lgs1920-wa-timeline__marker[data-marker-ghost] {
+        z-index: 3;
+        opacity: 0.72;
+        pointer-events: none;
+        outline: 1px dashed currentColor;
+        outline-offset: 2px;
+    }
+
+    & .lgs1920-wa-timeline__marker[data-marker-snap-flash] {
+        z-index: 4;
+        animation: lgs1920-timeline-marker-snap-flash 360ms ease-out;
+        outline: 2px solid var(--wa-color-brand-fill-loud, #3b82f6);
+        outline-offset: 2px;
+    }
+
+    & .lgs1920-wa-timeline__marker[data-marker-moving] {
+        opacity: 0.3;
+    }
+
+    @keyframes lgs1920-timeline-marker-snap-flash {
+        0% {
+            filter: brightness(1);
+            box-shadow: var(--wa-shadow-s);
+        }
+        45% {
+            filter: brightness(1.7);
+            box-shadow: 0 0 0 4px color-mix(in srgb, var(--wa-color-brand-fill-loud, #3b82f6) 55%, transparent);
+        }
+        100% {
+            filter: brightness(1);
+            box-shadow: var(--wa-shadow-s);
+        }
+    }
+
+    & .lgs1920-wa-timeline__marker[data-marker-expanded='false']::before {
+        position: absolute;
+        z-index: -1;
+        top: 50%;
+        left: 50%;
+        width: 1px;
+        height: 200%;
+        content: '';
+        background: color-mix(in srgb, var(--lgs-timeline-quiet-border-color) 68%, transparent);
+        transform: translate(-50%, -50%);
+    }
+
+    & .lgs1920-wa-timeline__marker:disabled {
+        cursor: default;
+    }
+
+    & .lgs1920-wa-timeline__marker-icon,
+    & .lgs1920-wa-timeline__marker > :is(slot, wa-icon) {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        width: 0.8rem;
+        height: 0.8rem;
+        font-size: 0.8rem;
+        object-fit: contain;
+    }
+
+    & .lgs1920-wa-timeline__marker-label {
+        font-size: 0.7rem;
+        line-height: 1;
     }
 
     & .lgs1920-wa-timeline__range-selection {
@@ -1182,7 +1342,9 @@
     & .lgs1920-wa-timeline__tracks-viewport {
         position: relative;
         box-sizing: border-box;
-        height: calc(100% - var(--lgs-timeline-header-height));
+        flex: 1 1 auto;
+        height: auto;
+        min-height: 0;
         min-width: 100%;
         overflow-x: hidden;
         overflow-y: auto;
@@ -1828,7 +1990,8 @@
     }
 
     & .lgs1920-wa-timeline__clip-context-menu .lgs1920-wa-timeline__menu,
-    & .lgs1920-wa-timeline__track-context-menu .lgs1920-wa-timeline__menu {
+    & .lgs1920-wa-timeline__track-context-menu .lgs1920-wa-timeline__menu,
+    & .lgs1920-wa-timeline__marker-context-menu .lgs1920-wa-timeline__menu {
         width: max-content;
         min-width: 0;
         max-width: min(90vw, 30rem);
@@ -1840,14 +2003,16 @@
     }
 
     & .lgs1920-wa-timeline__clip-context-menu .lgs1920-wa-timeline__menu-item,
-    & .lgs1920-wa-timeline__track-context-menu .lgs1920-wa-timeline__menu-item {
+    & .lgs1920-wa-timeline__track-context-menu .lgs1920-wa-timeline__menu-item,
+    & .lgs1920-wa-timeline__marker-context-menu .lgs1920-wa-timeline__menu-item {
         display: block;
         min-width: 0;
         text-align: start;
     }
 
     & .lgs1920-wa-timeline__clip-context-menu .lgs1920-wa-timeline__menu-item::part(base),
-    & .lgs1920-wa-timeline__track-context-menu .lgs1920-wa-timeline__menu-item::part(base) {
+    & .lgs1920-wa-timeline__track-context-menu .lgs1920-wa-timeline__menu-item::part(base),
+    & .lgs1920-wa-timeline__marker-context-menu .lgs1920-wa-timeline__menu-item::part(base) {
         justify-content: flex-start;
         width: 100%;
         min-width: 0;
@@ -1855,7 +2020,8 @@
     }
 
     & .lgs1920-wa-timeline__clip-context-menu .lgs1920-wa-timeline__menu-icon,
-    & .lgs1920-wa-timeline__track-context-menu .lgs1920-wa-timeline__menu-icon {
+    & .lgs1920-wa-timeline__track-context-menu .lgs1920-wa-timeline__menu-icon,
+    & .lgs1920-wa-timeline__marker-context-menu .lgs1920-wa-timeline__menu-icon {
         display: inline-flex;
         flex: 0 0 1.25rem;
         align-items: center;
@@ -1866,14 +2032,81 @@
     }
 
     & .lgs1920-wa-timeline__clip-context-menu .lgs1920-wa-timeline__menu-label,
-    & .lgs1920-wa-timeline__track-context-menu .lgs1920-wa-timeline__menu-label {
+    & .lgs1920-wa-timeline__track-context-menu .lgs1920-wa-timeline__menu-label,
+    & .lgs1920-wa-timeline__marker-context-menu .lgs1920-wa-timeline__menu-label {
         min-width: 0;
         white-space: nowrap;
     }
 
     & .lgs1920-wa-timeline__clip-context-menu .lgs1920-wa-timeline__menu,
-    & .lgs1920-wa-timeline__track-context-menu .lgs1920-wa-timeline__menu {
+    & .lgs1920-wa-timeline__track-context-menu .lgs1920-wa-timeline__menu,
+    & .lgs1920-wa-timeline__marker-context-menu .lgs1920-wa-timeline__menu {
         position: relative;
+    }
+
+    & .lgs1920-wa-timeline__marker-edit-form {
+        display: flex;
+        min-width: 15rem;
+        flex-direction: column;
+        gap: var(--lgs-gutter-xs, 0.5rem);
+        padding: var(--lgs-gutter-s, 0.75rem);
+        background: var(--lgs-timeline-popup-background);
+        border: 1px solid var(--lgs-timeline-popup-border-color);
+        border-radius: var(--wa-border-radius-m);
+        box-shadow: var(--lgs-timeline-popup-shadow);
+    }
+
+    & .lgs1920-wa-timeline__marker-edit-header,
+    & .lgs1920-wa-timeline__marker-edit-color-row {
+        display: flex;
+        align-items: center;
+        gap: var(--lgs-gutter-xxs, 0.25rem);
+    }
+
+    & .lgs1920-wa-timeline__marker-edit-header {
+        justify-content: space-between;
+    }
+
+    & .lgs1920-wa-timeline__marker-edit-title {
+        font-size: var(--wa-font-size-s, 0.875rem);
+        font-weight: var(--wa-font-weight-semibold, 600);
+    }
+
+    & .lgs1920-wa-timeline__marker-edit-header-actions {
+        display: flex;
+        margin-inline-start: auto;
+        justify-content: flex-end;
+    }
+
+    & .lgs1920-wa-timeline__marker-edit-color-row {
+        display: flex;
+        align-items: flex-end;
+        gap: var(--lgs-gutter-xxs, 0.25rem);
+    }
+
+    & .lgs1920-wa-timeline__marker-edit-color-row wa-color-picker {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    & .lgs1920-wa-timeline__marker-edit-button {
+        flex: 0 0 auto;
+        width: auto;
+    }
+
+    & .lgs1920-wa-timeline__marker-edit-header-actions .lgs1920-wa-timeline__marker-edit-button {
+        min-width: 1.5rem;
+        padding-inline: 0.25rem;
+    }
+
+    & .lgs1920-wa-timeline__marker-edit-form wa-input::part(form-control-label),
+    & .lgs1920-wa-timeline__marker-edit-form wa-color-picker::part(form-control-label) {
+        font-size: var(--wa-font-size-xs, 0.75rem);
+    }
+
+    & .lgs1920-wa-timeline__marker-edit-form wa-color-picker::part(swatch) {
+        width: 1rem;
+        height: 1rem;
     }
 
     & .lgs1920-wa-timeline__clip-color-picker--menu-trigger {

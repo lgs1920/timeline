@@ -7,8 +7,8 @@
  * Author : LGS1920 Team
  * email: studio@lgs1920.fr
  *
- * Created on: 2026-09-17
- * Last modified: 2026-09-17
+ * Created on: 2026-09-14
+ * Last modified: 2026-09-25
  *
  *
  * Copyright © 2026 LGS1920
@@ -32,6 +32,7 @@ import {LGS1920Timeline} from './LGS1920Timeline'
  * @param {boolean} [props.looping=false] - Whether playback repeats its range.
  * @param {boolean} [props.noLoopMode=false] - Deprecated compatibility alias.
  * @param {Array|null} [props.clipOptions=null] - Clip insertion options, or null for the generic option.
+ * @param {Array} [props.markers=[]] - Controlled global marker definitions.
  * @param {Object} [props.events={}] - Event descriptors keyed by event suffix.
  * @returns {JSX.Element} Web Component React adapter.
  */
@@ -44,6 +45,7 @@ export const LGS1920TimelineReact = ({
     looping = false,
     noLoopMode = false,
     clipOptions = null,
+    markers = [],
     events = {},
     children,
 }) => {
@@ -56,7 +58,8 @@ export const LGS1920TimelineReact = ({
         element.options = resolvedOptions
         element.tracks = tracks
         element.clipOptions = clipOptions
-    }, [clipOptions, options, resolvedOptions, timeline, tracks])
+        element.markers = markers
+    }, [clipOptions, markers, options, resolvedOptions, timeline, tracks])
 
     useEffect(() => {
         const element = _element.current

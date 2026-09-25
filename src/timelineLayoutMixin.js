@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-17
- * Last modified: 2026-09-18
+ * Last modified: 2026-09-25
  *
  *
  * Copyright © 2026 LGS1920
@@ -39,6 +39,7 @@ export const TimelineLayoutMixin = Base => class extends Base {
         const tracks = this._root.querySelector('[part="tracks"]')
         this._closeClipContextMenu()
         this._closeTrackContextMenu()
+        this._closeMarkerContextMenu()
         const updated = this._renderer.updateRows({
             legendRows,
             tracks,
@@ -225,6 +226,8 @@ export const TimelineLayoutMixin = Base => class extends Base {
         })
         this._surface = this._root.querySelector('[data-surface]')
         this._tracksViewport = this._root.querySelector('[data-tracks-viewport]')
+        this._observeMarkerRail()
+        this._syncMarkerRailHeight()
         this._cacheDynamicElements()
         this._cacheClipPresentationElements()
         this._cacheScrollbarElements()
@@ -514,6 +517,8 @@ export const TimelineLayoutMixin = Base => class extends Base {
         if (clipContextMenu) section.append(clipContextMenu)
         const trackContextMenu = this._trackContextMenu()
         if (trackContextMenu) section.append(trackContextMenu)
+        const markerContextMenu = this._markerContextMenu()
+        if (markerContextMenu) section.append(markerContextMenu)
         const footer = timelineUtils.createElement('footer', 'lgs1920-wa-timeline__footer', {
             part: 'footer',
         })
@@ -1121,6 +1126,13 @@ export const TimelineLayoutMixin = Base => class extends Base {
         const rulerSlot = timelineUtils.createElement('slot', '', {name: 'legend-ruler'})
         rulerSlot.append(ruler)
         legend.append(rulerSlot)
+        const markerRailSpacer = timelineUtils.createElement('div', 'lgs1920-wa-timeline__legend-marker-rail', {
+            part: 'legend-marker-rail',
+            'data-legend-marker-rail': '',
+            hidden: this._markers.length === 0 && ![...this.children].some(element => element.slot === 'marker-rail'),
+        })
+        markerRailSpacer.style.height = this._markers.length > 0 ? '2rem' : '0px'
+        legend.append(markerRailSpacer)
         if (this._menuOpen && interactive && editable && this._timelineConfig.showClipMenu === true) {
             legend.append(this._menu(add))
         }
@@ -1135,5 +1147,6 @@ export const TimelineLayoutMixin = Base => class extends Base {
     _menu = anchor => this._menus.menu(anchor)
     _clipContextMenu = () => this._menus.clipContextMenu()
     _trackContextMenu = () => this._menus.trackContextMenu()
+    _markerContextMenu = () => this._menus.markerContextMenu()
 
 }

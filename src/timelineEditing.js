@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-18
+ * Last modified: 2026-09-25
  *
  *
  * Copyright © 2026 LGS1920
@@ -146,6 +146,10 @@ const resolveClipTargetSnap = ({start, end, mode, edge, targets, thresholdSecond
             targetTime: numericTarget,
             targetClipId: target && typeof target === 'object' ? target.clipId ?? null : null,
             targetEdge: target && typeof target === 'object' ? target.edge ?? null : null,
+            targetKind: target && typeof target === 'object'
+                ? target.kind ?? (target.clipId === null || target.clipId === undefined ? 'target' : 'clip')
+                : 'target',
+            targetMarkerId: target && typeof target === 'object' ? target.markerId ?? null : null,
         }
         if (typeof isValid === 'function' && !isValid(interval, targetMetadata)) return
         if (nearest === null || Math.abs(delta) < Math.abs(nearest.delta)) {
@@ -367,6 +371,7 @@ export const createTimelineClipEditor = ({
     getRangeEndFollowsDuration,
     getRangeEndMillis,
     getCurrentTimeMillis,
+    getMarkers,
     setRangeEndMillis,
     setRows,
     setInteractionDurationMillis,
@@ -521,6 +526,20 @@ export const createTimelineClipEditor = ({
     }
 
     /**
+     * Resolve controlled marker positions as magnetic snap targets.
+     *
+     * @returns {Array} Marker snap targets in seconds.
+     */
+    const markerSnapTargets = excludeMarkerId => (Array.isArray(getMarkers?.()) ? getMarkers() : [])
+        .filter(marker => String(marker?.id) !== String(excludeMarkerId)
+            && marker?.snap !== false && Number.isFinite(Number(marker?.timeMillis)))
+        .map(marker => ({
+            time: Number(marker.timeMillis) / 1000,
+            kind: 'marker',
+            markerId: marker.id,
+        }))
+
+    /**
      * Snap a cut position to the same targets used by clip movement.
      *
      * @param {Object} options - Cut position and pointer state.
@@ -529,14 +548,15 @@ export const createTimelineClipEditor = ({
      * @param {PointerEvent} [options.event] - Pointer event controlling modifiers.
      * @returns {{time: number, targetTime: number|null, kind: string|null}} Snapped cut position.
      */
-    const snapCutTime = ({time, clipId, event} = {}) => {
+    const snapCutTime = ({time, clipId, excludeMarkerId, event, secondary = false} = {}) => {
         const value = Number(time)
         if (!Number.isFinite(value)) return {time: value, targetTime: null, kind: null}
-        const snap = resolveSnap({secondary: event?.shiftKey === true})
+        const snap = resolveSnap({secondary: secondary || event?.shiftKey === true})
         if (!snap || event?.altKey === true) return {time: value, targetTime: null, kind: null}
         const targets = [
             {time: 0, kind: 'target'},
             {time: Number(getCurrentTimeMillis?.()) / 1000, kind: 'target'},
+            ...markerSnapTargets(excludeMarkerId),
         ]
         getRows().forEach(row => (row.actions ?? []).forEach(clip => {
             if (String(clip.id) === String(clipId)) return
@@ -554,6 +574,7 @@ export const createTimelineClipEditor = ({
                 time: Number(Number(nearestTarget.time).toFixed(6)),
                 targetTime: Number(nearestTarget.time),
                 kind: nearestTarget.kind,
+                targetMarkerId: nearestTarget.markerId ?? null,
             }
         }
         const rulerTime = Math.round(value / snap.majorSeconds) * snap.majorSeconds
@@ -564,7 +585,7 @@ export const createTimelineClipEditor = ({
                 kind: 'ruler',
             }
         }
-        return {time: value, targetTime: null, kind: null}
+        return {time: value, targetTime: null, kind: null, targetMarkerId: null}
     }
 
     /**
@@ -849,7 +870,7 @@ export const createTimelineClipEditor = ({
             const targetStart = Math.min(start, end) - filterThresholdSeconds
             const targetEnd = Math.max(start, end) + filterThresholdSeconds
             const crossingTrackId = targetTrack.id === state.sourceTrackId ? null : targetTrack.id
-            const targets = [0, {time: Number(getCurrentTimeMillis?.()) / 1000}]
+            const targets = [0, {time: Number(getCurrentTimeMillis?.()) / 1000}, ...markerSnapTargets()]
             state.baseRows.forEach(row => (row.actions ?? []).forEach(clip => {
                 if (String(clip.id) === String(state.clipId)) return
                 const interval = resolveClipInterval(clip)
@@ -949,7 +970,7 @@ export const createTimelineClipEditor = ({
             state.snapTargetTime = magnetic.targetTime
             state.snapTargetClipId = magnetic.targetClipId
             state.snapTargetEdge = magnetic.targetEdge
-            state.snapTargetKind = magnetic.targetClipId === null || magnetic.targetClipId === undefined ? 'target' : 'clip'
+            state.snapTargetKind = magnetic.targetKind ?? (magnetic.targetClipId === null || magnetic.targetClipId === undefined ? 'target' : 'clip')
         } else if (rulerSnapApplied) {
             state.snapTargetTime = state.mode === 'resize'
                 ? state.edge === 'start' ? snapped.start : snapped.end
@@ -1135,7 +1156,7 @@ export const createTimelineClipEditor = ({
                 || direction * snapDelta < 0) {
                 snapped = null
             }
-            const targets = [0, {time: Number(getCurrentTimeMillis?.()) / 1000}]
+            const targets = [0, {time: Number(getCurrentTimeMillis?.()) / 1000}, ...markerSnapTargets()]
             rows.forEach(row => (row.actions ?? []).forEach(clip => {
                 if (String(clip.id) === String(clipId)) return
                 const targetInterval = resolveClipInterval(clip)

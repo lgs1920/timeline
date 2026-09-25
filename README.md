@@ -95,6 +95,53 @@ values use seconds. The component emits user intent and editing results; the
 host decides whether to persist the resulting state or connect it to a media
 player.
 
+## API markers
+
+Global markers render in an optional rail directly below the time ruler. The
+rail is empty and collapsed by default:
+
+```js
+timeline.markers = [
+    {id: 'intro', timeMillis: 4_000, label: 'Intro', icon: 'diamond'},
+    {id: 'chapter', timeMillis: 15_000, label: 'Chapter', icon: 'bookmark'},
+]
+```
+
+Use `<div slot="marker-rail">...</div>` for application-owned rail content.
+The default icon is `diamond`; the `icon` property accepts an icon name, an
+image descriptor, or a DOM/SVG node. A marker-specific DOM/SVG icon can also be
+provided with `marker-icon-{id}`. The marker rail grows to its rendered content
+and keeps the track titles aligned with it. Right-click the marker rail for
+`Add`, or a marker for `Edit`, `Move`, and `Remove` according to its
+permissions. These actions emit `lgs1920-timeline-add-marker`,
+`lgs1920-timeline-remove-marker`, `lgs1920-timeline-marker-display-change`,
+`lgs1920-timeline-edit-marker`, and `lgs1920-timeline-move-marker`; the host
+accepts them by assigning the resulting `event.detail.markers` back to
+`timeline.markers`.
+`Edit` opens an aligned popup for the marker label and color and emits an
+`edit-marker` event when the changes are saved.
+
+Markers are controlled by the application:
+
+```js
+timeline.markers = [...timeline.markers, {
+    id: 'live-marker',
+    timeMillis: 18_500,
+    label: 'Live marker',
+    icon: 'diamond',
+    editable: true,
+    movable: true,
+}]
+
+const acceptMarkerChange = event => {
+    timeline.markers = event.detail.markers
+}
+
+for (const name of ['add-marker', 'remove-marker', 'marker-display-change', 'edit-marker', 'move-marker']) {
+    timeline.addEventListener(`lgs1920-timeline-${name}`, acceptMarkerChange)
+}
+```
+
 ## Controlled playback
 
 The component does not advance the application clock. It emits playback

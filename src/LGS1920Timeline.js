@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-17
- * Last modified: 2026-09-18
+ * Last modified: 2026-09-25
  *
  *
  * Copyright © 2026 LGS1920
@@ -254,6 +254,9 @@ export class LGS1920Timeline extends TimelineBase {
     _root
     _projection = null
     _rows = []
+    _markers = []
+    _markerNumber = 0
+    _markerMoveState = null
     _timelineConfig = {}
     _trackDefinitions = []
     _localRowsDirty = false
@@ -585,6 +588,7 @@ export class LGS1920Timeline extends TimelineBase {
             getTimeAtClientX: clientX => this._timeAtClientX(clientX),
             getTrackAtClientY: clientY => this._trackAtClientY(clientY),
             getCurrentTimeMillis: () => this._currentTimeMillis,
+            getMarkers: () => this._markers,
             getRangeEndFollowsDuration: () => this._rangeEndFollowsDuration,
             getRangeEndMillis: () => this._dragState?.initialRangeEndMillis ?? this._rangeEndMillis,
             setRangeEndMillis: value => {
@@ -629,6 +633,7 @@ export class LGS1920Timeline extends TimelineBase {
             getHostNoDragClasses: () => this._hostNoDragClasses(),
             getRoot: () => this._root,
             getRows: () => this._rows,
+            getMarkers: () => this._markers,
             getTracks: () => this.tracks,
             globalSlotContent: (name, fallback) => this._globalSlotContent(name, fallback),
             isReadonlyMode: () => this._isReadonlyMode(),
@@ -640,6 +645,11 @@ export class LGS1920Timeline extends TimelineBase {
             beginTrackLabelEdit: (row, event) => this._beginTrackLabelEdit(row, event),
             removeClip: (clipId, event) => this._removeClip(clipId, event),
             removeTrack: (row, event) => this._removeTrack(row, event),
+            requestAddMarkerAt: (timeMillis, event) => this._requestAddMarkerAt(timeMillis, event),
+            requestEditMarker: (marker, changes, event) => this._requestMarkerAction('edit-marker', marker, event, changes),
+            startMarkerMove: (marker, event) => this._startMarkerMove(marker, event),
+            requestMarkerDisplayChange: (marker, expanded, event) => this._requestMarkerDisplayChange(marker, expanded, event),
+            requestRemoveMarker: (marker, event) => this._requestRemoveMarker(marker, event),
             publicSnapshot: () => this._publicSnapshot(),
             emit: (name, detail, options) => this._emit(name, detail, options),
             emitAfter: (name, detail) => this._emitAfter(name, detail),
@@ -797,6 +807,12 @@ export class LGS1920Timeline extends TimelineBase {
             getTimelineConfig: () => ({...this._timelineConfig, readonly: this._isReadonlyMode()}),
             allowsHostInteraction: () => allowsHostInteraction(this._timelineConfig),
             getRows: () => this._rows,
+            getMarkers: () => this._markers,
+            getMarkerMoveState: () => this._markerMoveState,
+            commitMarkerMove: (markerId, timeMillis, event) => this._commitMarkerMove(markerId, timeMillis, event),
+            snapMarkerMove: (timeMillis, markerId, event) => this._snapMarkerMoveTime(timeMillis, markerId, event),
+            hasMarkerRailContent: () => [...this.children].some(element => element.slot === 'marker-rail'),
+            getTimeAtClientX: clientX => this._timeAtClientX(clientX),
             getDragState: () => this._dragState,
             getEditingRowId: () => this._editingRowId,
             getEditingLabelValue: () => this._editingLabelValue,
@@ -854,6 +870,8 @@ export class LGS1920Timeline extends TimelineBase {
             handleKeyDown: event => this._handleKeyDown(event, true),
             handleRulerPointerDown: event => this._handleRulerPointerDown(event),
             handleRulerClick: event => this._handleRulerClick(event),
+            openMarkerContextMenu: (marker, event, timeMillis) => this._openMarkerContextMenu(marker, event, timeMillis),
+            openMarkerRailContextMenu: (event, timeMillis) => this._openMarkerRailContextMenu(event, timeMillis),
             emit: (name, detail) => this._emit(name, detail),
             emitBefore: (name, detail) => this._emitBefore(name, detail),
             emitAfter: (name, detail) => this._emitAfter(name, detail),
@@ -898,6 +916,31 @@ export class LGS1920Timeline extends TimelineBase {
             }
         }
         this.setAttribute('data-ready', '')
+    }
+
+    /**
+     * Add the rendered marker rail to the existing layout observer.
+     *
+     * @returns {void}
+     */
+    _observeMarkerRail = () => {
+        const rail = this._root.querySelector('[data-marker-rail]')
+        if (rail) this._resizeObserver?.observe(rail)
+    }
+
+    /**
+     * Keep the track legend titles aligned with the marker rail height.
+     *
+     * @returns {void}
+     */
+    _syncMarkerRailHeight = () => {
+        const rail = this._root.querySelector('[data-marker-rail]')
+        const spacer = this._root.querySelector('[data-legend-marker-rail]')
+        if (!rail || !spacer) return
+        const measured = rail.getBoundingClientRect?.().height ?? 0
+        const fallback = this._markers.length > 0 ? 32 : 0
+        spacer.style.height = `${Math.max(fallback, measured)}px`
+        spacer.hidden = rail.hidden
     }
 
     /**
@@ -1402,6 +1445,222 @@ export class LGS1920Timeline extends TimelineBase {
     }
 
     /**
+     * Get the controlled timeline markers.
+     *
+     * @returns {Array} Marker definitions.
+     */
+    get markers() {
+        return this._markers
+    }
+
+    /**
+     * Set the controlled timeline markers.
+     *
+     * @param {Array} value - Marker definitions using millisecond positions.
+     */
+    set markers(value) {
+        const nextMarkers = Array.isArray(value) ? value : []
+        if (this._stateSignatures.valuesEqual(nextMarkers, this._markers)) return
+        this._markers = nextMarkers
+        if (this.isConnected) this._requestControlledSync({forceRender: true})
+    }
+
+    /**
+     * Emit a controlled request to add a marker at the current playhead.
+     *
+     * @param {Event} event - Triggering menu event.
+     */
+    _requestAddMarker = event => {
+        this._requestAddMarkerAt(this._currentTimeMillis, event)
+    }
+
+    /**
+     * Emit a controlled request to add a marker at a timeline position.
+     *
+     * @param {number} timeMillis - Marker position in milliseconds.
+     * @param {Event} event - Triggering menu event.
+     */
+    _requestAddMarkerAt = (timeMillis, event) => {
+        if (this._isReadonlyMode() || this._timelineConfig.interactive === false || this._timelineConfig.editable === false) return
+        this._markerNumber += 1
+        const marker = {
+            id: `marker-${this._markerNumber}`,
+            timeMillis: this._normalizeTime(timeMillis, true),
+            label: `Marker ${this._markerNumber}`,
+            icon: 'diamond',
+            editable: true,
+            removable: true,
+        }
+        const detail = {
+            marker,
+            markers: [...this._markers, marker],
+            event,
+            data: this._publicSnapshot(),
+        }
+        if (this._emitBefore('add-marker', detail).defaultPrevented) return
+        this._emit('add-marker', detail)
+        this._emitAfter('add-marker', detail)
+    }
+
+    /**
+     * Emit a controlled request to remove one marker.
+     *
+     * @param {Object} marker - Marker selected for removal.
+     * @param {Event} event - Triggering menu event.
+     */
+    _requestRemoveMarker = (marker, event) => {
+        if (this._isReadonlyMode() || this._timelineConfig.interactive === false
+            || this._timelineConfig.editable === false || marker?.removable === false) return
+        const markers = this._markers.filter(value => value?.id !== marker?.id)
+        const detail = {
+            marker,
+            previousMarkers: this._markers,
+            markers,
+            event,
+            data: this._publicSnapshot(),
+        }
+        if (this._emitBefore('remove-marker', detail).defaultPrevented) return
+        this._emit('remove-marker', detail)
+        this._emitAfter('remove-marker', detail)
+    }
+
+    /**
+     * Emit a controlled marker action request.
+     *
+     * @param {string} name - Marker action event suffix.
+     * @param {Object} marker - Target marker.
+     * @param {Event} event - Triggering menu event.
+     */
+    _requestMarkerAction = (name, marker, event, changes = {}) => {
+        if (this._isReadonlyMode() || this._timelineConfig.interactive === false
+            || this._timelineConfig.editable === false || marker?.editable === false) return
+        if (name === 'move-marker' && marker?.movable === false) return
+        const nextMarker = name === 'edit-marker'
+            ? {...marker, ...Object.fromEntries(['label', 'color'].filter(key => Object.prototype.hasOwnProperty.call(changes, key)).map(key => [key, changes[key]]))}
+            : marker
+        const markers = name === 'edit-marker'
+            ? this._markers.map(value => String(value?.id) === String(marker?.id) ? nextMarker : value)
+            : this._markers
+        const detail = {
+            marker: nextMarker,
+            previousMarker: marker,
+            markers,
+            event,
+            data: this._publicSnapshot(),
+        }
+        if (this._emitBefore(name, detail).defaultPrevented) return
+        this._emit(name, detail)
+        this._emitAfter(name, detail)
+    }
+
+    /**
+     * Emit a controlled request to change a marker's compact presentation.
+     *
+     * @param {Object} marker - Target marker.
+     * @param {boolean} expanded - Requested expanded state.
+     * @param {Event} event - Triggering menu event.
+     */
+    _requestMarkerDisplayChange = (marker, expanded, event) => {
+        if (this._isReadonlyMode() || this._timelineConfig.interactive === false
+            || this._timelineConfig.editable === false) return
+        const nextMarker = {...marker, expanded: expanded === true}
+        const markers = this._markers.map(value => String(value?.id) === String(marker?.id) ? nextMarker : value)
+        const detail = {
+            marker: nextMarker,
+            previousMarker: marker,
+            markers,
+            event,
+            data: this._publicSnapshot(),
+        }
+        if (this._emitBefore('marker-display-change', detail).defaultPrevented) return
+        this._emit('marker-display-change', detail)
+        this._emitAfter('marker-display-change', detail)
+    }
+
+    /**
+     * Enter horizontal marker move mode without changing controlled state.
+     *
+     * @param {Object} marker - Marker selected for movement.
+     * @param {Event} event - Triggering menu event.
+     */
+    _startMarkerMove = (marker, event) => {
+        if (this._isReadonlyMode() || this._timelineConfig.interactive === false
+            || this._timelineConfig.editable === false || marker?.editable === false
+            || marker?.movable === false) return
+        this._markerMoveState = {id: marker.id, timeMillis: marker.timeMillis, event}
+        this._render()
+    }
+
+    /**
+     * Snap a marker preview to the timeline's existing magnetic targets.
+     *
+     * @param {number} timeMillis - Proposed marker position.
+     * @param {number|string} markerId - Marker being moved.
+     * @param {Event} event - Current pointer event.
+     * @returns {number} Snapped marker position in milliseconds.
+     */
+    _snapMarkerMoveTime = (timeMillis, markerId, event) => {
+        const result = this._clipEditor?.snapCutTime?.({
+            time: Number(timeMillis) / 1000,
+            clipId: null,
+            excludeMarkerId: markerId,
+            event,
+            secondary: true,
+        })
+        return Number.isFinite(Number(result?.time))
+            ? {
+                timeMillis: Number(result.time) * 1000,
+                targetKind: result.kind,
+                targetMarkerId: result.targetMarkerId,
+                targetTimeMillis: Number.isFinite(Number(result.targetTime)) ? Number(result.targetTime) * 1000 : null,
+            }
+            : {timeMillis, targetKind: null, targetMarkerId: null, targetTimeMillis: null}
+    }
+
+    /**
+     * Cancel the active marker move without changing controlled marker state.
+     *
+     * @param {Event} event - Cancellation event.
+     */
+    _cancelMarkerMove = event => {
+        if (!this._markerMoveState) return
+        event?.preventDefault?.()
+        event?.stopImmediatePropagation?.()
+        this._markerMoveState = null
+        this._render()
+    }
+
+    /**
+     * Commit the second-click position of a marker move interaction.
+     *
+     * @param {number|string} markerId - Marker identifier.
+     * @param {number} timeMillis - Requested marker position in milliseconds.
+     * @param {Event} event - Triggering pointer event.
+     */
+    _commitMarkerMove = (markerId, timeMillis, event) => {
+        const current = this._markers.find(marker => String(marker?.id) === String(markerId))
+        if (!current || current.editable === false || current.movable === false) return
+        const marker = {...current, timeMillis: this._normalizeTime(timeMillis, true)}
+        const markers = this._markers.map(value => String(value?.id) === String(markerId) ? marker : value)
+        const detail = {
+            marker,
+            previousMarker: current,
+            markers,
+            event,
+            data: this._publicSnapshot(),
+        }
+        if (this._emitBefore('move-marker', detail).defaultPrevented) return
+        this._markerMoveState = null
+        this._emit('move-marker', detail)
+        this._render()
+        this._emitAfter('move-marker', detail)
+    }
+
+    _openMarkerContextMenu = (marker, event, timeMillis) => this._menus.openMarkerContextMenu(marker, event, timeMillis)
+    _openMarkerRailContextMenu = (event, timeMillis) => this._menus.openMarkerRailContextMenu(event, timeMillis)
+    _closeMarkerContextMenu = () => this._menus.closeMarkerContextMenu()
+
+    /**
      * Get the current logical timeline time.
      *
      * @returns {number} Current time in milliseconds.
@@ -1514,6 +1773,7 @@ export class LGS1920Timeline extends TimelineBase {
             if (Object.prototype.hasOwnProperty.call(state, 'timeline')) this.timeline = state.timeline
             if (Object.prototype.hasOwnProperty.call(state, 'tracks')) this.tracks = state.tracks
             if (Object.prototype.hasOwnProperty.call(state, 'clipOptions')) this.clipOptions = state.clipOptions
+            if (Object.prototype.hasOwnProperty.call(state, 'markers')) this.markers = state.markers
         }
         finally {
             this._controlledUpdateDepth -= 1
@@ -1528,6 +1788,7 @@ export class LGS1920Timeline extends TimelineBase {
      * Release observers, pointer listeners, and animation frames.
      */
     disconnectedCallback() {
+        this._markerMoveState = null
         this._cancelBuildingCompletion()
         this._removeInputPropagationBlockers()
         this._additionalContentToggle?.removeEventListener('click', this._toggleAdditionalContent)
@@ -1563,6 +1824,7 @@ export class LGS1920Timeline extends TimelineBase {
         this._cancelClipCopy()
         this._closeClipContextMenu()
         this._closeTrackContextMenu()
+        this._closeMarkerContextMenu()
         this._dynamicElements = null
         this._clipPresentationElements = null
         this._scrollbars.invalidate()

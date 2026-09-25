@@ -294,7 +294,7 @@ const updatePacman = (timeMillis, playing) =&gt; {
             </div>
             <span id="event-status" class="event-status" role="status" aria-live="polite">Ready</span>
         </div>
-        <p class="section-intro">Drag or trim a clip, double-click a track label, or use the playback toolbar. Right-click a track to open its context menu. The host advances the clock after a <code>play</code> event, so this demo shows the same integration pattern as the Studio example. Every interaction emits a namespaced event; this demo writes accepted track changes back to the element.</p>
+        <p class="section-intro">Drag or trim a clip, double-click a track label, or use the playback toolbar. Right-click a track to open its context menu. Use <strong>Show marker line</strong> to reveal the marker rail, then use <strong>Add Marker From API</strong> to append an editable, movable marker. The host advances the clock after a <code>play</code> event, so this demo shows the same integration pattern as the Studio example. Every interaction emits a namespaced event; this demo writes accepted track and marker changes back to the element.</p>
         <wa-details class="demo-details" summary="What this demo shows" appearance="filled-outlined">
             <p>This example focuses on editing and event handling. Move or trim a clip, use the scissors tool to preview and commit a cut, edit a track name, open the track context menu, change visibility, and inspect the serialized event detail in the fixed-height event panel.</p>
             <ul>
@@ -306,6 +306,10 @@ const updatePacman = (timeMillis, playing) =&gt; {
                 <li>Use the Undo and Redo buttons in the tools bar to move through up to 200 committed edits; the host can accept each <code>undo</code> or <code>redo</code> event through its resulting <code>tracks</code>.</li>
             </ul>
         </wa-details>
+        <div class="clip-source-actions demo02-marker-actions">
+            <wa-switch id="show-markers-timeline" size="s" checked label="Show marker line"></wa-switch>
+            <wa-button id="add-api-marker" appearance="filled" variant="brand" size="s" hidden>Add Marker From API</wa-button>
+        </div>
         <lgs1920-timeline id="interactive-timeline" aria-label="Interactive editing timeline"></lgs1920-timeline>
         <div class="timeline-output demo02-event-output">
             <div class="demo02-event-controls">
@@ -322,6 +326,17 @@ const updatePacman = (timeMillis, playing) =&gt; {
 timeline.addEventListener('lgs1920-timeline-seek', event =&gt; {
     timeline.currentTimeMillis = event.detail.timeMillis
 })</code></pre>
+        <pre class="demo-code"><code data-language="javascript">timeline.markers = [
+    {id: 'intro', timeMillis: 4000, label: 'Intro', icon: 'diamond'},
+    {id: 'chapter', timeMillis: 15000, label: 'Chapter', icon: 'bookmark'},
+]
+
+timeline.markers = [...timeline.markers, {
+    id: 'live-marker',
+    timeMillis: timeline.currentTimeMillis,
+    label: 'Live API marker',
+    icon: 'diamond',
+}]</code></pre>
     </section>
 
     <section class="example-grid" aria-label="Timeline examples">

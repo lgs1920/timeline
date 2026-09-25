@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-17
- * Last modified: 2026-09-17
+ * Last modified: 2026-09-25
  *
  *
  * Copyright © 2026 LGS1920
@@ -65,6 +65,7 @@ export const TimelineStateMixin = Base => class extends Base {
             playing: this._playing,
             visible: this._visible,
             clipOptions: this._clipOptions,
+            markers: this._markers,
             zoomPercent,
             forceRender,
             rangeStartMillis: this._timelineConfig.rangeStartMillis,
@@ -131,6 +132,7 @@ export const TimelineStateMixin = Base => class extends Base {
         this._clipOptions = state.clipOptions === null || state.clipOptions === undefined
             ? null
             : (Array.isArray(state.clipOptions) ? state.clipOptions : [])
+        this._markers = Array.isArray(state.markers) ? state.markers : []
         if (nextProjection?.horizontalFit === true) {
             this._horizontalFitActive = true
         }

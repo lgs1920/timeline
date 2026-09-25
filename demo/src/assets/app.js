@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-17
+ * Last modified: 2026-09-25
  *
  *
  * Copyright © 2026 LGS1920
@@ -24,6 +24,7 @@ import '@awesome.me/webawesome/dist/components/option/option.js'
 import '@awesome.me/webawesome/dist/components/popup/popup.js'
 import '@awesome.me/webawesome/dist/components/select/select.js'
 import '@awesome.me/webawesome/dist/components/slider/slider.js'
+import '@awesome.me/webawesome/dist/components/switch/switch.js'
 import '@awesome.me/webawesome/dist/components/tooltip/tooltip.js'
 import '@lgs1920/timeline'
 import '@awesome.me/webawesome/dist/components/toast/toast.js'
@@ -128,6 +129,8 @@ const eventOutput = document.querySelector('#event-output')
 const eventStatus = document.querySelector('#event-status')
 const rangeStatus = document.querySelector('#range-status')
 const keyboardStatus = document.querySelector('#keyboard-status')
+const showMarkersTimelineSwitch = document.querySelector('#show-markers-timeline')
+const addApiMarkerButton = document.querySelector('#add-api-marker')
 
 const DEMO_DURATION_MILLIS = 60_000
 const SHORT_DEMO_DURATION_MILLIS = 30_000
@@ -303,6 +306,7 @@ const configureTimeline = (element, options = {}) => {
     }
     element.tracks = cloneTracks(tracks, durationMillis)
     element.clipOptions = clipOptions
+    element.markers = options.markers ?? []
     element.currentTimeMillis = 0
     element.playing = false
     element.looping = false
@@ -345,12 +349,62 @@ const applyBrand = value => {
     document.documentElement.classList.add(`wa-brand-${value}`)
 }
 
+const DISPLAY_SETTINGS_STORAGE_KEY = 'lgs1920-timeline-display-settings'
+const DISPLAY_SETTINGS_DEFAULTS = {theme: 'default', mode: 'dark', color: 'blue'}
+const DISPLAY_SETTINGS_CHOICES = {
+    theme: Object.keys(THEME_CONFIG),
+    mode: ['dark', 'light'],
+    color: ['blue', 'red', 'orange', 'green', 'cyan', 'purple', 'pink'],
+}
+
+/** Return whether a persisted display preference is supported by the demo. */
+const isDisplaySettingValid = (key, value) => DISPLAY_SETTINGS_CHOICES[key]?.includes(value) === true
+
+/** Read display preferences from local storage and fill missing values from defaults. */
+const readDisplaySettings = () => {
+    try {
+        const stored = JSON.parse(localStorage.getItem(DISPLAY_SETTINGS_STORAGE_KEY) ?? '{}')
+        return Object.fromEntries(Object.keys(DISPLAY_SETTINGS_DEFAULTS).map(key => [key, isDisplaySettingValid(key, stored[key]) ? stored[key] : DISPLAY_SETTINGS_DEFAULTS[key]]))
+    } catch {
+        return {...DISPLAY_SETTINGS_DEFAULTS}
+    }
+}
+
+/** Persist the current display preferences when browser storage is available. */
+const saveDisplaySettings = settings => {
+    try {
+        localStorage.setItem(DISPLAY_SETTINGS_STORAGE_KEY, JSON.stringify(settings))
+    } catch {
+        // Preferences remain available for the current page when storage is blocked.
+    }
+}
+const displaySettings = readDisplaySettings()
+
+/** Apply display preferences to the document and its visible controls. */
+const applyDisplaySettings = settings => {
+    applyTheme(settings.theme)
+    applyMode(settings.mode)
+    applyBrand(settings.color)
+    Object.entries(settings).forEach(([key, value]) => {
+        const control = document.querySelector(`[data-theme-control="${key}"]`)
+        if (control) control.value = value
+    })
+}
+
 configureTimeline(studioTimeline, studioTimelineOptions)
+const interactiveMarkers = [
+    {id: 'api-intro', timeMillis: 4_000, label: 'Intro', icon: 'diamond', editable: false, removable: false},
+    {id: 'api-chapter', timeMillis: 15_000, label: 'Chapter', icon: 'bookmark', color: 'var(--wa-color-purple-60)'},
+    {id: 'api-review', timeMillis: 24_000, label: 'Review point', icon: {type: 'image', src: '/timeline/assets/logo/logo-horizontal.png', alt: 'Review point'}},
+]
+let controlledInteractiveMarkers = interactiveMarkers
+
 configureTimeline(interactiveTimeline, {
     durationMillis: SHORT_DEMO_DURATION_MILLIS,
     mode: 'edit',
     playback: {loop: 'hidden'},
     editing: {clipMenu: false},
+    markers: controlledInteractiveMarkers,
 })
 configureTimeline(readonlyTimeline, {
     durationMillis: SHORT_DEMO_DURATION_MILLIS,
@@ -364,6 +418,52 @@ configureTimeline(rangeTimeline, {
     range: {startMillis: 6_000, endMillis: 24_000},
     editing: {clipMenu: false},
 })
+
+let apiMarkerIndex = 0
+const syncInteractiveMarkerVisibility = () => {
+    const visible = showMarkersTimelineSwitch?.checked !== false
+    if (addApiMarkerButton) addApiMarkerButton.hidden = !visible
+    interactiveTimeline.markers = visible ? controlledInteractiveMarkers : []
+}
+
+interactiveTimeline.addEventListener('lgs1920-timeline-add-marker', event => {
+    controlledInteractiveMarkers = event.detail.markers
+    if (showMarkersTimelineSwitch?.checked !== false) interactiveTimeline.markers = controlledInteractiveMarkers
+})
+interactiveTimeline.addEventListener('lgs1920-timeline-remove-marker', event => {
+    controlledInteractiveMarkers = event.detail.markers
+    if (showMarkersTimelineSwitch?.checked !== false) interactiveTimeline.markers = controlledInteractiveMarkers
+})
+interactiveTimeline.addEventListener('lgs1920-timeline-marker-display-change', event => {
+    controlledInteractiveMarkers = event.detail.markers
+    if (showMarkersTimelineSwitch?.checked !== false) interactiveTimeline.markers = controlledInteractiveMarkers
+})
+interactiveTimeline.addEventListener('lgs1920-timeline-move-marker', event => {
+    controlledInteractiveMarkers = event.detail.markers
+    if (showMarkersTimelineSwitch?.checked !== false) interactiveTimeline.markers = controlledInteractiveMarkers
+})
+interactiveTimeline.addEventListener('lgs1920-timeline-edit-marker', event => {
+    controlledInteractiveMarkers = event.detail.markers
+    if (showMarkersTimelineSwitch?.checked !== false) interactiveTimeline.markers = controlledInteractiveMarkers
+})
+showMarkersTimelineSwitch?.addEventListener('change', syncInteractiveMarkerVisibility)
+addApiMarkerButton?.addEventListener('click', () => {
+    apiMarkerIndex += 1
+    controlledInteractiveMarkers = [
+        ...controlledInteractiveMarkers,
+        {
+            id: `api-live-${apiMarkerIndex}`,
+            timeMillis: 6_000 + (apiMarkerIndex * 2_500),
+            label: `API ${apiMarkerIndex}`,
+            icon: 'diamond',
+            editable: true,
+            movable: true,
+            removable: false,
+        },
+    ]
+    if (showMarkersTimelineSwitch?.checked !== false) interactiveTimeline.markers = controlledInteractiveMarkers
+})
+syncInteractiveMarkerVisibility()
 
 /**
  * Keep a timeline's current time moving after its host receives a play intent.
@@ -1628,9 +1728,22 @@ const stopReadonlyPlayback = () => {
     readonlyClock.stop()
 }
 
-document.querySelector('[data-theme-control="theme"]').addEventListener('change', event => applyTheme(event.currentTarget.value))
-document.querySelector('[data-theme-control="mode"]').addEventListener('change', event => applyMode(event.currentTarget.value))
-document.querySelector('[data-theme-control="color"]').addEventListener('change', event => applyBrand(event.currentTarget.value))
+applyDisplaySettings(displaySettings)
+document.querySelector('[data-theme-control="theme"]').addEventListener('change', event => {
+    displaySettings.theme = event.currentTarget.value
+    applyTheme(displaySettings.theme)
+    saveDisplaySettings(displaySettings)
+})
+document.querySelector('[data-theme-control="mode"]').addEventListener('change', event => {
+    displaySettings.mode = event.currentTarget.value
+    applyMode(displaySettings.mode)
+    saveDisplaySettings(displaySettings)
+})
+document.querySelector('[data-theme-control="color"]').addEventListener('change', event => {
+    displaySettings.color = event.currentTarget.value
+    applyBrand(displaySettings.color)
+    saveDisplaySettings(displaySettings)
+})
 
 const highlightWithPrism = (source, language) => Prism.highlight(
     source,

@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-17
- * Last modified: 2026-09-17
+ * Last modified: 2026-09-25
  *
  *
  * Copyright © 2026 LGS1920
@@ -54,6 +54,7 @@ export const createTimelineMenus = options => {
         getHostNoDragClasses,
         getRoot,
         getRows,
+        getMarkers,
         getTracks,
         globalSlotContent,
         isReadonlyMode,
@@ -62,6 +63,11 @@ export const createTimelineMenus = options => {
         beginTrackLabelEdit,
         removeClip,
         removeTrack,
+        requestAddMarkerAt,
+        requestEditMarker,
+        startMarkerMove,
+        requestMarkerDisplayChange,
+        requestRemoveMarker,
         publicSnapshot,
         emit,
         emitAfter,
@@ -77,11 +83,16 @@ export const createTimelineMenus = options => {
     let clipContextMenuAnchor = null
     let trackContextMenuTrackId = null
     let trackContextMenuAnchor = null
+    let markerContextMenuId = null
+    let markerContextMenuAnchor = null
+    let markerContextMenuTimeMillis = null
 
     const root = () => getRoot()
     const timelineHost = () => root()?.querySelector('[data-testid="lgs1920-wa-timeline"]')
     const clipMenuSelector = '[data-testid="lgs1920-timeline-clip-context-menu"]'
     const trackMenuSelector = '[data-testid="lgs1920-timeline-track-context-menu"]'
+    const markerMenuSelector = '[data-testid="lgs1920-timeline-marker-context-menu"]'
+    const markerEditSelector = '[data-testid="lgs1920-timeline-marker-edit-popup"]'
 
     const resolvedClipOptions = () => getClipOptions() ?? [{
         key: 'clip',
@@ -368,6 +379,211 @@ export const createTimelineMenus = options => {
         return popup
     }
 
+    const markerEditPopup = (marker, anchor) => {
+        const popup = createElement('wa-popup', `lgs1920-wa-timeline__popup lgs1920-wa-timeline__marker-edit-popup${getHostNoDragClasses()}`, {
+            placement: 'right-start',
+            distance: 6,
+            active: true,
+            boundary: 'viewport',
+            'aria-label': 'Edit marker',
+            'data-testid': 'lgs1920-timeline-marker-edit-popup',
+            flip: true,
+            'flip-fallback-placements': 'left-start',
+            shift: true,
+            'shift-padding': 8,
+            part: 'marker-edit-popup',
+        })
+        popup.anchor = anchor
+        const form = createElement('form', 'lgs1920-wa-timeline__marker-edit-form', {novalidate: ''})
+        const header = createElement('div', 'lgs1920-wa-timeline__marker-edit-header')
+        const title = createElement('span', 'lgs1920-wa-timeline__marker-edit-title')
+        title.textContent = 'Edit marker'
+        const headerActions = createElement('div', 'lgs1920-wa-timeline__marker-edit-header-actions')
+        const labelInput = createElement('wa-input', '', {
+            label: 'Label',
+            size: 'small',
+            value: marker.label ?? '',
+            'data-marker-edit-label': '',
+        })
+        let labelValue = String(marker.label ?? '')
+        let labelEdited = false
+        labelInput.value = labelValue
+        labelInput.addEventListener('input', event => {
+            labelEdited = true
+            labelValue = String(event.currentTarget?.value ?? event.target?.value ?? '').trim()
+        })
+        const swatches = normalizeTimelineColorSwatches(getConfig().swatches)
+        const markerColor = String(marker.color ?? '').trim()
+        const markerElement = [...(root()?.querySelectorAll?.('[data-marker-id]') ?? [])]
+            .find(element => String(element.dataset.markerId) === String(marker.id))
+        const renderedColor = !markerColor && markerElement
+            ? String(globalThis.getComputedStyle?.(markerElement)?.backgroundColor ?? '').trim()
+            : ''
+        const renderedColorMatch = renderedColor.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*[\d.]+)?\s*\)$/i)
+        const renderedColorHex = renderedColorMatch
+            ? `#${[1, 2, 3].map(index => Number(renderedColorMatch[index]).toString(16).padStart(2, '0')).join('')}`
+            : renderedColor.match(/^#[\da-f]{3,8}$/i)?.[0]?.toLowerCase() ?? ''
+        const paletteSwatch = swatches.find(swatch => markerColor === swatch.palette
+            || markerColor.includes(`-${swatch.palette}-`))
+        const colorValue = paletteSwatch?.color
+            || resolveTimelineColorValue(marker.colorClasses, swatches, marker.timelineColor)
+            || markerColor
+            || renderedColorHex
+            || swatches.find(swatch => swatch.palette === 'blue')?.color
+            || swatches[0]?.color
+            || '#3b82f6'
+        const colorPicker = createElement('wa-color-picker', '', {
+            size: 'small',
+            label: 'Color',
+            'without-format-toggle': '',
+            value: colorValue,
+            'data-marker-edit-color': '',
+        })
+        colorPicker.swatches = swatches
+        colorPicker.value = colorValue
+        let selectedColor = colorValue
+        let colorEdited = false
+        colorPicker.addEventListener('input', event => {
+            colorEdited = true
+            selectedColor = String(event.detail?.color
+                ?? event.detail?.value
+                ?? event.currentTarget?.value
+                ?? event.target?.value
+                ?? colorPicker.value
+                ?? colorValue).trim()
+            event.stopPropagation()
+        })
+        colorPicker.addEventListener('change', event => {
+            colorPicker.open = false
+            colorPicker.hide?.()
+            event.stopPropagation()
+        })
+        colorPicker.addEventListener('click', event => {
+            const panelInteraction = (event.composedPath?.() ?? []).some(element => {
+                const parts = String(element?.getAttribute?.('part') ?? '').split(/\s+/)
+                return ['grid', 'hue-slider', 'opacity-slider', 'swatch'].some(part => parts.includes(part))
+            })
+            if (!panelInteraction) return
+            colorPicker.open = false
+            colorPicker.hide?.()
+        })
+        const colorRow = createElement('div', 'lgs1920-wa-timeline__marker-edit-color-row')
+        const createPopupButton = (label, iconName, options = {}) => {
+            const item = button({
+                iconName,
+                label,
+                iconSlotElement: menuIcon(iconName),
+                appearance: options.appearance ?? 'plain',
+                variant: options.variant ?? 'neutral',
+            })
+            item.classList.add('lgs1920-wa-timeline__marker-edit-button')
+            if (options.showLabel !== false) {
+                const labelElement = createElement('span', 'lgs1920-wa-timeline__menu-label')
+                labelElement.textContent = label
+                item.append(labelElement)
+            }
+            return item
+        }
+        const closeButton = createPopupButton('Close', 'xmark', {showLabel: false})
+        const save = createPopupButton('Save', 'check', {variant: 'brand', appearance: 'filled'})
+        const close = () => {
+            popup.remove()
+            closeMarkerContextMenu()
+        }
+        closeButton.addEventListener('click', event => {
+            event.preventDefault()
+            close()
+        })
+        save.addEventListener('click', event => {
+            event.preventDefault()
+            const label = labelEdited
+                ? labelValue
+                : String(labelInput.value ?? labelInput.getAttribute('value') ?? marker.label ?? '').trim()
+            const changes = {label}
+            if (colorEdited) {
+                changes.color = selectedColor || String(colorPicker.value ?? '').trim() || String(marker.color ?? '').trim()
+            }
+            requestEditMarker(marker, changes, event)
+            close()
+        })
+        form.addEventListener('submit', event => save.click(event))
+        headerActions.append(closeButton)
+        header.append(title, headerActions)
+        colorRow.append(colorPicker, save)
+        form.append(header, labelInput, colorRow)
+        popup.append(form)
+        return popup
+    }
+
+    /**
+     * Create the marker and marker-rail context menu.
+     *
+     * @returns {HTMLElement|null} Marker context menu.
+     */
+    const markerContextMenu = () => {
+        const config = getConfig()
+        if (isReadonlyMode() || config.interactive === false || config.editable === false) return null
+        if (markerContextMenuTimeMillis === null) return null
+        const marker = getMarkers().find(value => String(value?.id) === String(markerContextMenuId))
+        if (marker && marker.editable === false && marker.movable === false && marker.removable === false) return null
+        const popup = createElement('wa-popup', `lgs1920-wa-timeline__popup lgs1920-wa-timeline__marker-context-menu${getHostNoDragClasses()}`, {
+            placement: 'bottom-start',
+            distance: 6,
+            active: true,
+            boundary: 'viewport',
+            'data-testid': 'lgs1920-timeline-marker-context-menu',
+            flip: true,
+            shift: true,
+            part: 'marker-context-menu',
+        })
+        if (markerContextMenuAnchor) popup.anchor = markerContextMenuAnchor
+        const menuElement = createElement('div', 'lgs1920-wa-timeline__menu', {role: 'menu', part: 'marker-menu'})
+        const addAction = (key, label, iconName, action, variant = 'neutral', close = true) => {
+            const item = button({
+                iconName,
+                label,
+                testId: `marker-menu-${key}`,
+                iconSlotElement: menuIcon(iconName),
+                variant,
+                appearance: 'plain',
+            })
+            item.classList.add('lgs1920-wa-timeline__menu-item')
+            item.setAttribute('role', 'menuitem')
+            const labelElement = createElement('span', 'lgs1920-wa-timeline__menu-label')
+            labelElement.textContent = label
+            item.append(labelElement)
+            item.addEventListener('click', event => {
+                if (close) closeMarkerContextMenu()
+                action(event)
+            })
+            menuElement.append(item)
+        }
+        if (!marker) {
+            addAction('add', 'Add', 'diamond', event => requestAddMarkerAt(markerContextMenuTimeMillis, event), 'brand')
+        }
+        else {
+            addAction(
+                'display',
+                marker.expanded === false ? 'Expand' : 'Shrink',
+                marker.expanded === false ? 'expand' : 'compress',
+                event => requestMarkerDisplayChange(marker, marker.expanded === false, event),
+            )
+            if (marker.editable !== false) addAction('edit', 'Edit', 'pen', event => {
+                const anchor = event.currentTarget
+                root()?.querySelector(markerEditSelector)?.remove()
+                const popup = markerEditPopup(marker, anchor)
+                const host = root()
+                host?.append(popup)
+            }, 'neutral', false)
+            if (marker.editable !== false && marker.movable !== false) {
+                addAction('move', 'Move', 'arrows-left-right', event => startMarkerMove(marker, event))
+            }
+            if (marker.removable !== false) addAction('remove', 'Remove', 'trash-can', event => requestRemoveMarker(marker, event), 'danger')
+        }
+        popup.append(menuElement)
+        return popup
+    }
+
     const openClipContextMenu = (clip, event) => {
         const config = getConfig()
         if (isReadonlyMode() || config.editable === false || clip?.editable === false) return
@@ -404,6 +620,23 @@ export const createTimelineMenus = options => {
         if (menuElement) timelineHost()?.append(menuElement)
     }
 
+    const openMarkerContextMenu = (marker, event, timeMillis = marker?.timeMillis) => {
+        if (isReadonlyMode() || getConfig().interactive === false || getConfig().editable === false) return
+        closeClipContextMenu()
+        closeTrackContextMenu()
+        closeMarkerContextMenu()
+        markerContextMenuId = marker?.id ?? null
+        markerContextMenuTimeMillis = Number(timeMillis) || 0
+        markerContextMenuAnchor = event?.currentTarget?.getBoundingClientRect
+            ? event.currentTarget
+            : {getBoundingClientRect: () => pointerRect(event)}
+        window.addEventListener('pointerdown', handleMarkerContextMenuOutsidePointerDown, true)
+        const menuElement = markerContextMenu()
+        if (menuElement) timelineHost()?.append(menuElement)
+    }
+
+    const openMarkerRailContextMenu = (event, timeMillis) => openMarkerContextMenu(null, event, timeMillis)
+
     const handleClipContextMenuOutsidePointerDown = event => {
         const path = event.composedPath?.() ?? []
         const menuElement = root()?.querySelector(clipMenuSelector)
@@ -416,6 +649,24 @@ export const createTimelineMenus = options => {
         const menuElement = root()?.querySelector(trackMenuSelector)
         if (menuElement && path.includes(menuElement)) return
         closeTrackContextMenu()
+    }
+
+    const handleMarkerContextMenuOutsidePointerDown = event => {
+        const path = event.composedPath?.() ?? []
+        const menuElement = root()?.querySelector(markerMenuSelector)
+        if (menuElement && path.includes(menuElement)) return
+        const editPopup = root()?.querySelector(markerEditSelector)
+        if (editPopup && path.includes(editPopup)) return
+        closeMarkerContextMenu()
+    }
+
+    const closeMarkerContextMenu = () => {
+        markerContextMenuId = null
+        markerContextMenuAnchor = null
+        markerContextMenuTimeMillis = null
+        window.removeEventListener('pointerdown', handleMarkerContextMenuOutsidePointerDown, true)
+        root()?.querySelector(markerEditSelector)?.remove()
+        root()?.querySelector(markerMenuSelector)?.remove()
     }
 
     return {
@@ -432,6 +683,9 @@ export const createTimelineMenus = options => {
         menu,
         openClipContextMenu,
         openTrackContextMenu,
+        openMarkerContextMenu,
+        openMarkerRailContextMenu,
+        markerContextMenu,
         trackContextMenu,
         closeTrackContextMenu: () => {
             trackContextMenuTrackId = null
@@ -439,5 +693,6 @@ export const createTimelineMenus = options => {
             window.removeEventListener('pointerdown', handleTrackContextMenuOutsidePointerDown, true)
             root()?.querySelector(trackMenuSelector)?.remove()
         },
+        closeMarkerContextMenu,
     }
 }

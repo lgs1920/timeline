@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-17
+ * Last modified: 2026-09-25
  *
  *
  * Copyright © 2026 LGS1920
@@ -191,6 +191,217 @@ body {
 
 .readme-content wa-markdown pre code {
     color: var(--demo-text);
+}
+
+.docs-content wa-markdown {
+    background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--wa-color-purple-50) 18%, transparent), transparent 24rem),
+        radial-gradient(circle at 0% 35%, color-mix(in srgb, var(--wa-color-cyan-50) 14%, transparent), transparent 28rem),
+        var(--demo-panel);
+}
+
+.docs-content wa-markdown h1 {
+    margin-block: 0 1rem;
+    color: var(--wa-color-brand-60);
+    font-size: clamp(2.2rem, 5vw, 4rem);
+    letter-spacing: -0.06em;
+    line-height: 0.98;
+}
+
+.docs-content wa-markdown h2 {
+    margin-block-start: 3rem;
+    padding-inline-start: 0.75rem;
+    border-inline-start: 4px solid var(--wa-color-purple-60);
+    color: var(--demo-text);
+}
+
+.docs-content wa-markdown h2:nth-of-type(2n) {
+    border-inline-start-color: var(--wa-color-cyan-60);
+}
+
+.docs-content wa-markdown h3 {
+    color: var(--wa-color-brand-60);
+}
+
+.docs-content wa-markdown p,
+.docs-content wa-markdown li {
+    color: var(--demo-muted);
+    line-height: 1.7;
+}
+
+.docs-content wa-markdown a {
+    color: var(--wa-color-brand-60);
+    font-weight: 700;
+}
+
+.docs-content wa-markdown blockquote {
+    margin-inline: 0;
+    padding: 1rem 1.25rem;
+    border-inline-start: 4px solid var(--wa-color-brand-60);
+    border-radius: 0 var(--wa-border-radius-m) var(--wa-border-radius-m) 0;
+    background: linear-gradient(100deg, color-mix(in srgb, var(--wa-color-brand-fill-quiet) 75%, transparent), color-mix(in srgb, var(--wa-color-purple-50) 12%, transparent));
+}
+
+.docs-content wa-markdown table {
+    display: table;
+    inline-size: 100%;
+    border-collapse: collapse;
+    overflow: hidden;
+    border: 1px solid var(--demo-panel-border);
+    border-radius: var(--wa-border-radius-m);
+}
+
+.docs-content wa-markdown th,
+.docs-content wa-markdown td {
+    padding: 0.85rem 1rem;
+    border-block-end: 1px solid var(--demo-panel-border);
+    text-align: start;
+    vertical-align: top;
+}
+
+.docs-content wa-markdown th {
+    background: color-mix(in srgb, var(--wa-color-brand-fill-quiet) 65%, var(--demo-panel));
+    color: var(--demo-text);
+}
+
+.readme-content wa-markdown pre,
+.docs-content wa-markdown pre {
+    position: relative;
+    overflow: auto;
+    margin-block: 1.5rem;
+    padding: 1.2rem 1.25rem;
+    border: 1px solid color-mix(in srgb, var(--wa-color-purple-60) 38%, var(--demo-panel-border));
+    border-inline-start: 4px solid var(--wa-color-brand-60);
+    border-radius: var(--wa-border-radius-m);
+    background:
+        linear-gradient(135deg, color-mix(in srgb, var(--wa-color-brand-50) 8%, transparent), transparent 42%),
+        color-mix(in srgb, var(--wa-color-purple-50) 10%, var(--demo-background));
+    box-shadow: inset 0 1px rgb(255 255 255 / 7%), 0 0.75rem 2rem rgb(0 0 0 / 10%);
+    font-family: var(--wa-font-family-mono, ui-monospace, monospace);
+    font-size: 0.84rem;
+    line-height: 1.65;
+}
+
+.readme-content wa-markdown code,
+.docs-content wa-markdown code {
+    color: var(--wa-color-cyan-60);
+    font-family: var(--wa-font-family-mono, ui-monospace, monospace);
+}
+
+.readme-content wa-markdown pre code,
+.docs-content wa-markdown pre code {
+    color: var(--demo-text);
+}
+
+.readme-content wa-markdown .token.comment,
+.docs-content wa-markdown .token.comment,
+.readme-content wa-markdown .token.prolog,
+.docs-content wa-markdown .token.prolog,
+.readme-content wa-markdown .token.doctype,
+.docs-content wa-markdown .token.doctype {
+    color: var(--wa-color-text-quiet, var(--demo-muted));
+    font-style: italic;
+}
+
+.readme-content wa-markdown .token.punctuation,
+.docs-content wa-markdown .token.punctuation {
+    color: var(--wa-color-text-quiet, var(--demo-muted));
+}
+
+.readme-content wa-markdown .token.property,
+.docs-content wa-markdown .token.property,
+.readme-content wa-markdown .token.tag,
+.docs-content wa-markdown .token.tag,
+.readme-content wa-markdown .token.deleted,
+.docs-content wa-markdown .token.deleted {
+    color: var(--wa-color-red-60, #dc2626);
+}
+
+.readme-content wa-markdown .token.constant,
+.docs-content wa-markdown .token.constant,
+.readme-content wa-markdown .token.symbol,
+.docs-content wa-markdown .token.symbol,
+.readme-content wa-markdown .token.boolean,
+.docs-content wa-markdown .token.boolean {
+    color: var(--wa-color-cyan-60, #0891b2);
+}
+
+.readme-content wa-markdown .token.number,
+.docs-content wa-markdown .token.number,
+.readme-content wa-markdown .token.regex,
+.docs-content wa-markdown .token.regex {
+    color: var(--wa-color-orange-60, #ea580c);
+}
+
+.readme-content wa-markdown .token.builtin,
+.docs-content wa-markdown .token.builtin,
+.readme-content wa-markdown .token.inserted,
+.docs-content wa-markdown .token.inserted,
+.readme-content wa-markdown .token.atrule,
+.docs-content wa-markdown .token.atrule,
+.readme-content wa-markdown .token.attr-value,
+.docs-content wa-markdown .token.attr-value {
+    color: var(--wa-color-cyan-60, #0891b2);
+}
+
+.readme-content wa-markdown .token.entity,
+.docs-content wa-markdown .token.entity,
+.readme-content wa-markdown .token.url,
+.docs-content wa-markdown .token.url {
+    color: var(--wa-color-red-60, #dc2626);
+}
+
+.readme-content wa-markdown .token.selector,
+.docs-content wa-markdown .token.selector,
+.readme-content wa-markdown .token.attr-name,
+.docs-content wa-markdown .token.attr-name {
+    color: var(--wa-color-yellow-60, #ca8a04);
+}
+
+.readme-content wa-markdown .token.string,
+.docs-content wa-markdown .token.string,
+.readme-content wa-markdown .token.char,
+.docs-content wa-markdown .token.char,
+.readme-content wa-markdown .token.inserted,
+.docs-content wa-markdown .token.inserted {
+    color: var(--wa-color-green-60, #16a34a);
+}
+
+.readme-content wa-markdown .token.operator,
+.docs-content wa-markdown .token.operator,
+.readme-content wa-markdown .token.keyword,
+.docs-content wa-markdown .token.keyword {
+    color: var(--wa-color-purple-60, #9333ea);
+}
+
+.readme-content wa-markdown .token.function,
+.docs-content wa-markdown .token.function,
+.readme-content wa-markdown .token.class-name,
+.docs-content wa-markdown .token.class-name {
+    color: var(--wa-color-blue-60, #2563eb);
+    font-weight: 700;
+}
+
+.readme-content wa-markdown .token.parameter,
+.docs-content wa-markdown .token.parameter,
+.readme-content wa-markdown .token.variable,
+.docs-content wa-markdown .token.variable {
+    color: var(--wa-color-pink-60, #db2777);
+}
+
+.readme-content wa-markdown .token.template-string,
+.docs-content wa-markdown .token.template-string,
+.readme-content wa-markdown .token.interpolation,
+.docs-content wa-markdown .token.interpolation,
+.readme-content wa-markdown .token.literal,
+.docs-content wa-markdown .token.literal {
+    color: var(--wa-color-green-60, #16a34a);
+}
+
+.readme-content wa-markdown .token.important,
+.docs-content wa-markdown .token.important {
+    color: var(--wa-color-orange-60, #ea580c);
+    font-weight: 700;
 }
 
 .readme-content wa-markdown img {
@@ -630,6 +841,12 @@ h2 {
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: var(--wa-space-xs);
+}
+
+.demo02-marker-actions {
+    align-items: center;
+    justify-content: flex-start;
+    margin-block-end: var(--wa-space-xs);
 }
 
 .generated-clip-sources {

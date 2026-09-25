@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-17
- * Last modified: 2026-09-18
+ * Last modified: 2026-09-25
  *
  *
  * Copyright © 2026 LGS1920
@@ -468,6 +468,7 @@ export const TimelineSurfaceMixin = Base => class extends Base {
     }
 
     _refreshLayoutMetricsInternal = () => {
+        this._syncMarkerRailHeight?.()
         const surfaceWidth = this._surface?.clientWidth ?? 0
         if (Number.isFinite(surfaceWidth) && surfaceWidth > 0 && surfaceWidth !== this._surfaceWidth) {
             this._surfaceWidth = surfaceWidth

@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-18
+ * Last modified: 2026-09-25
  *
  *
  * Copyright © 2026 LGS1920
@@ -161,6 +161,285 @@ describe('lgs1920-timeline Web Component', () => {
         expect(timeline.shadowRoot.querySelector('[data-surface]').classList.contains('test-no-drag')).toBe(true)
         expect(timeline.shadowRoot.querySelector('[part="timeline-tools"]').classList.contains('test-no-drag')).toBe(true)
         expect(timeline.shadowRoot.querySelector('[part="transport"]').classList.contains('test-no-drag')).toBe(true)
+    })
+
+    it('renders controlled markers in the optional rail and updates them through the API', () => {
+        const timeline = new LGS1920Timeline()
+        const domIcon = document.createElement('span')
+        domIcon.textContent = 'DOM icon'
+        configureTimeline(timeline, {markers: [
+            {id: 'intro', timeMillis: 2_000, label: 'Intro', icon: 'diamond'},
+            {id: 'dom-icon', timeMillis: 3_000, label: 'DOM icon', icon: domIcon},
+        ]})
+        timeline.markers = [
+            {id: 'intro', timeMillis: 2_000, label: 'Intro', icon: 'diamond'},
+            {id: 'dom-icon', timeMillis: 3_000, label: 'DOM icon', icon: domIcon},
+        ]
+        document.body.append(timeline)
+
+        const rail = timeline.shadowRoot.querySelector('[part="marker-rail"]')
+        expect(rail.hidden).toBe(false)
+        expect(rail.querySelectorAll('[part="marker"]').length).toBe(2)
+        const intro = rail.querySelector('[data-marker-id="intro"]')
+        expect(intro).not.toBeNull()
+        expect(intro.querySelector('.lgs1920-wa-timeline__marker-label').textContent).toBe('Intro')
+        expect(intro.hasAttribute('title')).toBe(false)
+        expect(intro.style.getPropertyValue('--lgs-timeline-marker-content-color'))
+            .toBe('var(--wa-color-brand-on-normal, #fff)')
+        expect(rail.querySelector('wa-tooltip[for="lgs1920-timeline-marker-intro"]')).not.toBeNull()
+        const domMarker = rail.querySelector('[data-marker-id="dom-icon"]')
+        expect(domMarker.querySelector('span').textContent).toBe('DOM icon')
+        expect(domMarker.querySelector('span')).not.toBe(domIcon)
+        expect(timeline.markers[0].timeMillis).toBe(2_000)
+
+        timeline.markers = [
+            ...timeline.markers,
+            {id: 'chapter', timeMillis: 7_500, label: 'Chapter', icon: 'bookmark'},
+        ]
+
+        expect(timeline.shadowRoot.querySelectorAll('[part="marker"]').length).toBe(3)
+        expect(timeline.shadowRoot.querySelector('[data-marker-id="chapter"]')).not.toBeNull()
+    })
+
+    it('keeps the marker rail empty and collapsed without API markers or slot content', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline)
+        document.body.append(timeline)
+
+        const rail = timeline.shadowRoot.querySelector('[part="marker-rail"]')
+        expect(rail.hidden).toBe(true)
+        expect(rail.querySelector('[name="marker-rail"]').assignedElements()).toEqual([])
+    })
+
+    it('renders application-provided marker rail content alongside API markers', () => {
+        const timeline = new LGS1920Timeline()
+        const railContent = document.createElement('div')
+        railContent.slot = 'marker-rail'
+        railContent.textContent = 'Application marker rail'
+        timeline.append(railContent)
+        configureTimeline(timeline, {markers: [{id: 'api', timeMillis: 1_000, label: 'API marker'}]})
+        timeline.markers = [{id: 'api', timeMillis: 1_000, label: 'API marker'}]
+        document.body.append(timeline)
+
+        const rail = timeline.shadowRoot.querySelector('[part="marker-rail"]')
+        expect(rail.hidden).toBe(false)
+        expect(rail.querySelector('[name="marker-rail"]').assignedElements()).toEqual([railContent])
+        expect(rail.querySelector('[data-marker-id="api"]')).not.toBeNull()
+    })
+
+    it('emits controlled marker menu requests without mutating host state', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline, {timeline: {showMarkerMenu: true}, markers: [{id: 'fixed', timeMillis: 1_000, label: 'Fixed', removable: false}]})
+        timeline.markers = [{id: 'fixed', timeMillis: 1_000, label: 'Fixed', removable: false}]
+        const added = vi.fn()
+        const removed = vi.fn()
+        timeline.addEventListener('lgs1920-timeline-add-marker', added)
+        timeline.addEventListener('lgs1920-timeline-remove-marker', removed)
+        document.body.append(timeline)
+
+        timeline.shadowRoot.querySelector('[data-marker-rail]').dispatchEvent(
+            new MouseEvent('contextmenu', {bubbles: true, cancelable: true, clientX: 120, clientY: 80}),
+        )
+        const menu = timeline.shadowRoot.querySelector('[data-testid="lgs1920-timeline-marker-context-menu"]')
+        menu.querySelector('[role="menuitem"]').click()
+
+        expect(added).toHaveBeenCalledOnce()
+        expect(added.mock.calls[0][0].detail.markers).toHaveLength(2)
+        expect(timeline.markers).toHaveLength(1)
+
+        expect(menu.querySelectorAll('[role="menuitem"]')).toHaveLength(1)
+        expect(removed).not.toHaveBeenCalled()
+    })
+
+    it('opens an aligned marker editor for label and color changes', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline, {
+            markers: [{id: 'editable', timeMillis: 1_000, label: 'Original', color: '#3b82f6'}],
+        })
+        timeline.markers = [{id: 'editable', timeMillis: 1_000, label: 'Original', color: '#3b82f6'}]
+        const edited = vi.fn()
+        timeline.addEventListener('lgs1920-timeline-edit-marker', edited)
+        document.body.append(timeline)
+
+        timeline.shadowRoot.querySelector('[data-marker-id="editable"]').dispatchEvent(
+            new MouseEvent('contextmenu', {bubbles: true, cancelable: true, clientX: 120, clientY: 80}),
+        )
+        const menu = timeline.shadowRoot.querySelector('[data-testid="lgs1920-timeline-marker-context-menu"]')
+        const editAction = [...menu.querySelectorAll('[role="menuitem"]')]
+            .find(item => item.textContent.trim() === 'Edit')
+        editAction?.click()
+
+        const popup = timeline.shadowRoot.querySelector('[data-testid="lgs1920-timeline-marker-edit-popup"]')
+        expect(popup).not.toBeNull()
+        expect(popup.querySelector('[data-marker-edit-label]')).not.toBeNull()
+        expect(popup.querySelector('[data-marker-edit-color]')).not.toBeNull()
+        const labelInput = popup.querySelector('[data-marker-edit-label]')
+        const colorPicker = popup.querySelector('[data-marker-edit-color]')
+        colorPicker.open = true
+        colorPicker.dispatchEvent(new Event('input', {bubbles: true}))
+        expect(colorPicker.open).toBe(true)
+        colorPicker.dispatchEvent(new Event('change', {bubbles: true}))
+        expect(colorPicker.open).toBe(false)
+        labelInput.value = 'Updated'
+        popup.querySelectorAll('wa-button')[1].click()
+
+        expect(edited).toHaveBeenCalledOnce()
+        expect(edited.mock.calls[0][0].detail.marker.label).toBe('Updated')
+        expect(edited.mock.calls[0][0].detail.markers[0].color).toBe('#3b82f6')
+    })
+
+    it('preserves a marker color when saving without changing the color picker', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline, {
+            markers: [{id: 'default-color', timeMillis: 1_000, label: 'Default color'}],
+        })
+        timeline.markers = [{id: 'default-color', timeMillis: 1_000, label: 'Default color'}]
+        const edited = vi.fn()
+        timeline.addEventListener('lgs1920-timeline-edit-marker', edited)
+        document.body.append(timeline)
+
+        timeline.shadowRoot.querySelector('[data-marker-id="default-color"]').dispatchEvent(
+            new MouseEvent('contextmenu', {bubbles: true, cancelable: true, clientX: 120, clientY: 80}),
+        )
+        const menu = timeline.shadowRoot.querySelector('[data-testid="lgs1920-timeline-marker-context-menu"]')
+        const editAction = [...menu.querySelectorAll('[role="menuitem"]')]
+            .find(item => item.textContent.trim() === 'Edit')
+        editAction?.click()
+        timeline.shadowRoot.querySelector('[data-testid="lgs1920-timeline-marker-edit-popup"]')
+            .querySelectorAll('wa-button')[1].click()
+
+        expect(edited).toHaveBeenCalledOnce()
+        expect(edited.mock.calls[0][0].detail.marker).not.toHaveProperty('color')
+    })
+
+    it('opens a context menu from a marker and from the marker rail', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline, {markers: [{id: 'context', timeMillis: 1_000, label: 'Context marker'}]})
+        timeline.markers = [{id: 'context', timeMillis: 1_000, label: 'Context marker'}]
+        document.body.append(timeline)
+
+        const marker = timeline.shadowRoot.querySelector('[data-marker-id="context"]')
+        marker.dispatchEvent(new MouseEvent('contextmenu', {bubbles: true, cancelable: true, clientX: 120, clientY: 80}))
+        const markerMenu = timeline.shadowRoot.querySelector('[data-testid="lgs1920-timeline-marker-context-menu"]')
+        expect(markerMenu).not.toBeNull()
+        expect([...markerMenu.querySelectorAll('[role="menuitem"]')].map(item => item.textContent.trim()))
+            .toEqual(['Shrink', 'Edit', 'Move', 'Remove'])
+
+        markerMenu.remove()
+        timeline.shadowRoot.querySelector('[data-marker-rail]').dispatchEvent(
+            new MouseEvent('contextmenu', {bubbles: true, cancelable: true, clientX: 180, clientY: 80}),
+        )
+        const railMenu = timeline.shadowRoot.querySelector('[data-testid="lgs1920-timeline-marker-context-menu"]')
+        expect(railMenu).not.toBeNull()
+        expect([...railMenu.querySelectorAll('[role="menuitem"]')].map(item => item.textContent.trim()))
+            .toEqual(['Add'])
+    })
+
+    it('moves a marker after Move enters horizontal mode and the next click commits', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline, {markers: [{id: 'moving', timeMillis: 1_000, label: 'Moving marker'}]})
+        timeline.markers = [{id: 'moving', timeMillis: 1_000, label: 'Moving marker'}]
+        const moved = vi.fn()
+        timeline.addEventListener('lgs1920-timeline-move-marker', moved)
+        document.body.append(timeline)
+
+        timeline.shadowRoot.querySelector('[data-marker-id="moving"]').dispatchEvent(
+            new MouseEvent('contextmenu', {bubbles: true, cancelable: true, clientX: 120, clientY: 80}),
+        )
+        const markerMenu = timeline.shadowRoot.querySelector('[data-testid="lgs1920-timeline-marker-context-menu"]')
+        const moveAction = [...markerMenu.querySelectorAll('[role="menuitem"]')]
+            .find(item => item.textContent.trim() === 'Move')
+        expect(moveAction).not.toBeUndefined()
+        moveAction?.click()
+        expect(timeline._markerMoveState).not.toBeNull()
+
+        const rail = timeline.shadowRoot.querySelector('[data-marker-rail]')
+        expect(rail.querySelector('[data-marker-moving][data-marker-id="moving"]')).not.toBeNull()
+        rail.dispatchEvent(createPointerEvent('pointermove', {clientX: 100}))
+        rail.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true, clientX: 100, clientY: 80}))
+
+        expect(moved).toHaveBeenCalledOnce()
+        expect(moved.mock.calls[0][0].detail.marker.timeMillis).toBeGreaterThan(1_000)
+        expect(timeline.shadowRoot.querySelector('[data-marker-moving]')).toBeNull()
+    })
+
+    it('closes the marker editor before starting a move', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline, {markers: [{id: 'edit-move', timeMillis: 1_000, label: 'Edit move'}]})
+        timeline.markers = [{id: 'edit-move', timeMillis: 1_000, label: 'Edit move'}]
+        document.body.append(timeline)
+
+        timeline.shadowRoot.querySelector('[data-marker-id="edit-move"]').dispatchEvent(
+            new MouseEvent('contextmenu', {bubbles: true, cancelable: true, clientX: 120, clientY: 80}),
+        )
+        const menu = timeline.shadowRoot.querySelector('[data-testid="lgs1920-timeline-marker-context-menu"]')
+        const editAction = [...menu.querySelectorAll('[role="menuitem"]')]
+            .find(item => item.textContent.trim() === 'Edit')
+        editAction?.click()
+        expect(timeline.shadowRoot.querySelector('[data-testid="lgs1920-timeline-marker-edit-popup"]')).not.toBeNull()
+
+        const moveAction = [...menu.querySelectorAll('[role="menuitem"]')]
+            .find(item => item.textContent.trim() === 'Move')
+        moveAction?.click()
+
+        expect(timeline.shadowRoot.querySelector('[data-testid="lgs1920-timeline-marker-edit-popup"]')).toBeNull()
+        expect(timeline._markerMoveState).not.toBeNull()
+    })
+
+    it('cancels marker movement with Escape and keeps the controlled marker unchanged', () => {
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline, {markers: [{id: 'cancelled', timeMillis: 1_000, label: 'Cancelled marker'}]})
+        timeline.markers = [{id: 'cancelled', timeMillis: 1_000, label: 'Cancelled marker'}]
+        const moved = vi.fn()
+        timeline.addEventListener('lgs1920-timeline-move-marker', moved)
+        document.body.append(timeline)
+
+        timeline.shadowRoot.querySelector('[data-marker-id="cancelled"]').dispatchEvent(
+            new MouseEvent('contextmenu', {bubbles: true, cancelable: true, clientX: 120, clientY: 80}),
+        )
+        const menu = timeline.shadowRoot.querySelector('[data-testid="lgs1920-timeline-marker-context-menu"]')
+        const moveAction = [...menu.querySelectorAll('[role="menuitem"]')]
+            .find(item => item.textContent.trim() === 'Move')
+        moveAction?.click()
+        timeline.shadowRoot.querySelector('[data-marker-rail]').dispatchEvent(createPointerEvent('pointermove', {clientX: 100}))
+
+        window.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true}))
+
+        expect(moved).not.toHaveBeenCalled()
+        expect(timeline._markerMoveState).toBeNull()
+        expect(timeline.markers[0].timeMillis).toBe(1_000)
+        expect(timeline.shadowRoot.querySelector('[data-marker-ghost]')).toBeNull()
+    })
+
+    it('flashes the marker target after stable marker snapping', async () => {
+        vi.useFakeTimers()
+        const timeline = new LGS1920Timeline()
+        configureTimeline(timeline, {
+            markers: [
+                {id: 'moving', timeMillis: 1_000, label: 'Moving marker'},
+                {id: 'target', timeMillis: 2_000, label: 'Target marker'},
+            ],
+        })
+        timeline.markers = [
+            {id: 'moving', timeMillis: 1_000, label: 'Moving marker'},
+            {id: 'target', timeMillis: 2_000, label: 'Target marker'},
+        ]
+        document.body.append(timeline)
+
+        timeline.shadowRoot.querySelector('[data-marker-id="moving"]').dispatchEvent(
+            new MouseEvent('contextmenu', {bubbles: true, cancelable: true, clientX: 60, clientY: 80}),
+        )
+        const menu = timeline.shadowRoot.querySelector('[data-testid="lgs1920-timeline-marker-context-menu"]')
+        const moveAction = [...menu.querySelectorAll('[role="menuitem"]')]
+            .find(item => item.textContent.trim() === 'Move')
+        moveAction?.click()
+        const rail = timeline.shadowRoot.querySelector('[data-marker-rail]')
+        rail.dispatchEvent(createPointerEvent('pointermove', {clientX: 100}))
+
+        expect(timeline.shadowRoot.querySelector('[data-marker-id="target"][data-marker-snap-flash]')).toBeNull()
+        await vi.advanceTimersByTimeAsync(1_200)
+
+        expect(timeline.shadowRoot.querySelector('[data-marker-id="target"][data-marker-snap-flash]')).not.toBeNull()
     })
 
     it('formats ruler labels according to the timeline duration', () => {

@@ -8,8 +8,8 @@
  * Author : LGS1920 Team
  * email: studio@lgs1920.fr
  *
- * Created on: 2026-09-17
- * Last modified: 2026-09-17
+ * Created on: 2026-09-14
+ * Last modified: 2026-09-25
  *
  *
  * Copyright © 2026 LGS1920
@@ -52,6 +52,7 @@ describe('LGS1920TimelineReact', () => {
                 currentTimeMillis={0}
                 playing={false}
                 clipOptions={[]}
+                markers={[{id: 'react-marker', timeMillis: 1_000, label: 'React marker'}]}
                 events={{
                     seek: onSeek,
                     dblclick: onDblClick,
@@ -67,6 +68,7 @@ describe('LGS1920TimelineReact', () => {
         }))
 
         expect(element.options.mode).toBe('edit')
+        expect(element.markers[0].id).toBe('react-marker')
         expect(element.shadowRoot.querySelector('slot[name="header"]').assignedElements()[0].textContent).toBe('React header')
         expect(onSeek).toHaveBeenCalledWith({timeMillis: 1_000}, expect.any(CustomEvent))
 
