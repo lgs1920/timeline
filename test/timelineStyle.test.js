@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-18
+ * Last modified: 2026-09-30
  *
  *
  * Copyright © 2026 LGS1920
@@ -21,6 +21,14 @@ import {describe, expect, it} from 'vitest'
 const styleSource = readFileSync(resolve('src/timeline.css'), 'utf8')
 
 describe('lgs1920-timeline styles', () => {
+    it('keeps the time ruler at its configured height when the canvas shrinks', () => {
+        const rulerRule = styleSource.match(/& \.lgs1920-wa-timeline__ruler \{([^}]*)}/)?.[1] ?? ''
+
+        expect(rulerRule).toContain('box-sizing: border-box;')
+        expect(rulerRule).toContain('flex: 0 0 var(--lgs-timeline-header-height);')
+        expect(rulerRule).toContain('height: var(--lgs-timeline-header-height);')
+    })
+
     it('keeps the color picker trigger visually hidden while preserving swatch interaction', () => {
         const pickerRule = styleSource.match(/& \.lgs1920-wa-timeline__clip-color-picker--menu-trigger \{([^}]*)}/)?.[1]
         const popupRule = styleSource.match(/& \.lgs1920-wa-timeline__clip-color-picker--menu-trigger::part\(color-picker\) \{([^}]*)}/)?.[1]
