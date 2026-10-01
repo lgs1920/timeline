@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-17
- * Last modified: 2026-09-25
+ * Last modified: 2026-10-01
  *
  *
  * Copyright © 2026 LGS1920
@@ -154,10 +154,10 @@ export const TimelineStateMixin = Base => class extends Base {
         } else {
             this._rangeEndMillis = durationMillis
         }
-        this._currentTimeMillis = this._normalizeTime(
-            playbackStarted ? this._rangeStartMillis : (state.currentTimeMillis ?? 0),
-            false,
-        )
+        const currentTimeMillis = state.currentTimeMillis ?? (playbackStarted ? previousTimeMillis : 0)
+        this._currentTimeMillis = playbackStarted
+            ? this._normalizeTime(currentTimeMillis)
+            : this._normalizeTime(currentTimeMillis, false)
         if (!patchInPlace && rowsOnly && this._updateRowsInPlace({majorSeconds: this._resolveScale().majorSeconds})) {
             this._followPlaybackViewport(previousTimeMillis)
             return

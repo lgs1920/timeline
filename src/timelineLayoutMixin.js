@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-17
- * Last modified: 2026-09-25
+ * Last modified: 2026-10-01
  *
  *
  * Copyright © 2026 LGS1920
@@ -744,7 +744,7 @@ export const TimelineLayoutMixin = Base => class extends Base {
         play.id = 'lgs1920-timeline-transport-play'
         play.addEventListener('click', event => {
             const playing = !this._playing
-            const timeMillis = playing ? this._rangeStartMillis : this._currentTimeMillis
+            const timeMillis = playing ? this._getPlaybackStartTimeMillis() : this._currentTimeMillis
             const detail = {
                 source: playing ? 'timeline-play' : 'timeline-pause',
                 timeMillis,

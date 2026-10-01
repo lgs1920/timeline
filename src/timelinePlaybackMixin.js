@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-17
- * Last modified: 2026-09-25
+ * Last modified: 2026-10-01
  *
  *
  * Copyright © 2026 LGS1920
@@ -24,6 +24,13 @@ import * as timelineUtils from './timelineUtils.js'
  * @returns {typeof HTMLElement} Extended host class.
  */
 export const TimelinePlaybackMixin = Base => class extends Base {
+    /**
+     * Get the playhead position normalized to the active playback range.
+     *
+     * @returns {number} Playback start time in milliseconds.
+     */
+    _getPlaybackStartTimeMillis = () => this._normalizeTime(this._currentTimeMillis)
+
     _handleWheel = event => {
         if (this._isReadonlyMode()) return
         if (event.ctrlKey || !event.deltaY) return
@@ -49,7 +56,7 @@ export const TimelinePlaybackMixin = Base => class extends Base {
         event.stopPropagation()
         const playing = !this._playing
         const action = playing ? 'play' : 'pause'
-        const timeMillis = playing ? this._rangeStartMillis : this._currentTimeMillis
+        const timeMillis = playing ? this._getPlaybackStartTimeMillis() : this._currentTimeMillis
         const detail = {
             source: playing ? 'timeline-keyboard-play' : 'timeline-keyboard-pause',
             timeMillis,

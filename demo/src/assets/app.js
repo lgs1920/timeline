@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-25
+ * Last modified: 2026-10-01
  *
  *
  * Copyright © 2026 LGS1920
@@ -1421,11 +1421,11 @@ studioTimeline.addEventListener('lgs1920-timeline-loop-change', event => {
 studioTimeline.addEventListener('lgs1920-timeline-range-change', () => {
     studioPacmanDemo.setRange()
 })
-studioTimeline.addEventListener('lgs1920-timeline-play', () => {
+studioTimeline.addEventListener('lgs1920-timeline-play', event => {
     showStudioToast('Clip started', 'play')
     studioPacmanDemo.open()
     studioTimeline.playing = true
-    studioClock.start()
+    studioClock.start(event.detail.timeMillis)
 })
 studioTimeline.addEventListener('lgs1920-timeline-pause', () => {
     showStudioToast('Clip paused', 'pause')
@@ -1624,9 +1624,9 @@ rangeTimeline.addEventListener('lgs1920-timeline-range-change', event => {
     rangeClock.seek(rangeTimeline.currentTimeMillis)
 })
 
-rangeTimeline.addEventListener('lgs1920-timeline-play', () => {
+rangeTimeline.addEventListener('lgs1920-timeline-play', event => {
     rangeTimeline.playing = true
-    rangeClock.start()
+    rangeClock.start(event.detail.timeMillis)
 })
 rangeTimeline.addEventListener('lgs1920-timeline-pause', () => {
     rangeTimeline.playing = false
@@ -1676,9 +1676,9 @@ const interactiveClock = createPlaybackClock({
 interactiveTimeline.addEventListener('lgs1920-timeline-seek', event => {
     seekFromTimelineEvent(interactiveClock, event)
 })
-interactiveTimeline.addEventListener('lgs1920-timeline-play', () => {
+interactiveTimeline.addEventListener('lgs1920-timeline-play', event => {
     interactiveTimeline.playing = true
-    interactiveClock.start()
+    interactiveClock.start(event.detail.timeMillis)
 })
 interactiveTimeline.addEventListener('lgs1920-timeline-pause', () => {
     interactiveTimeline.playing = false

@@ -148,17 +148,25 @@ The component does not advance the application clock. It emits playback
 requests, while the host starts or stops its own clock and writes the current
 position back through `currentTimeMillis`.
 
-An accepted play request always starts at the active range start. The host
-clock must stop at the active range end, or return to the range start when
-looping is enabled.
+An accepted play request starts at the current playhead when it is inside the
+active range. If the playhead is outside the range, the component clamps the
+requested start to the nearest range boundary. The `play` event's
+`detail.timeMillis` contains this effective start time; use it to start the
+host clock. The host clock must stop at the active range end, or return to the
+range start when looping is enabled. To start from the range beginning, move
+the playhead there with Home or the Go to start control, then press Space or
+Play.
 
 The loop button emits a controlled `loop-change` request. Apply its
 `detail.looping` value to the host playback clock and to `timeline.looping`.
 Set `timeline.noLoopMode = true` to hide that button.
 
 ```js
-timeline.addEventListener('lgs1920-timeline-play', () => {
+timeline.addEventListener('lgs1920-timeline-play', event => {
+    const timeMillis = event.detail.timeMillis
     timeline.playing = true
+    timeline.currentTimeMillis = timeMillis
+    media.currentTime = timeMillis / 1000
     media.play()
 })
 

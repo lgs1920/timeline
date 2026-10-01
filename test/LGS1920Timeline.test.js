@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-14
- * Last modified: 2026-09-25
+ * Last modified: 2026-10-01
  *
  *
  * Copyright © 2026 LGS1920
@@ -1796,6 +1796,39 @@ describe('lgs1920-timeline Web Component', () => {
             .toBe('28px')
     })
 
+    it('starts transport playback from the current playhead and clamps it to the active range', () => {
+        const timeline = new LGS1920Timeline()
+        const play = vi.fn()
+        configureTimeline(timeline, {
+            timeline: {durationMillis: 10_000, rangeStartMillis: 2_000, rangeEndMillis: 8_000},
+            currentTimeMillis: 5_000,
+        })
+        timeline.addEventListener('lgs1920-timeline-play', play)
+        document.body.append(timeline)
+
+        timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-timeline-play"]').click()
+
+        expect(play).toHaveBeenCalledOnce()
+        expect(play.mock.calls[0][0].detail.timeMillis).toBe(5_000)
+        expect(timeline.currentTimeMillis).toBe(5_000)
+
+        timeline.currentTimeMillis = 9_000
+        timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-timeline-play"]').click()
+
+        expect(play).toHaveBeenCalledTimes(2)
+        expect(play.mock.calls[1][0].detail.timeMillis).toBe(8_000)
+        expect(timeline.currentTimeMillis).toBe(8_000)
+
+        timeline.currentTimeMillis = 5_000
+        timeline.playing = true
+        expect(timeline.currentTimeMillis).toBe(5_000)
+
+        timeline.playing = false
+        timeline.currentTimeMillis = 9_000
+        timeline.playing = true
+        expect(timeline.currentTimeMillis).toBe(8_000)
+    })
+
     it('emits playback, seeking, track visibility, and clip events', () => {
         const timeline = new LGS1920Timeline()
         configureTimeline(timeline, {currentTimeMillis: 1_000})
@@ -1929,9 +1962,9 @@ describe('lgs1920-timeline Web Component', () => {
         expect(pause).not.toHaveBeenCalled()
         expect(stop.mock.calls[0][0].detail).toMatchObject({
             source: 'timeline-stop',
-            timeMillis: 0,
+            timeMillis: 10_000,
         })
-        expect(timeline.currentTimeMillis).toBe(0)
+        expect(timeline.currentTimeMillis).toBe(10_000)
 
         expect(timeline.shadowRoot.querySelector('[data-testid="lgs1920-wa-timeline-restart"] wa-icon').getAttribute('name'))
             .toBe('backward-step')
@@ -4959,6 +4992,7 @@ describe('lgs1920-timeline Web Component', () => {
         const seek = vi.fn()
         const enabled = vi.fn()
         configureTimeline(timeline, {
+            timeline: {rangeStartMillis: 2_000, rangeEndMillis: 8_000},
             currentTimeMillis: 5_000,
             tracks: [{
                 id: 'main',
@@ -4978,15 +5012,25 @@ describe('lgs1920-timeline Web Component', () => {
         expect(space.defaultPrevented).toBe(true)
         expect(timeline.playing).toBe(true)
         expect(play).toHaveBeenCalledOnce()
+        expect(play.mock.calls[0][0].detail.timeMillis).toBe(5_000)
+        expect(timeline.currentTimeMillis).toBe(5_000)
 
         surface.dispatchEvent(new KeyboardEvent('keydown', {key: ' ', bubbles: true, cancelable: true}))
         expect(timeline.playing).toBe(false)
         expect(pause).toHaveBeenCalledOnce()
 
         surface.dispatchEvent(new KeyboardEvent('keydown', {key: 'Home', bubbles: true, cancelable: true}))
-        expect(timeline.currentTimeMillis).toBe(0)
+        expect(timeline.currentTimeMillis).toBe(2_000)
+        expect(play).toHaveBeenCalledOnce()
+        surface.dispatchEvent(new KeyboardEvent('keydown', {key: ' ', bubbles: true, cancelable: true}))
+        expect(timeline.playing).toBe(true)
+        expect(play).toHaveBeenCalledTimes(2)
+        expect(play.mock.calls[1][0].detail.timeMillis).toBe(2_000)
+        expect(timeline.currentTimeMillis).toBe(2_000)
+        surface.dispatchEvent(new KeyboardEvent('keydown', {key: ' ', bubbles: true, cancelable: true}))
+        expect(timeline.playing).toBe(false)
         surface.dispatchEvent(new KeyboardEvent('keydown', {key: 'End', bubbles: true, cancelable: true}))
-        expect(timeline.currentTimeMillis).toBe(10_000)
+        expect(timeline.currentTimeMillis).toBe(8_000)
         expect(seek).toHaveBeenCalledTimes(2)
 
         let clip = timeline.shadowRoot.querySelector('[data-clip-id="clip"]')

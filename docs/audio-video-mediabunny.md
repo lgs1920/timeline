@@ -178,10 +178,11 @@ the rate during playback and export.
 
 ## Mediabunny playback
 
-When playback starts, the host receives the timeline's playback request and
-resolves the clips active at the requested position. The Mediabunny adapter
-then opens the sources, selects the required streams, and decodes the active
-video and audio.
+When playback starts, the host uses `play` event `detail.timeMillis` as the
+requested playback position and resolves the clips active there. This value is
+the current playhead clamped to the active range. The Mediabunny adapter then
+opens the sources, selects the required streams, and decodes the active video
+and audio.
 
 The playback flow is:
 

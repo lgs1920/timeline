@@ -456,16 +456,24 @@ timeline.markers = [{id: 'review', timeMillis: 24_000, label: 'Review', icon}]
 The controlled playback state. The component emits `play` and `pause`; the
 host updates this property after applying the requested state.
 
-An accepted play request always starts at the active range start. The host
-playback clock must stop at the active range end, or restart at the range start
-when looping is enabled.
+An accepted play request starts at the current playhead when it is inside the
+active range. If the playhead is outside the range, the component clamps the
+requested start to the nearest range boundary. The `play` event's
+`detail.timeMillis` contains this effective start time; use it to start the
+host clock. The host playback clock must stop at the active range end, or
+restart at the range start when looping is enabled. To start from the range
+beginning, move the playhead there with Home or the Go to start control, then
+press Space or Play.
 
 The component does not advance the application clock. Connect the events to the
 host media player and write its clock back to `currentTimeMillis`:
 
 ```js
-timeline.addEventListener('lgs1920-timeline-play', () => {
+timeline.addEventListener('lgs1920-timeline-play', event => {
+    const timeMillis = event.detail.timeMillis
     timeline.playing = true
+    timeline.currentTimeMillis = timeMillis
+    media.currentTime = timeMillis / 1000
     media.play()
 })
 
@@ -819,7 +827,7 @@ has focus.
 | Focus or context | Shortcut | Action |
 | --- | --- | --- |
 | Timeline surface | <kbd>Space</kbd> | Toggle local playback. |
-| Timeline surface | <kbd>Home</kbd> / <kbd>End</kbd> | Move the playhead to the selected range start or end. |
+| Timeline surface | <kbd>Home</kbd> / <kbd>End</kbd> | Move the playhead to the selected range start or end. Press Home, then Space, to play from the range start. |
 | Timeline surface | <kbd>Shift</kbd>+<kbd>ArrowLeft</kbd> / <kbd>Shift</kbd>+<kbd>ArrowRight</kbd> | Move the playhead to the selected range boundary. |
 | Timeline surface | <kbd>Shift</kbd>+<kbd>ArrowUp</kbd> / <kbd>Shift</kbd>+<kbd>ArrowDown</kbd> | Scroll tracks to the top or bottom. |
 | Timeline surface | <kbd>ArrowUp</kbd> / <kbd>ArrowDown</kbd> | Increase or decrease row height. |

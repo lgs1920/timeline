@@ -8,7 +8,7 @@
  * email: studio@lgs1920.fr
  *
  * Created on: 2026-09-17
- * Last modified: 2026-09-25
+ * Last modified: 2026-10-01
  *
  *
  * Copyright © 2026 LGS1920
@@ -1730,7 +1730,7 @@ export class LGS1920Timeline extends TimelineBase {
         }
         if (!wasPlaying && this._playing) {
             const previousTimeMillis = this._currentTimeMillis
-            this._currentTimeMillis = this._rangeStartMillis
+            this._currentTimeMillis = this._getPlaybackStartTimeMillis()
             if (this._currentTimeMillis !== previousTimeMillis) this._updateDynamicState()
             this._followPlaybackViewport(previousTimeMillis)
         }

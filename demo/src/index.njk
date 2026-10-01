@@ -180,9 +180,9 @@ timeline.addEventListener('lgs1920-timeline-seek', event =&gt; {
 &lt;p&gt;Drag a clip to the timeline&lt;/p&gt;
 &lt;div id="generated-clip-sources"&gt;&lt;/div&gt;
 </code></pre>
-            <pre class="demo-code"><code data-language="javascript">timeline.addEventListener('lgs1920-timeline-play', () =&gt; {
+            <pre class="demo-code"><code data-language="javascript">timeline.addEventListener('lgs1920-timeline-play', event =&gt; {
     timeline.playing = true
-    clock.start()
+    clock.start(event.detail.timeMillis)
 })
 
 timeline.addEventListener('lgs1920-timeline-pause', () =&gt; {
@@ -450,7 +450,7 @@ timeline.addEventListener('lgs1920-timeline-range-change', event =&gt; {
                 </thead>
                 <tbody>
                     <tr><th scope="row">Timeline surface</th><td><kbd>Space</kbd></td><td>Toggle local playback.</td></tr>
-                    <tr><th scope="row">Timeline surface</th><td><kbd>Home</kbd> · <kbd>End</kbd></td><td>Move the playhead to the selected range start or end.</td></tr>
+                    <tr><th scope="row">Timeline surface</th><td><kbd>Home</kbd> · <kbd>End</kbd></td><td>Move the playhead to the selected range start or end. Press Home, then Space, to play from the range start.</td></tr>
                     <tr><th scope="row">Timeline surface</th><td><kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd></td><td>Move the playhead to the selected range boundary.</td></tr>
                     <tr><th scope="row">Timeline surface</th><td><kbd>Shift</kbd> + <kbd>↑</kbd> / <kbd>↓</kbd></td><td>Scroll tracks to the top or bottom.</td></tr>
                     <tr><th scope="row">Timeline surface</th><td><kbd>↑</kbd> / <kbd>↓</kbd></td><td>Increase or decrease row height.</td></tr>

@@ -173,9 +173,14 @@ intentions:
 - advance by a caller-provided duration;
 - rewind by a caller-provided duration.
 
-An accepted play request must position the playhead at the active range start
-before playback begins. The host playback clock must stop at the active range
-end; when looping is enabled, it must restart from the active range start.
+An accepted play request starts from the current playhead when it is inside the
+active range. If it is outside the range, the component clamps the requested
+start to the nearest range boundary. The `play` event's `detail.timeMillis`
+contains this effective start time, which the host must use to start its
+playback clock. The host clock must stop at the active range end; when looping
+is enabled, it must restart from the active range start. Home and Go to start
+move the playhead to the range start without starting playback, so pressing
+Space or Play afterward starts there.
 
 While `playing` is true, the editing surface must enter a temporary readonly
 state. Track and clip menus, title editing, drag operations, range changes,
