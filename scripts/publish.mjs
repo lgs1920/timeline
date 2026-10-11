@@ -1,3 +1,19 @@
+/*******************************************************************************
+ *
+ * This file is part of the LGS1920/timeline project.
+ *
+ * File: publish.mjs
+ *
+ * Author : LGS1920 Team
+ * email: studio@lgs1920.fr
+ *
+ * Created on: 2026-09-14
+ * Last modified: 2026-10-11
+ *
+ *
+ * Copyright © 2026 LGS1920
+ ******************************************************************************/
+
 if (process.env.TIMELINE_BUN_PUBLISH_LIFECYCLE === '1') process.exit(0)
 
 const args = Bun.argv.slice(2)
@@ -36,7 +52,7 @@ if (output('git', ['status', '--porcelain'])) {
 }
 
 const latestTag = output('git', ['tag', '--list', 'v*', '--sort=-version:refname']).split('\n')[0]
-const releasePaths = ['.github', 'src', 'entries', 'demo', 'scripts', 'test', 'README.md']
+const releasePaths = ['.github', 'src', 'entries', 'demo', 'scripts', 'test', 'README.md', 'package.json']
 if (latestTag && !output('git', ['diff', '--name-only', `${latestTag}..HEAD`, '--', ...releasePaths])) {
     console.error(`Publication arrêtée : aucun changement dans ${releasePaths.join(', ')} depuis ${latestTag}.`)
     process.exit(1)
@@ -65,7 +81,7 @@ const nextVersion = `${major}.${minor}.${patch}`
 const readme = await Bun.file('./README.md').text()
 const releaseLine = /^The current release is `[^`]+`/m
 const changeRange = latestTag ? `${latestTag}..HEAD` : 'HEAD'
-const changedFiles = output('git', ['diff', '--name-only', changeRange, '--', '.github', 'src', 'entries', 'demo', 'scripts', 'test'])
+const changedFiles = output('git', ['diff', '--name-only', changeRange, '--', '.github', 'src', 'entries', 'demo', 'scripts', 'test', 'package.json'])
     .split('\n')
     .filter(Boolean)
 const releaseChangeMessages = [
@@ -75,6 +91,7 @@ const releaseChangeMessages = [
     ['demo', 'Updated the interactive demonstration.'],
     ['scripts', 'Updated build, documentation, or release automation.'],
     ['test', 'Updated automated test coverage.'],
+    ['package.json', 'Updated package dependencies.'],
 ].filter(([path]) => changedFiles.some(file => file === path || file.startsWith(`${path}/`)))
     .map(([, message]) => `- ${message}`)
 const releaseChanges = releaseChangeMessages.join('\n') || '- Updated the package implementation and release configuration.'
